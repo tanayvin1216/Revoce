@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "identity": {
+    "name": "Jordan",
+    "pronouns": "they/them",
+    "aac_user": true,
+    "primary_language": "en"
+  },
+  "relationships": [
+    {
+      "name": "Sam",
+      "role": "partner",
+      "aliases": ["sam", "sammy"],
+      "topics": ["travel", "food", "plans"]
+    }
+  ],
+  "routines": [
+    {
+      "label": "Morning coffee",
+      "days": ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      "time_start": "07:00",
+      "time_end": "08:00",
+      "location_keywords": ["kitchen", "cafe"],
+      "vocab_hints": ["coffee", "ready", "let's go"]
+    }
+  ],
+  "sensory_notes": {
+    "prefers_quiet": true,
+    "noise_sensitive": true,
+    "dietary": ["gluten-free"],
+    "comfort_items": ["headphones", "water bottle"]
+  },
+  "todays_events": [
+    {
+      "id": "flight-ord-lax",
+      "label": "Flight ORD to LAX",
+      "time": "14:30",
+      "location_keywords": ["airport", "terminal", "gate", "b14", "ord", "lax", "board", "boarding"],
+      "partner_keywords": ["sam", "sammy", "boarding group", "line up"],
+      "vocab_hints": ["yes", "go", "wait", "I need help", "too loud", "water", "bathroom", "no", "scared", "seat", "all done"],
+      "date": null
+    }
+  ]
+}

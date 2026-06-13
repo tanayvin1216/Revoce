@@ -132,6 +132,7 @@
     }
 
     footer { flex: 0 0 auto; padding: 8px 20px 12px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); }
+    .sym-img { width: 72px; height: 72px; object-fit: contain; display: block; }
   </style>
 </head>
 <body>
@@ -164,6 +165,10 @@
   </div>
 
   <footer id="foot">no board yet</footer>
+  <footer style="font-size:10px;color:var(--muted);padding:4px 20px 8px;border-top:none;">
+    Pictograms © <a href="https://arasaac.org" target="_blank" rel="noopener" style="color:inherit;">ARASAAC</a>
+    (arasaac.org), Government of Aragon, Spain — CC BY-NC-SA 4.0
+  </footer>
 
   <script>
     "use strict";
@@ -307,13 +312,28 @@
       }
     }
 
+    function symbolIsImage(sym) {
+      return typeof sym === "string" && (sym.startsWith("/") || sym.endsWith(".png"));
+    }
+
     function makeButton(item, source) {
       const b = document.createElement("button");
       b.className = "word" + (source === "core" ? " core" : "");
       b.setAttribute("aria-label", item.word);
       const s = document.createElement("span");
       s.className = "sym";
-      s.textContent = item.symbol || "▢";
+      if (symbolIsImage(item.symbol)) {
+        const img = document.createElement("img");
+        img.className = "sym-img";
+        img.src = item.symbol;
+        img.alt = item.word;
+        img.width = 72;
+        img.height = 72;
+        img.onerror = () => { img.remove(); s.textContent = item.word; };
+        s.appendChild(img);
+      } else {
+        s.textContent = item.symbol || "▢";
+      }
       const l = document.createElement("span");
       l.className = "lbl";
       l.textContent = item.word;
