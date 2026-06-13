@@ -1,0 +1,51 @@
+[
+  {
+    "scene": "At a coffee shop counter during the morning rush.",
+    "context_speakers": ["Barista"],
+    "context_utterances": ["Hi! What can I get started for you today?"],
+    "speaker": "Customer (AAC)",
+    "utterance": "I would like a coffee please"
+  },
+  {
+    "scene": "In a doctor's exam room for a check-up.",
+    "context_speakers": ["Doctor", "Doctor"],
+    "context_utterances": ["Good morning. How are you feeling today?", "Any pain anywhere?"],
+    "speaker": "Patient (AAC)",
+    "utterance": "I have pain in my head"
+  },
+  {
+    "scene": "At an airport gate, boarding has just been announced.",
+    "context_speakers": ["Gate agent"],
+    "context_utterances": ["Boarding group two, please line up at the gate."],
+    "speaker": "Traveller (AAC)",
+    "utterance": "I need help with my bag"
+  },
+  {
+    "scene": "At home in the living room in the evening.",
+    "context_speakers": ["Partner"],
+    "context_utterances": ["Do you want to watch a film tonight?"],
+    "speaker": "User (AAC)",
+    "utterance": "yes that sounds good"
+  },
+  {
+    "scene": "In a noisy restaurant deciding what to order.",
+    "context_speakers": ["Waiter"],
+    "context_utterances": ["Are you ready to order, or do you need a few more minutes?"],
+    "speaker": "Diner (AAC)",
+    "utterance": "I need more time"
+  },
+  {
+    "scene": "On a video call with a family member.",
+    "context_speakers": ["Mum"],
+    "context_utterances": ["It was lovely to see you. Talk again on Sunday?"],
+    "speaker": "User (AAC)",
+    "utterance": "okay love you bye"
+  },
+  {
+    "scene": "At a pharmacy counter picking up a prescription.",
+    "context_speakers": ["Pharmacist"],
+    "context_utterances": ["That will be ready in about ten minutes. Is that alright?"],
+    "speaker": "Customer (AAC)",
+    "utterance": "no I will wait here"
+  }
+]
