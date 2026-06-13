@@ -35,10 +35,13 @@ class FasterWhisperTranscriber(Transcriber):
 
     def transcribe(self, pcm_f32, sample_rate):
         # We feed 16 kHz mono float32 in [-1, 1]; that's what the wearable streams.
-        segments, _info = self._model.transcribe(
-            pcm_f32, language="en", beam_size=1, vad_filter=False,
-        )
-        segs = list(segments)
+        # errstate: silences benign divide/overflow warnings from faster-whisper's
+        # mel step under numpy 2.x (output is unaffected).
+        with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
+            segments, _info = self._model.transcribe(
+                pcm_f32, language="en", beam_size=1, vad_filter=False,
+            )
+            segs = list(segments)
         text = " ".join(s.text.strip() for s in segs).strip()
         if segs:
             avg_logprob = sum(s.avg_logprob for s in segs) / len(segs)
