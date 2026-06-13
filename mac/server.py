@@ -51,7 +51,10 @@ from pathlib import Path
 
 from aiohttp import WSMsgType, web
 
+from context_state import ContextState
 from rank_vocabulary import rank_vocabulary
+import perception.config as perception_config
+from perception.runner import Perception
 
 # ------------------------------- CONFIG -------------------------------------
 HOST = "0.0.0.0"        # bind all interfaces so the iPad on the LAN can reach us
@@ -64,19 +67,17 @@ MAX_REMEMBERED_BOARDS = 200   # keep recent boards so taps can be logged with co
 # ----------------------------------------------------------------------------
 
 
-def _make_board() -> tuple[dict, dict]:
+def _make_board(app: web.Application) -> tuple[dict, dict]:
     """Produce one vocab_update message by calling THE SEAM.
 
-    Perception is not wired yet, so scene/transcript/context are placeholders.
-    When the wearable + pipeline land, THIS is where their latest outputs feed
-    into rank_vocabulary().
+    Reads the latest perception understanding from the shared ContextState and
+    passes it straight into rank_vocabulary(). Perception writes that state on
+    its own threads; here we only read a snapshot.
 
     Returns (board_message, produced_from) where produced_from is the snapshot
     of inputs that produced the board — kept so taps can be logged with context.
     """
-    scene = None
-    transcript = None
-    context = None
+    scene, transcript, context = app["state"]["context"].snapshot()
 
     items = rank_vocabulary(scene, transcript, context)   # <-- the only model seam
 
@@ -165,7 +166,7 @@ async def index_handler(request: web.Request) -> web.FileResponse:
 
 
 async def _produce_and_broadcast(app: web.Application) -> None:
-    board, produced_from = _make_board()
+    board, produced_from = _make_board(app)
 
     state = app["state"]
     boards = state["boards"]
@@ -213,9 +214,20 @@ async def on_startup(app: web.Application) -> None:
     # The push task is created here; all mutable state lives in app["state"]
     # (set in make_app before the app freezes) and is only ever mutated in place.
     app["state"]["push_task"] = asyncio.create_task(push_loop(app))
+
+    # Perception: shared context state + concurrent workers that feed it.
+    # (perception writes the context; _make_board reads it — they never call
+    # each other directly, and perception never touches rank_vocabulary/the UI.)
+    app["state"]["context"] = ContextState()
+    if perception_config.PERCEPTION_ENABLED:
+        perception = Perception(app["state"]["context"])
+        perception.start(asyncio.get_running_loop())
+        app["state"]["perception"] = perception
+
     ip = _lan_ip()
     print("=" * 64)
-    print("VoiceLink server up — plain HTTP, NO models (stub seam).")
+    print("VoiceLink server up — plain HTTP. rank_vocabulary is still a STUB;")
+    print("perception (Whisper + gated VLM) feeds the context it will consume.")
     print("  Open the AAC board on the iPad/phone (same Wi-Fi):")
     print(f"      http://{ip}:{PORT}/")
     print(f"  Local:  http://127.0.0.1:{PORT}/")
@@ -227,6 +239,8 @@ async def on_cleanup(app: web.Application) -> None:
     state = app["state"]
     if state["push_task"] is not None:
         state["push_task"].cancel()
+    if state.get("perception") is not None:
+        await state["perception"].stop()
     for ws in list(state["clients"]):
         await ws.close()
 
@@ -240,6 +254,8 @@ def make_app() -> web.Application:
         "boards": {},           # board_id -> {items, produced_from}  (bounded)
         "latest_board": None,   # last board pushed (sent to new clients on connect)
         "push_task": None,      # background broadcast loop
+        "context": None,        # ContextState — perception writes, _make_board reads
+        "perception": None,     # Perception runner (wearable client + workers)
     }
     app.add_routes([
         web.get("/", index_handler),
