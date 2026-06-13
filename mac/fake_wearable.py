@@ -17,7 +17,9 @@ Then point perception at it:
 from __future__ import annotations
 
 import asyncio
-import math
+import subprocess
+import tempfile
+import wave
 
 import cv2
 import numpy as np
@@ -33,8 +35,35 @@ _COLORS = [(40, 90, 160), (60, 160, 80), (170, 70, 70), (200, 180, 60)]
 _FRAME_HOLD_S = 5.0      # how long each scene stays before changing
 _FRAME_SEND_S = 1.5      # how often a frame is sent (like the real device cadence)
 
-_BURST_S = 1.0           # length of a "speech" burst
+_BURST_S = 1.0           # length of a tone "speech" burst (fallback)
 _GAP_S = 0.8             # silence between bursts (> VAD_SILENCE_MS ends an utterance)
+
+# Real speech (macOS `say`), so the full pipeline exercises real Whisper. Mix of
+# questions (addressed=True) and statements (addressed=False).
+_SENTENCES = [
+    "The weather is really nice today.",
+    "Do you want some water?",
+    "Are you hungry right now?",
+    "I will be back in a minute.",
+]
+
+
+def _say_clips() -> list[np.ndarray]:
+    """Synthesize each sentence to 16 kHz mono int16 via `say`. Returns [] if
+    `say` is unavailable (then we fall back to a tone)."""
+    clips = []
+    for text in _SENTENCES:
+        path = tempfile.mktemp(suffix=".wav")
+        try:
+            subprocess.run(
+                ["say", "-o", path, "--data-format=LEI16@16000", text],
+                check=True, capture_output=True,
+            )
+            with wave.open(path, "rb") as w:
+                clips.append(np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16))
+        except Exception:
+            return []
+    return clips
 
 
 def _jpeg_for(color: tuple[int, int, int]) -> bytes:
@@ -54,30 +83,32 @@ async def _send_frames(ws) -> None:
         t += _FRAME_SEND_S
 
 
+async def _stream_pcm(ws, samples: np.ndarray, chunk: int = 1024) -> None:
+    sent = 0
+    while sent < len(samples) and not ws.closed:
+        block = samples[sent:sent + chunk]
+        await ws.send_bytes(bytes([MSG_AUDIO]) + block.astype(np.int16).tobytes())
+        sent += len(block)
+        await asyncio.sleep(len(block) / SAMPLE_RATE)
+
+
 async def _send_audio(ws) -> None:
-    chunk = 1024  # samples per message (~64 ms), like the firmware
-    phase = 0.0
+    clips = _say_clips()
+    gap = np.zeros(int(SAMPLE_RATE * _GAP_S), dtype=np.int16)
+    if clips:
+        print("[fake-wearable] streaming real speech (say) + silence gaps")
+        i = 0
+        while not ws.closed:
+            await _stream_pcm(ws, clips[i % len(clips)])  # one sentence = one utterance
+            await _stream_pcm(ws, gap)                    # silence ends it
+            i += 1
+        return
+    # fallback: loud sine bursts (no `say` available)
+    print("[fake-wearable] `say` unavailable — streaming tone bursts")
+    burst = (6000 * np.sin(2 * np.pi * 300 / SAMPLE_RATE * np.arange(int(SAMPLE_RATE * _BURST_S)))).astype(np.int16)
     while not ws.closed:
-        # one loud burst (a "partner" utterance)
-        n_burst = int(SAMPLE_RATE * _BURST_S)
-        sent = 0
-        while sent < n_burst and not ws.closed:
-            k = min(chunk, n_burst - sent)
-            samples = np.empty(k, dtype=np.int16)
-            for i in range(k):
-                samples[i] = int(6000 * math.sin(phase))
-                phase += 2 * math.pi * 300 / SAMPLE_RATE
-            await ws.send_bytes(bytes([MSG_AUDIO]) + samples.tobytes())
-            sent += k
-            await asyncio.sleep(k / SAMPLE_RATE)
-        # silence (ends the utterance)
-        n_gap = int(SAMPLE_RATE * _GAP_S)
-        sent = 0
-        while sent < n_gap and not ws.closed:
-            k = min(chunk, n_gap - sent)
-            await ws.send_bytes(bytes([MSG_AUDIO]) + (b"\x00\x00" * k))
-            sent += k
-            await asyncio.sleep(k / SAMPLE_RATE)
+        await _stream_pcm(ws, burst)
+        await _stream_pcm(ws, gap)
 
 
 async def ws_handler(request: web.Request) -> web.WebSocketResponse:

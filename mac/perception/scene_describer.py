@@ -9,7 +9,8 @@ or runtime (e.g. OpenVINO on Intel) with a ONE-LINE change in config.py.
 
 from __future__ import annotations
 
-import io
+import os
+import tempfile
 from abc import ABC, abstractmethod
 
 
@@ -20,7 +21,7 @@ class SceneDescriber(ABC):
 
 
 class MlxVlmSceneDescriber(SceneDescriber):
-    def __init__(self, model_id: str, prompt: str, max_tokens: int) -> None:
+    def __init__(self, model_id: str, prompt: str, max_tokens: int, max_image_dim: int = 768) -> None:
         # Lazy heavy imports / model load (happens on the vision worker thread).
         from mlx_vlm import generate, load
         from mlx_vlm.prompt_utils import apply_chat_template
@@ -32,21 +33,44 @@ class MlxVlmSceneDescriber(SceneDescriber):
         self._model_config = load_config(model_id)
         self._prompt = prompt
         self._max_tokens = max_tokens
+        self._max_image_dim = max_image_dim
 
     def describe(self, jpeg_bytes: bytes) -> str:
-        from PIL import Image
-        image = Image.open(io.BytesIO(jpeg_bytes)).convert("RGB")
-        # NOTE: mlx-vlm's generate() signature has shifted across releases. If a
-        # version mismatch shows up, this is the ONE spot to adjust.
+        # mlx-vlm's generate() loads images from a path and returns a
+        # GenerationResult. (This is the ONE spot to adjust if the mlx-vlm API
+        # shifts again across releases.)
         formatted = self._apply_chat_template(
             self._processor, self._model_config, self._prompt, num_images=1
         )
-        out = self._generate(
-            self._model, self._processor, formatted, [image],
-            max_tokens=self._max_tokens, verbose=False,
-        )
-        text = out if isinstance(out, str) else getattr(out, "text", str(out))
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            f.write(self._capped_jpeg(jpeg_bytes))
+            path = f.name
+        try:
+            result = self._generate(
+                self._model, self._processor, formatted, image=[path],
+                max_tokens=self._max_tokens, verbose=False,
+            )
+        finally:
+            os.unlink(path)
+        text = getattr(result, "text", None)
+        if text is None:
+            text = result if isinstance(result, str) else str(result)
         return text.strip().replace("\n", " ")
+
+    def _capped_jpeg(self, jpeg_bytes: bytes) -> bytes:
+        """Downscale frames past max_image_dim so a huge image can't blow up the
+        VLM's token count / latency (thermal discipline). VGA frames pass through."""
+        from io import BytesIO
+        from PIL import Image
+        img = Image.open(BytesIO(jpeg_bytes)).convert("RGB")
+        longest = max(img.size)
+        if longest <= self._max_image_dim:
+            return jpeg_bytes
+        scale = self._max_image_dim / longest
+        img = img.resize((round(img.width * scale), round(img.height * scale)))
+        out = BytesIO()
+        img.save(out, "JPEG", quality=90)
+        return out.getvalue()
 
 
 class MockSceneDescriber(SceneDescriber):
@@ -74,7 +98,9 @@ def make_scene_describer(cfg) -> SceneDescriber:
     name = cfg.SCENE_DESCRIBER
     if name == "mlx-vlm":
         try:
-            return MlxVlmSceneDescriber(cfg.VLM_MODEL, cfg.VLM_PROMPT, cfg.VLM_MAX_TOKENS)
+            return MlxVlmSceneDescriber(
+                cfg.VLM_MODEL, cfg.VLM_PROMPT, cfg.VLM_MAX_TOKENS, cfg.VLM_MAX_IMAGE_DIM
+            )
         except Exception as e:  # lib/model missing -> degrade gracefully
             print(f"[perception] mlx-vlm unavailable ({e}); using MockSceneDescriber")
             return MockSceneDescriber()

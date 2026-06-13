@@ -38,6 +38,7 @@ VLM_PROMPT = (
     "No preamble, no list."
 )
 VLM_MAX_TOKENS = 64
+VLM_MAX_IMAGE_DIM = 768           # downscale frames past this before the VLM (token/latency cap)
 
 # Cheap change detector — gates the expensive VLM (thermal/latency discipline).
 CHANGE_GRAY_SIZE = 64             # downscale to NxN grayscale for the diff
