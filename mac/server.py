@@ -31,11 +31,12 @@ client -> server:
     "type": "tap",
     "word": <str>,                   # REQUIRED: the word that was tapped
     "client_ts": <number>,           # REQUIRED: browser timestamp (ms epoch)
-    "board_id": "<uuid4>"            # OPTIONAL: which board it came from (for logging)
+    "board_id": "<uuid4>",           # OPTIONAL: which board it came from (for logging)
+    "source": "core" | "dynamic"     # OPTIONAL (additive): stable-core vs dynamic strip
   }
 
 These two message types are FIXED. Add fields if needed; never repurpose
-existing ones.
+existing ones. ("source" is such an additive field — vocab_update is untouched.)
 ================================================================================
 """
 
@@ -97,17 +98,25 @@ def _record_tap(app: web.Application, msg: dict, peer: str) -> None:
     snapshot of what the system "saw" when it offered that board.
     """
     word = msg.get("word")
+    source = msg.get("source")        # "core" | "dynamic" (additive tap field)
     client_ts = msg.get("client_ts")
     board_id = msg.get("board_id")
-    print(f"[tap] word={word!r} client_ts={client_ts} board_id={board_id} from {peer}")
+    print(f"[tap] {source}:{word!r} client_ts={client_ts} board_id={board_id} from {peer}")
 
+    # Join the tap to the context that produced the board the user was viewing.
+    # produced_from = {scene, transcript, context} — currently placeholders, but
+    # the snapshot is captured NOW so it becomes real training data once
+    # perception feeds rank_vocabulary(). This cannot be recreated later.
     board_record = app["state"]["boards"].get(board_id, {})
     entry = {
         "server_recv_ts": time.time(),
-        "tap": {"word": word, "client_ts": client_ts, "board_id": board_id},
-        "peer": peer,
-        "context_snapshot": board_record.get("produced_from"),  # scene/transcript/context
+        "word": word,
+        "source": source,
+        "client_ts": client_ts,
+        "board_id": board_id,
+        "context_snapshot": board_record.get("produced_from"),  # {scene, transcript, context}
         "board_items": board_record.get("items"),               # the board that was shown
+        "peer": peer,
     }
     with TAP_LOG_PATH.open("a") as f:
         f.write(json.dumps(entry) + "\n")
