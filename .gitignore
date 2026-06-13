@@ -1,0 +1,22 @@
+# Secrets / env
+.env
+.env.*
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Runtime tap log (interaction data — kept locally, not in the code repo)
+mac/taps.jsonl
+
+# Arduino / build artifacts
+build/
+*.bin
+*.elf
+
+# macOS
+.DS_Store
