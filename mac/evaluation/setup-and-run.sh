@@ -59,12 +59,14 @@ then
        click "Agree and access repository" (instant; it's auto-approved).
 
     2) AUTHENTICATE this Mac — pick ONE:
-         huggingface-cli login          # paste a token when prompted
+         hf auth login                  # paste a token when prompted
        or
          export HF_TOKEN=hf_xxxxxxxx     # then re-run this script
 
-       Need a token? Create a READ token at:
-         $TOKENS_URL
+       Need a token? Create one at:  $TOKENS_URL
+       Use a classic "Read" token, OR a fine-grained token with
+       "Read access to contents of all public gated repos" enabled —
+       a plain fine-grained token returns 403 on gated datasets.
 
   Then re-run:  bash mac/evaluation/setup-and-run.sh $LIMIT
 EOF
