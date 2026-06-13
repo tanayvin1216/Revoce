@@ -13,6 +13,9 @@ venv/
 # Runtime tap log (interaction data — kept locally, not in the code repo)
 mac/taps.jsonl
 
+# Personal context profile (real profile is private; sample is committed)
+mac/personal_context.json
+
 # Arduino / build artifacts
 build/
 *.bin
