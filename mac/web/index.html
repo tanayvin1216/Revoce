@@ -67,6 +67,12 @@
     .lockbtn .lsym { font-size: 17px; }
     .lockbtn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
+    .voicesel {
+      appearance: none; border: 1px solid var(--line); background: var(--surface);
+      color: var(--ink); border-radius: 10px; padding: 9px 12px; font-size: 13px;
+      font-weight: 600; max-width: 170px; cursor: pointer;
+    }
+
     .lockbanner {
       display: none; flex: 0 0 auto;
       background: var(--accent); color: var(--accent-ink);
@@ -133,6 +139,7 @@
     <h1>VOICELINK</h1>
     <span class="spoken" id="spoken"></span>
     <span class="status down" id="status">connecting…</span>
+    <select class="voicesel" id="voice" aria-label="speaking voice" title="speaking voice"></select>
     <button class="lockbtn" id="lock" aria-pressed="false">
       <span class="lsym">🔓</span><span class="llbl">Lock</span>
     </button>
@@ -180,6 +187,27 @@
     const freshText = document.getElementById("freshtext");
     const footEl = document.getElementById("foot");
     const spokenEl = document.getElementById("spoken");
+    const voiceSel = document.getElementById("voice");
+
+    // --- Speech voice & delivery (tweak to taste) ---------------------------
+    // Slower rate + lower pitch reads as warmer and more human than the default.
+    const SPEECH = { rate: 0.9, pitch: 0.85, volume: 1.0 };
+    // Preferred voices, best first. Web Speech only exposes voices the OS has
+    // installed; "Enhanced"/"Premium"/"Natural" variants sound far more human
+    // (install them in Settings > Accessibility > Spoken Content > Voices).
+    const VOICE_PREFS = [
+      "Ava (Premium)", "Ava (Enhanced)", "Ava",
+      "Zoe (Premium)", "Zoe (Enhanced)",
+      "Serena (Premium)", "Serena (Enhanced)", "Serena",
+      "Allison (Enhanced)", "Allison",
+      "Samantha (Enhanced)", "Samantha",
+      "Karen (Enhanced)", "Karen", "Nicky (Enhanced)", "Nicky",
+      "Microsoft Aria Online (Natural) - English (United States)",
+      "Microsoft Jenny Online (Natural) - English (United States)",
+      "Google US English",
+    ];
+    let voices = [];
+    let chosenVoice = null;
 
     let ws = null;
     let reconnectDelay = 500;
@@ -187,12 +215,66 @@
     let displayedBoardId = null;   // board_id currently shown (does NOT change while locked)
     let pendingBoard = null;       // latest board received while locked
 
+    function voiceScore(v) {
+      let s = 0;
+      const n = v.name.toLowerCase();
+      if (/premium|enhanced|natural/.test(n)) s += 3;   // higher-quality variants
+      if (/en[-_]us/i.test(v.lang)) s += 1;
+      if (v.localService) s += 1;                       // on-device = no lag, private
+      return s;
+    }
+
+    function pickVoice() {
+      const saved = localStorage.getItem("vl_voice");
+      if (saved) { const v = voices.find(x => x.name === saved); if (v) return v; }
+      for (const name of VOICE_PREFS) {
+        const v = voices.find(x => x.name === name);
+        if (v) return v;
+      }
+      const en = voices.filter(v => /^en(-|_|$)/i.test(v.lang)).sort((a, b) => voiceScore(b) - voiceScore(a));
+      return en[0] || voices[0] || null;
+    }
+
+    function loadVoices() {
+      if (!window.speechSynthesis) return;
+      voices = window.speechSynthesis.getVoices();
+      if (!voices.length) return;                       // will fire again via onvoiceschanged
+      chosenVoice = pickVoice();
+      // populate the picker with English voices, best-quality first (★ = enhanced)
+      const en = voices.filter(v => /^en(-|_|$)/i.test(v.lang)).sort((a, b) => voiceScore(b) - voiceScore(a));
+      const list = en.length ? en : voices;
+      voiceSel.replaceChildren();
+      for (const v of list) {
+        const o = document.createElement("option");
+        o.value = v.name;
+        o.textContent = v.name.replace(/\s*\(.*?\)/, "") + (/premium|enhanced|natural/i.test(v.name) ? " ★" : "");
+        if (chosenVoice && v.name === chosenVoice.name) o.selected = true;
+        voiceSel.appendChild(o);
+      }
+    }
+
+    voiceSel.addEventListener("change", () => {
+      chosenVoice = voices.find(v => v.name === voiceSel.value) || chosenVoice;
+      if (chosenVoice) localStorage.setItem("vl_voice", chosenVoice.name);
+      speak("hello");                                   // preview the chosen voice
+    });
+
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices; // some browsers load async
+      loadVoices();
+    }
+
     function speak(text) {
       try {
         const synth = window.speechSynthesis;
         if (!synth) return;
         synth.cancel();                       // don't queue; speak the latest tap
-        synth.speak(new SpeechSynthesisUtterance(text));
+        const u = new SpeechSynthesisUtterance(text);
+        if (chosenVoice) u.voice = chosenVoice;
+        u.rate = SPEECH.rate;
+        u.pitch = SPEECH.pitch;                // warmer/lower than the default
+        u.volume = SPEECH.volume;
+        synth.speak(u);
       } catch (e) { /* speech unsupported — taps still log */ }
     }
 
