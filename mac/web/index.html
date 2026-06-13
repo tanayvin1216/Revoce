@@ -2,24 +2,37 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>VoiceLink — AAC board (placeholder)</title>
+  <title>VoiceLink — AAC board</title>
   <!--
-    PLACEHOLDER AAC board. This will be replaced by the real designed board.
-    It never calls a model — it only talks to the server over the WebSocket.
-    The page is served over PLAIN HTTP, so ws:// is not blocked as mixed content.
+    The VoiceLink AAC communication board.
+    - STABLE CORE: fixed-position essential words that NEVER move or re-render
+      (protects the user's motor memory). Rendered once on load.
+    - DYNAMIC strip: updates from "vocab_update" messages, visually separated.
+    - LOCK: freezes the board so a refresh can't disrupt a sentence in progress.
+    - Tapping speaks the word (Web Speech API) and reports a "tap" to the server,
+      which persists it WITH the context snapshot that produced the board.
+    Never calls a model — only talks to the server. Plain HTTP so ws:// is allowed.
+
+    Aesthetic: minimal / architectural — Swiss grid, high legibility, calm. Large
+    fixed tap targets, strong region separation, one functional accent. Animation
+    is functional only (the freshness indicator), never decorative.
   -->
   <style>
     :root {
       --bg: #f4f2ee;
       --surface: #ffffff;
+      --core-bg: #ece5d7;        /* anchored, distinct from the dynamic region */
       --ink: #1c1b19;
       --muted: #8a857c;
-      --line: #e2ded6;
-      --accent: #2f6f5e;
+      --line: #ddd8cf;
+      --accent: #2f6f5e;         /* core anchor + live pulse + lock-on */
+      --accent-ink: #ffffff;
+      --fresh: #d98324;          /* "new words waiting" */
       --down: #b4452f;
       --tap: #f2c14e;
+      --radius: 14px;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body { margin: 0; height: 100%; }
@@ -27,86 +40,261 @@
       background: var(--bg); color: var(--ink);
       font-family: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
       display: flex; flex-direction: column; height: 100vh; height: 100dvh;
+      overflow: hidden;
     }
+
     header {
-      display: flex; align-items: baseline; gap: 12px;
-      padding: 14px 20px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 20px; border-bottom: 1px solid var(--line); flex: 0 0 auto;
     }
-    header h1 { font-size: 15px; font-weight: 700; letter-spacing: .02em; margin: 0; }
-    header .tag { font-size: 12px; color: var(--muted); }
-    header .status { margin-left: auto; font-size: 12px; color: var(--muted); }
-    header .status.live b { color: var(--accent); }
-    header .status.down b { color: var(--down); }
-    main {
-      flex: 1; overflow-y: auto; padding: 18px;
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 14px; align-content: start;
+    header h1 { font-size: 15px; font-weight: 800; letter-spacing: .04em; margin: 0; }
+    .spoken {
+      font-size: 14px; color: var(--muted); font-weight: 600;
+      opacity: 0; transition: opacity .2s; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
+    .spoken.show { opacity: 1; }
+    .status { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .status.live b { color: var(--accent); }
+    .status.down b { color: var(--down); }
+
+    .lockbtn {
+      appearance: none; border: 1px solid var(--line); background: var(--surface);
+      color: var(--ink); border-radius: 10px; padding: 10px 16px; font-size: 15px;
+      font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .lockbtn .lsym { font-size: 17px; }
+    .lockbtn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+    .lockbanner {
+      display: none; flex: 0 0 auto;
+      background: var(--accent); color: var(--accent-ink);
+      font-size: 13px; font-weight: 700; letter-spacing: .02em;
+      padding: 7px 20px;
+    }
+
+    .boardwrap { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: 16px; gap: 14px; }
+    .boardwrap.locked { outline: 3px solid var(--accent); outline-offset: -3px; }
+
+    .region-label {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--muted); margin: 0 2px 8px;
+    }
+
+    /* CORE — anchored region, visually distinct, fixed positions */
+    section.core { flex: 0 0 auto; background: var(--core-bg); border-radius: var(--radius); padding: 14px; }
+    #core {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+    }
+    @media (max-width: 720px) { #core { grid-template-columns: repeat(5, 1fr); } }
+
+    /* DYNAMIC — separated, scrollable strip */
+    section.dynamic { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+    #dynamic {
+      flex: 1 1 auto; overflow-y: auto;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px; align-content: start;
+    }
+    #dynamic:empty::after { content: "waiting for suggestions…"; color: var(--muted); font-size: 14px; }
+
     button.word {
-      appearance: none; border: 1px solid var(--line);
-      background: var(--surface); color: var(--ink); border-radius: 14px;
-      padding: 18px 12px; min-height: 132px;
+      appearance: none; border: 1px solid var(--line); background: var(--surface);
+      color: var(--ink); border-radius: var(--radius); padding: 16px 10px; min-height: 124px;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-      cursor: pointer; transition: transform 80ms ease, background 120ms ease, border-color 120ms ease;
+      cursor: pointer; transition: transform 70ms ease, background 120ms ease, border-color 120ms ease;
     }
-    button.word .sym { font-size: 44px; line-height: 1; }
-    button.word .lbl { font-size: 20px; font-weight: 600; text-align: center; }
-    button.word:active { transform: scale(.97); }
+    button.word .sym { font-size: 42px; line-height: 1; }
+    button.word .lbl { font-size: 19px; font-weight: 700; text-align: center; }
+    button.word:active { transform: scale(.96); }
     button.word.flash { background: var(--tap); border-color: var(--tap); }
-    footer { padding: 8px 20px 14px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); }
+    /* core buttons read as the anchored set */
+    button.word.core { background: var(--surface); border: 2px solid var(--accent); }
+
+    /* Freshness indicator — functional only */
+    .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--line); flex: 0 0 auto; }
+    .dot.pulse { background: var(--accent); animation: ppulse .9s ease-out 1; }
+    .dot.waiting { background: var(--fresh); animation: wpulse 1.5s ease-out infinite; }
+    .freshtext { font-size: 11px; font-weight: 800; letter-spacing: .08em; color: var(--fresh); display: none; }
+    .freshtext.show { display: inline; }
+    @keyframes ppulse { 0% { transform: scale(1.7); } 100% { transform: scale(1); } }
+    @keyframes wpulse {
+      0%   { box-shadow: 0 0 0 0 rgba(217,131,36,.55); }
+      70%  { box-shadow: 0 0 0 9px rgba(217,131,36,0); }
+      100% { box-shadow: 0 0 0 0 rgba(217,131,36,0); }
+    }
+
+    footer { flex: 0 0 auto; padding: 8px 20px 12px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); }
   </style>
 </head>
 <body>
   <header>
-    <h1>VoiceLink</h1>
-    <span class="tag">AAC board · placeholder UI · stub vocabulary</span>
+    <h1>VOICELINK</h1>
+    <span class="spoken" id="spoken"></span>
     <span class="status down" id="status">connecting…</span>
+    <button class="lockbtn" id="lock" aria-pressed="false">
+      <span class="lsym">🔓</span><span class="llbl">Lock</span>
+    </button>
   </header>
-  <main id="board" aria-label="vocabulary"></main>
+
+  <div class="lockbanner" id="lockbanner">Board locked — suggestions paused. Unlock to refresh.</div>
+
+  <div class="boardwrap" id="boardwrap">
+    <section class="core" aria-label="core words">
+      <div class="region-label">Core · always here</div>
+      <div id="core"></div>
+    </section>
+
+    <section class="dynamic" aria-label="suggested words">
+      <div class="region-label">
+        Suggested
+        <span class="dot" id="dot" title="freshness"></span>
+        <span class="freshtext" id="freshtext">new words waiting</span>
+      </div>
+      <div id="dynamic"></div>
+    </section>
+  </div>
+
   <footer id="foot">no board yet</footer>
 
   <script>
-    // Same-origin WebSocket. Never call a model here — only talk to the server,
-    // which owns the seam (rank_vocabulary).
-    const boardEl = document.getElementById("board");
+    "use strict";
+
+    // Stable core: these NEVER move and are rendered once. Protects motor memory.
+    const CORE = [
+      { word: "yes",    symbol: "✅" },
+      { word: "no",     symbol: "❌" },
+      { word: "help",   symbol: "🆘" },
+      { word: "stop",   symbol: "✋" },
+      { word: "I need", symbol: "🙋" },
+    ];
+
+    const coreEl = document.getElementById("core");
+    const dynEl = document.getElementById("dynamic");
     const statusEl = document.getElementById("status");
+    const lockBtn = document.getElementById("lock");
+    const lockBanner = document.getElementById("lockbanner");
+    const boardWrap = document.getElementById("boardwrap");
+    const dot = document.getElementById("dot");
+    const freshText = document.getElementById("freshtext");
     const footEl = document.getElementById("foot");
-    let currentBoardId = null;
+    const spokenEl = document.getElementById("spoken");
+
     let ws = null;
     let reconnectDelay = 500;
+    let locked = false;
+    let displayedBoardId = null;   // board_id currently shown (does NOT change while locked)
+    let pendingBoard = null;       // latest board received while locked
+
+    function speak(text) {
+      try {
+        const synth = window.speechSynthesis;
+        if (!synth) return;
+        synth.cancel();                       // don't queue; speak the latest tap
+        synth.speak(new SpeechSynthesisUtterance(text));
+      } catch (e) { /* speech unsupported — taps still log */ }
+    }
+
+    function flash(btn) {
+      btn.classList.add("flash");
+      setTimeout(() => btn.classList.remove("flash"), 180);
+    }
+
+    let spokenTimer = null;
+    function showSpoken(word) {
+      spokenEl.textContent = "🔊 " + word;
+      spokenEl.classList.add("show");
+      clearTimeout(spokenTimer);
+      spokenTimer = setTimeout(() => spokenEl.classList.remove("show"), 1500);
+    }
+
+    function activate(word, source, btn) {
+      flash(btn);
+      speak(word);
+      showSpoken(word);
+      // Report the tap. board_id pins the context snapshot the server logs.
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "tap",
+          word: word,
+          source: source,           // "core" | "dynamic" (additive field)
+          client_ts: Date.now(),    // browser ms epoch (REQUIRED)
+          board_id: displayedBoardId
+        }));
+      }
+    }
+
+    function makeButton(item, source) {
+      const b = document.createElement("button");
+      b.className = "word" + (source === "core" ? " core" : "");
+      b.setAttribute("aria-label", item.word);
+      const s = document.createElement("span");
+      s.className = "sym";
+      s.textContent = item.symbol || "▢";
+      const l = document.createElement("span");
+      l.className = "lbl";
+      l.textContent = item.word;
+      b.append(s, l);
+      b.addEventListener("click", () => activate(item.word, source, b));
+      return b;
+    }
+
+    // Render the stable core ONCE. Never touched again.
+    for (const it of CORE) coreEl.appendChild(makeButton(it, "core"));
+
+    function applyBoard(msg) {
+      dynEl.replaceChildren();
+      for (const it of (msg.items || [])) dynEl.appendChild(makeButton(it, "dynamic"));
+      displayedBoardId = msg.board_id;
+      const t = new Date().toLocaleTimeString();
+      footEl.textContent =
+        `board ${String(msg.board_id).slice(0, 8)} · ${(msg.items || []).length} suggested · updated ${t}`;
+    }
+
+    function pulseFresh() {
+      dot.classList.remove("pulse");
+      void dot.offsetWidth;          // restart the animation
+      dot.classList.add("pulse");
+      setTimeout(() => dot.classList.remove("pulse"), 900);
+    }
+
+    function setWaiting(on) {
+      dot.classList.toggle("waiting", on);
+      freshText.classList.toggle("show", on);
+    }
+
+    function onVocab(msg) {
+      if (locked) {
+        // Frozen mid-sentence: buffer the newest board, signal that it's waiting.
+        pendingBoard = msg;
+        setWaiting(true);
+      } else {
+        applyBoard(msg);
+        pulseFresh();
+      }
+    }
+
+    function toggleLock() {
+      locked = !locked;
+      lockBtn.classList.toggle("on", locked);
+      lockBtn.setAttribute("aria-pressed", String(locked));
+      lockBtn.querySelector(".llbl").textContent = locked ? "Locked" : "Lock";
+      lockBtn.querySelector(".lsym").textContent = locked ? "🔒" : "🔓";
+      boardWrap.classList.toggle("locked", locked);
+      lockBanner.style.display = locked ? "block" : "none";
+      if (!locked && pendingBoard) {       // unlocking applies the newest board
+        applyBoard(pendingBoard);
+        pendingBoard = null;
+        setWaiting(false);
+        pulseFresh();
+      }
+    }
+    lockBtn.addEventListener("click", toggleLock);
 
     function setStatus(live, html) {
       statusEl.className = "status " + (live ? "live" : "down");
       statusEl.innerHTML = html;
-    }
-
-    function render(items) {
-      boardEl.innerHTML = "";
-      for (const it of items) {
-        const b = document.createElement("button");
-        b.className = "word";
-        const sym = document.createElement("span");
-        sym.className = "sym";
-        sym.textContent = it.symbol || "▢";
-        const lbl = document.createElement("span");
-        lbl.className = "lbl";
-        lbl.textContent = it.word;
-        b.append(sym, lbl);
-        b.addEventListener("click", () => sendTap(it.word, b));
-        boardEl.appendChild(b);
-      }
-    }
-
-    function sendTap(word, btn) {
-      btn.classList.add("flash");
-      setTimeout(() => btn.classList.remove("flash"), 180);
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({
-        type: "tap",
-        word: word,
-        client_ts: Date.now(),    // browser ms epoch (REQUIRED)
-        board_id: currentBoardId  // which board it came from (optional, for logging)
-      }));
     }
 
     function connect() {
@@ -119,15 +307,9 @@
       };
       ws.onerror = () => ws.close();
       ws.onmessage = (ev) => {
-        let msg;
-        try { msg = JSON.parse(ev.data); } catch { return; }
-        if (msg.type === "vocab_update") {
-          currentBoardId = msg.board_id;
-          render(msg.items || []);
-          const t = new Date().toLocaleTimeString();
-          footEl.textContent =
-            `board ${String(msg.board_id).slice(0, 8)} · ${(msg.items || []).length} words · updated ${t}`;
-        }
+        let m;
+        try { m = JSON.parse(ev.data); } catch { return; }
+        if (m.type === "vocab_update") onVocab(m);
       };
     }
     connect();
