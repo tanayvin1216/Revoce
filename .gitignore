@@ -23,3 +23,6 @@ build/
 
 # macOS
 .DS_Store
+
+# eval prediction caches (regenerable artifacts)
+mac/evaluation/preds-*.jsonl
