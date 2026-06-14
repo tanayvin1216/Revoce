@@ -18,7 +18,10 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-_AAC_MARKER = "(aac)"   # the dataset marks AAC-user turns in the speaker string
+# The dataset is multilingual; the AAC user is labelled per language ("AAC User",
+# "Utente CAA", "AACユーザー", ...). Our system is English-only, so we evaluate on
+# English AAC-user turns: language_code == en AND "aac" in the speaker label.
+_AAC_MARKER = "aac"
 
 
 @dataclass
@@ -73,8 +76,11 @@ def from_dataset(split: str, limit: int, seed: int) -> list[EvalExample]:
             f"  underlying error: {e}"
         ) from e
 
-    # keep only turns where the AAC user is the speaker -> their utterance is GT
-    ds = ds.filter(lambda r: _AAC_MARKER in str(r.get("speaker", "")).lower())
+    # English AAC-user turns only: their utterance is the ground truth.
+    ds = ds.filter(
+        lambda r: str(r.get("language_code", "")).lower().startswith("en")
+        and _AAC_MARKER in str(r.get("speaker", "")).lower()
+    )
     if limit and limit < len(ds):
         ds = ds.shuffle(seed=seed).select(range(limit))
 
