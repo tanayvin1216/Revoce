@@ -22,6 +22,23 @@ from abc import ABC, abstractmethod
 # Shared JSON parse helper
 # ---------------------------------------------------------------------------
 
+_OBJ_RE = re.compile(r"\{[^{}]*\}")
+
+
+def _salvage_objects(text: str) -> list[dict]:
+    """Extract every complete {...} object, tolerating truncation and junk
+    tokens between objects (the 4-bit model occasionally emits stray glyphs)."""
+    out = []
+    for m in _OBJ_RE.findall(text):
+        try:
+            obj = json.loads(m)
+            if isinstance(obj, dict):
+                out.append(obj)
+        except json.JSONDecodeError:
+            continue
+    return out
+
+
 def _parse_json_array(text: str) -> list[dict]:
     """Extract a JSON array from LLM output.
 
@@ -42,11 +59,15 @@ def _parse_json_array(text: str) -> list[dict]:
 
     start = t.find("[")
     end = t.rfind("]")
-    if start == -1 or end == -1 or end <= start:
-        raise ValueError(f"no JSON array brackets found in LLM output: {t[:120]!r}")
-    t = t[start : end + 1]
-
-    data = json.loads(t)  # raises JSONDecodeError on bad JSON
+    if start != -1 and end > start:
+        try:
+            data = json.loads(t[start : end + 1])
+        except json.JSONDecodeError:
+            data = _salvage_objects(t)
+    else:
+        # Truncated (no closing ]) or junk tokens between objects — salvage
+        # every complete {...} object individually.
+        data = _salvage_objects(t)
     if not isinstance(data, list):
         raise ValueError("parsed JSON is not a list")
 
@@ -60,7 +81,13 @@ def _parse_json_array(text: str) -> list[dict]:
             continue
         # accept "symbol" or "symbol_keyword" as the pictogram key
         sym_key = item.get("symbol_keyword") or item.get("symbol") or word
-        result.append({"word": word, "symbol_keyword": str(sym_key).strip().lower()})
+        entry = {"word": word, "symbol_keyword": str(sym_key).strip().lower()}
+        # diverse-pool tags (additive, optional — old top-k prompt omits them)
+        if item.get("function"):
+            entry["function"] = str(item["function"]).strip().lower()
+        if item.get("topic"):
+            entry["topic"] = str(item["topic"]).strip().lower()
+        result.append(entry)
 
     if not result:
         raise ValueError("LLM returned an empty array after filtering")
@@ -93,7 +120,7 @@ class LocalLLMRanker(Ranker):
         self._generate = generate
         self._max_tokens = max_tokens
 
-    def rank(self, system_prompt: str, user_prompt: str) -> list[dict]:
+    def rank(self, system_prompt: str, user_prompt: str, max_tokens: int | None = None) -> list[dict]:
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -105,7 +132,7 @@ class LocalLLMRanker(Ranker):
             self._model,
             self._tokenizer,
             prompt_tokens,
-            max_tokens=self._max_tokens,
+            max_tokens=max_tokens or self._max_tokens,
             sampler=self._sampler,
         )
         return _parse_json_array(text)
@@ -145,7 +172,7 @@ _TRAVEL_WORDS = [
 class HeuristicRanker(Ranker):
     """Deterministic keyword-driven fallback.  No model required."""
 
-    def rank(self, system_prompt: str, user_prompt: str) -> list[dict]:
+    def rank(self, system_prompt: str, user_prompt: str, max_tokens: int | None = None) -> list[dict]:
         lp = (system_prompt + " " + user_prompt).lower()
         words: list[dict] = []
 
