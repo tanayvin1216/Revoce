@@ -25,10 +25,81 @@ from __future__ import annotations
 
 from typing import Optional, TypedDict
 
+BOARD_SIZE = 7  # the device shows this many tappable phrases at once
+
 
 class RankedWord(TypedDict):
     word: str    # the AAC vocabulary word/phrase shown on the board
     symbol: str  # "/symbols/{id}.png" when cached; emoji string otherwise
+
+
+# ---------------------------------------------------------------------------
+# DIVERSE STRATEGY (Phase 1) — generate a wide pool, then SELECT for coverage.
+#
+# The board must surface ~7 DIFFERENT ways the user could respond, so that one
+# of them is the one they want — NOT 7 paraphrases of the single most-likely
+# answer. We over-generate along two axes and MMR-select for spread:
+#   Axis A — 9 AAC communication functions (one candidate each)
+#   Axis B — concrete topics in play (scene + transcript entities)
+# plus a few deterministic core words that must always be reachable.
+# ---------------------------------------------------------------------------
+
+# AAC pragmatics: the communicative functions a board should be able to launch.
+COMMUNICATION_FUNCTIONS = [
+    "request", "reject", "comment", "question", "share-information",
+    "express-feeling", "social", "direct-attention", "clarify",
+]
+
+# Always-reachable safety net; injected (not LLM-generated) so a bad generation
+# can never strand the user without yes/no/help.
+_CORE_POOL: list[dict] = [
+    {"word": "yes", "symbol_keyword": "yes", "function": "comment"},
+    {"word": "no", "symbol_keyword": "no", "function": "reject"},
+    {"word": "I don't know", "symbol_keyword": "confused", "function": "clarify"},
+    {"word": "wait", "symbol_keyword": "wait", "function": "direct-attention"},
+    {"word": "I need help", "symbol_keyword": "help", "function": "request"},
+]
+
+_DIVERSE_SYSTEM_PROMPT = """\
+You generate vocabulary for a NONVERBAL AAC user who speaks by tapping pre-built phrases.
+Your job is NOT to guess the one thing they will say. It is to offer MANY DIFFERENT
+directions they could take the conversation, so whichever one they mean is on the board.
+
+Hard rules:
+- Output ONLY a JSON array. No prose, no code fences.
+- Each element: {"word": "<phrase>", "function": "<function>", "topic": "<topic>"}
+- "word": something THIS USER could SAY, first person, 1 to 5 words. Never describe the
+  scene. Never speak for the other person.
+- Every phrase must be a DIFFERENT communicative move. Never repeat or paraphrase an
+  earlier phrase. Two phrases that mean the same thing is a failure.\
+"""
+
+# Slot-based: one line per function FORCES the model to span the space instead of
+# mode-collapsing onto the single likeliest reply (its default failure).
+_DIVERSE_USER_TEMPLATE = """\
+Situation:
+- Scene: {scene}
+- Conversation just now: {transcript}
+- Most recent thing said to the user: {last_utterance}
+- Topics in play: {topics}
+
+Produce EXACTLY ONE short first-person phrase the user could say for EACH of these 9
+communicative moves (different move each line), then 4 MORE phrases that each engage a
+DIFFERENT topic in play. 13 phrases total, all distinct:
+
+1. request something
+2. reject / disagree / decline
+3. comment or react
+4. ask a question back
+5. share a piece of information
+6. express a feeling
+7. be social (greet / thank / acknowledge)
+8. direct attention (get someone to look / wait / come)
+9. clarify or repair ("I mean...", "not that")
+10-13. four phrases on different topics in play
+
+Return the JSON array of 13 objects now.\
+"""
 
 
 _STUB_WORDS: list[RankedWord] = [
@@ -175,11 +246,150 @@ def _heuristic_or_stub(slice_data: dict, context: dict) -> list[RankedWord]:
     return items if len(items) >= 4 else list(_STUB_WORDS)
 
 
+# ---------------------------------------------------------------------------
+# Diverse pool generation + MMR selection
+# ---------------------------------------------------------------------------
+
+def _speakable(word: str) -> bool:
+    """Reject narration / second-person / over-long items (3-layer guard)."""
+    w = (word or "").strip()
+    if not w or len(w.split()) > 6:
+        return False
+    low = w.lower()
+    if low.startswith(("you ", "the user", "they ", "he ", "she ")):
+        return False
+    return True
+
+
+def generate_pool(
+    scene: Optional[str],
+    transcript: Optional[str],
+    context: Optional[dict],
+    ranker=None,
+    topics: Optional[list[str]] = None,
+) -> list[dict]:
+    """ONE LLM call -> a wide, tagged candidate pool (the expensive half).
+
+    Returns a list of {word, symbol_keyword, function, topic?} including the
+    deterministic core words. Never raises: on any failure returns the core
+    pool merged with the heuristic board so the user is never stranded.
+    """
+    ctx = context or {}
+    people = "; ".join(
+        f'{r.get("name")} ({r.get("role")})'
+        for r in (ctx.get("personal_context", {}) or {}).get("relationships", [])
+    ) or "none"
+    user_prompt = _DIVERSE_USER_TEMPLATE.format(
+        user_name=(ctx.get("personal_context", {}) or {}).get("name") or "the user",
+        scene=scene or "not available",
+        transcript=transcript or "none",
+        addressed="yes" if ctx.get("addressed") else "no",
+        last_utterance=ctx.get("last_utterance") or "none",
+        topics=", ".join(topics or []) or "none",
+        people=people,
+    )
+
+    r = ranker if ranker is not None else _default_ranker()
+    try:
+        raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt, max_tokens=520)
+    except TypeError:
+        raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt)  # ranker w/o max_tokens
+    except Exception:
+        raw = []
+
+    pool: list[dict] = []
+    seen: set[str] = set()
+    for item in list(_CORE_POOL) + list(raw):
+        word = str(item.get("word") or "").strip()
+        if not word or not _speakable(word):
+            continue
+        key = word.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        pool.append({
+            "word": word,
+            "symbol_keyword": str(item.get("symbol_keyword") or word).strip().lower(),
+            "function": item.get("function", ""),
+            "topic": item.get("topic", ""),
+        })
+
+    if len(pool) < 4:  # generation collapsed -> safety net
+        for stub in _STUB_WORDS:
+            if stub["word"].lower() not in seen:
+                pool.append({"word": stub["word"], "symbol_keyword": stub["word"].lower(),
+                             "function": "", "topic": ""})
+    return pool
+
+
+def _to_ranked(items: list[dict]) -> list[RankedWord]:
+    """Resolve symbol keywords to pictogram paths / emoji."""
+    from symbol_map import resolve_symbol, EMOJI_FALLBACK
+    out: list[RankedWord] = []
+    for it in items:
+        word = it["word"]
+        sym_key = (it.get("symbol_keyword") or word).strip().lower()
+        emoji = EMOJI_FALLBACK.get(word.lower(), EMOJI_FALLBACK.get(sym_key, "▢"))
+        out.append({"word": word, "symbol": resolve_symbol(sym_key, emoji)})
+    return out
+
+
+def select_board(
+    pool: list[dict],
+    scene: Optional[str],
+    transcript: Optional[str],
+    context: Optional[dict],
+    k: int = BOARD_SIZE,
+    lam: float = 0.6,
+) -> list[RankedWord]:
+    """Pick k diverse, situation-relevant items from the pool (the cheap half).
+
+    Uses MMR over MiniLM embeddings. If embeddings are unavailable, falls back
+    to function-coverage ordering (still diverse). Pure-python, sub-millisecond.
+    """
+    if not pool:
+        return list(_STUB_WORDS)[:k]
+    words = [p["word"] for p in pool]
+    functions = [p.get("function", "") for p in pool]
+
+    try:
+        from evaluation.embed import embed
+        from selection import build_query_vector, mmr_select
+        cand_vecs = embed(words)
+        query = build_query_vector(embed, scene, transcript, context)
+        idx = mmr_select(cand_vecs, query, k, lam, functions)
+    except Exception:
+        idx = _function_coverage_order(functions, k)
+
+    return _to_ranked([pool[i] for i in idx])
+
+
+def _function_coverage_order(functions: list[str], k: int) -> list[int]:
+    """Embedding-free fallback: one item per distinct function first."""
+    order, used = [], set()
+    for i, f in enumerate(functions):
+        if f and f not in used:
+            used.add(f)
+            order.append(i)
+        if len(order) == k:
+            return order
+    for i in range(len(functions)):
+        if i not in order:
+            order.append(i)
+        if len(order) == k:
+            break
+    return order
+
+
 def rank_vocabulary(
     scene: Optional[str] = None,
     transcript: Optional[str] = None,
     context: Optional[dict] = None,
     ranker=None,
+    strategy: str = "topk",
+    k: int = BOARD_SIZE,
+    lam: float = 0.6,
+    topics: Optional[list[str]] = None,
 ) -> list[RankedWord]:
     """Return the vocabulary to show on the AAC board, best-first.
 
@@ -199,6 +409,12 @@ def rank_vocabulary(
     from symbol_map import resolve_symbol, EMOJI_FALLBACK
 
     ctx = context or {}
+
+    # DIVERSE strategy: over-generate a wide pool, then MMR-select for coverage.
+    if strategy == "diverse":
+        pool = generate_pool(scene, transcript, ctx, ranker=ranker, topics=topics)
+        return select_board(pool, scene, transcript, ctx, k=k, lam=lam)
+
     profile = ctx.get("personal_context") or {}
     slice_data = slice_for_prompt(profile, scene, transcript, ctx)
 
