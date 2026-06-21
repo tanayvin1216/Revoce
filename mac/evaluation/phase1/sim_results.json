@@ -1,0 +1,2338 @@
+{
+  "summary": {
+    "n_turns": 74,
+    "coverage": 0.4189189189189189,
+    "base_coverage": 0.4189189189189189,
+    "miss_rate": 0.5810810810810811,
+    "ild": 0.8117208593600506,
+    "base_ild": 0.753901757098533,
+    "pool_lat_p50": 11.384,
+    "pool_lat_p95": 16.226699999999994,
+    "select_lat_p50_ms": 78.55000000000001,
+    "select_lat_p95_ms": 334.995,
+    "stub_rate": 0.0
+  },
+  "conversations": [
+    {
+      "conversation_id": 104,
+      "turns": [
+        {
+          "turn": 0,
+          "gt": "Love food variety",
+          "transcript": "",
+          "diverse_board": [
+            "Interesting, what's your favorite?",
+            "I don't know",
+            "I'm not really hungry right now.",
+            "wait",
+            "No thanks, I prefer my usual.",
+            "yes",
+            "I need help"
+          ],
+          "baseline_board": [
+            "can you recommend a dish?",
+            "i need more information",
+            "where can i find more options",
+            "is there a good restaurant nearby",
+            "can you suggest something",
+            "i want to try something new",
+            "where is the menu"
+          ],
+          "covered": false,
+          "soft": 0.3718836307525635,
+          "ild": 0.8477710485458374,
+          "base_covered": false,
+          "base_ild": 0.7501029968261719,
+          "pool_lat_s": 10.567,
+          "select_lat_s": 2.5692,
+          "source": "warm"
+        },
+        {
+          "turn": 0,
+          "gt": "Jacob gave Susan her medicine.",
+          "transcript": "",
+          "diverse_board": [
+            "Pass the lamp",
+            "Chats are nice",
+            "I don't know",
+            "Where did you put it?",
+            "I need more light",
+            "I feel happy",
+            "I meant the pills"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "where is the medicine",
+            "I need help",
+            "where is the caregiver",
+            "where is the bathroom",
+            "where is the water"
+          ],
+          "covered": false,
+          "soft": 0.23110568523406982,
+          "ild": 0.8678012490272522,
+          "base_covered": true,
+          "base_ild": 0.8301408290863037,
+          "pool_lat_s": 7.367,
+          "select_lat_s": 0.2739,
+          "source": "warm"
+        },
+        {
+          "turn": 1,
+          "gt": "Feeling good tonight",
+          "transcript": "Hey, how are you tonight?",
+          "diverse_board": [
+            "How's the weather?",
+            "Can you turn the light on?",
+            "I feel a bit tired",
+            "Can we chat?",
+            "The light is nice",
+            "What's next?",
+            "I'm good, thanks"
+          ],
+          "baseline_board": [
+            "yes",
+            "how are you tonight",
+            "more please",
+            "soft light",
+            "comfortable",
+            "how is the evening",
+            "where is the lamp"
+          ],
+          "covered": true,
+          "soft": 0.4979821443557739,
+          "ild": 0.8110829591751099,
+          "base_covered": true,
+          "base_ild": 0.7975925207138062,
+          "pool_lat_s": 7.543,
+          "select_lat_s": 0.1,
+          "source": "warm"
+        },
+        {
+          "turn": 2,
+          "gt": "Yes, right on schedule today.",
+          "transcript": "Jacob gave Susan her medicine.Oh, that's great! Was it on time?",
+          "diverse_board": [
+            "I need some more medicine.",
+            "Thank you for organizing the bottles.",
+            "I disagree with the timing.",
+            "Can you please wait a moment?",
+            "I don't know",
+            "I need another glass of water.",
+            "Could you please check the bottle?"
+          ],
+          "baseline_board": [
+            "yes",
+            "more medicine",
+            "where is the medicine",
+            "i need more time",
+            "where is the caregiver",
+            "where is the medicine bottle",
+            "where is the water"
+          ],
+          "covered": false,
+          "soft": 0.2280578464269638,
+          "ild": 0.8437405228614807,
+          "base_covered": true,
+          "base_ild": 0.7918264865875244,
+          "pool_lat_s": 8.944,
+          "select_lat_s": 0.187,
+          "source": "warm"
+        },
+        {
+          "turn": 5,
+          "gt": "Noah without insurance.",
+          "transcript": "What\u2019s on your mind?Sophia goes to nurse.Does she need help?",
+          "diverse_board": [
+            "the nurse is nice",
+            "light",
+            "sophia is happy",
+            "i need more help",
+            "she's not eating",
+            "I don't know",
+            "the room is nice"
+          ],
+          "baseline_board": [
+            "yes",
+            "more help",
+            "where is help",
+            "i need help",
+            "i need more help",
+            "where is nurse",
+            "where is doctor"
+          ],
+          "covered": false,
+          "soft": 0.1921292543411255,
+          "ild": 0.8077524304389954,
+          "base_covered": false,
+          "base_ild": 0.7576425671577454,
+          "pool_lat_s": 11.33,
+          "select_lat_s": 0.0966,
+          "source": "warm"
+        },
+        {
+          "turn": 5,
+          "gt": "She scores lots points",
+          "transcript": "That's great to hear! What\u2019s on your mind?Amelia is amazing playerYeah? Tell me more about her.",
+          "diverse_board": [
+            "More about her!",
+            "She's really good.",
+            "I need some air.",
+            "Did you say something?",
+            "Hey, look!",
+            "I don't know",
+            "I'm feeling down."
+          ],
+          "baseline_board": [
+            "yes",
+            "tell more",
+            "amelia",
+            "where is",
+            "where is my",
+            "where is the",
+            "no"
+          ],
+          "covered": false,
+          "soft": 0.44674599170684814,
+          "ild": 0.8315536975860596,
+          "base_covered": false,
+          "base_ild": 0.7201794981956482,
+          "pool_lat_s": 11.282,
+          "select_lat_s": 0.2768,
+          "source": "warm"
+        },
+        {
+          "turn": 8,
+          "gt": "Jacob really knows what he\u2019s doing.",
+          "transcript": "Wow, that\u2019s a win! Any side effects?No side effects at all today.That\u2019s a relief! Good to hear.",
+          "diverse_board": [
+            "I feel okay, no side effects.",
+            "yes",
+            "I need to use the bathroom.",
+            "Could you please wait a moment?",
+            "I don't know",
+            "I need a snack to eat.",
+            "wait"
+          ],
+          "baseline_board": [
+            "yes",
+            "more medicine",
+            "relief",
+            "that\u2019s good",
+            "side effects",
+            "that\u2019s fine",
+            "more please"
+          ],
+          "covered": false,
+          "soft": 0.13532555103302002,
+          "ild": 0.833645761013031,
+          "base_covered": false,
+          "base_ild": 0.7694784998893738,
+          "pool_lat_s": 10.169,
+          "select_lat_s": 0.0925,
+          "source": "warm"
+        },
+        {
+          "turn": 9,
+          "gt": "Yes, good idea.",
+          "transcript": "Oh, I see. That\u2019s tough.Need plan for visit.Should we talk to school?",
+          "diverse_board": [
+            "Talking to school can help",
+            "What kind of plan?",
+            "It's important to discuss this",
+            "Could you remind me?",
+            "Can we talk about something fun?",
+            "I don't know",
+            "I'm feeling worried"
+          ],
+          "baseline_board": [
+            "yes",
+            "need help",
+            "more information",
+            "talk to school",
+            "where is the school",
+            "where to go next",
+            "what to do next"
+          ],
+          "covered": false,
+          "soft": 0.21127156913280487,
+          "ild": 0.8415263891220093,
+          "base_covered": true,
+          "base_ild": 0.754304826259613,
+          "pool_lat_s": 9.291,
+          "select_lat_s": 0.1048,
+          "source": "warm"
+        },
+        {
+          "turn": 9,
+          "gt": "Mia shares her culture, food!",
+          "transcript": "That's important in a community.Yes! Diverse community is strong.Absolutely! Everyone brings something unique.",
+          "diverse_board": [
+            "What's important in a community?",
+            "I disagree, diversity isn't always good.",
+            "I agree, everyone brings something.",
+            "Absolutely, it's about respect and connection.",
+            "Strong communities, right?",
+            "I don't know",
+            "I agree, unity is key."
+          ],
+          "baseline_board": [
+            "yes",
+            "that's important",
+            "in a community",
+            "in a community, that's important",
+            "in a community, that's important, more",
+            "in a community, that's important, more, stop",
+            "in a community, that's important, more, stop, water"
+          ],
+          "covered": false,
+          "soft": 0.20951780676841736,
+          "ild": 0.7605172395706177,
+          "base_covered": false,
+          "base_ild": 0.5073837637901306,
+          "pool_lat_s": 15.117,
+          "select_lat_s": 0.1248,
+          "source": "warm"
+        },
+        {
+          "turn": 11,
+          "gt": "Last game was epic",
+          "transcript": "Sounds like she\u2019s a star! Do you watch her games?Always watch her gamesThat must be fun! Any favorite moments?",
+          "diverse_board": [
+            "I love the atmosphere here.",
+            "I remember watching it together once.",
+            "Yes, please!",
+            "I don't know",
+            "It made me feel warm inside.",
+            "What game did you like best?",
+            "Thanks for the nice talk."
+          ],
+          "baseline_board": [
+            "yes",
+            "more please",
+            "that must be fun",
+            "sounds good",
+            "let's talk more",
+            "more games",
+            "favorite moments"
+          ],
+          "covered": true,
+          "soft": 0.5072346329689026,
+          "ild": 0.8763583302497864,
+          "base_covered": false,
+          "base_ild": 0.7508895993232727,
+          "pool_lat_s": 18.199,
+          "select_lat_s": 0.333,
+          "source": "warm"
+        },
+        {
+          "turn": 11,
+          "gt": "Jack joins celebrations, learns more.",
+          "transcript": "Absolutely! Everyone brings something unique.Mia shares her culture, food!Yum! What else do you enjoy?",
+          "diverse_board": [
+            "What's your favorite food?",
+            "I don't feel like sharing now.",
+            "I love learning about different cultures.",
+            "yes",
+            "I don't mind.",
+            "That's nice to hear.",
+            "I'm feeling pretty good."
+          ],
+          "baseline_board": [
+            "yes please",
+            "yum",
+            "more please",
+            "i enjoy",
+            "i love",
+            "i need",
+            "i like"
+          ],
+          "covered": false,
+          "soft": 0.19891983270645142,
+          "ild": 0.8319817781448364,
+          "base_covered": true,
+          "base_ild": 0.663559079170227,
+          "pool_lat_s": 19.96,
+          "select_lat_s": 0.3387,
+          "source": "warm"
+        },
+        {
+          "turn": 11,
+          "gt": "Thanks for support.",
+          "transcript": "Should we talk to school?Yes, good idea.I can help with that.",
+          "diverse_board": [
+            "What should we talk about?",
+            "I can help with that.",
+            "Can we go outside?",
+            "I feel warm.",
+            "I don't know",
+            "No, thanks.",
+            "What's next?"
+          ],
+          "baseline_board": [
+            "yes",
+            "more",
+            "i need help",
+            "where is the bathroom",
+            "where is the water",
+            "i can help",
+            "where is the school"
+          ],
+          "covered": true,
+          "soft": 0.2876639664173126,
+          "ild": 0.8328797221183777,
+          "base_covered": false,
+          "base_ild": 0.8301423192024231,
+          "pool_lat_s": 14.247,
+          "select_lat_s": 0.2425,
+          "source": "warm"
+        },
+        {
+          "turn": 13,
+          "gt": "Yes! Together, we grow stronger.",
+          "transcript": "Yum! What else do you enjoy?Jack joins celebrations, learns more.That's lovely! Community spirit is vital.",
+          "diverse_board": [
+            "I love spending time with family.",
+            "Community means a lot to me.",
+            "More coffee please.",
+            "That's a nice smile.",
+            "yes",
+            "Let's talk about friends.",
+            "I feel happy talking."
+          ],
+          "baseline_board": [
+            "yes",
+            "more please",
+            "smells good",
+            "thank you",
+            "let's talk",
+            "community",
+            "morning"
+          ],
+          "covered": true,
+          "soft": 0.29554644227027893,
+          "ild": 0.812423825263977,
+          "base_covered": true,
+          "base_ild": 0.7572231888771057,
+          "pool_lat_s": 19.276,
+          "select_lat_s": 0.6485,
+          "source": "warm"
+        },
+        {
+          "turn": 15,
+          "gt": "Definitely! Love sharing experiences.",
+          "transcript": "That's lovely! Community spirit is vital.Yes! Together, we grow stronger.Well said! Want to share more stories?",
+          "diverse_board": [
+            "Community makes us grow together.",
+            "More stories please.",
+            "I appreciate your words.",
+            "yes",
+            "Let's look at the window.",
+            "I find community vital.",
+            "Can you tell me more?"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more stories",
+            "that's nice",
+            "let's continue",
+            "thank you",
+            "more details",
+            "interesting"
+          ],
+          "covered": false,
+          "soft": 0.3540450930595398,
+          "ild": 0.816064715385437,
+          "base_covered": false,
+          "base_ild": 0.7249363660812378,
+          "pool_lat_s": 15.848,
+          "select_lat_s": 0.2916,
+          "source": "warm"
+        },
+        {
+          "turn": 17,
+          "gt": "Yes, very proud player",
+          "transcript": "That sounds intense! How did you feel?So excited and happyI bet! She must be proud.",
+          "diverse_board": [
+            "I'm glad you're so proud.",
+            "Could you make some tea?",
+            "That's very nice of her.",
+            "wait",
+            "I love it!",
+            "Who do you think was proudest?",
+            "I'm feeling happy about it."
+          ],
+          "baseline_board": [
+            "yes",
+            "more",
+            "i need help",
+            "soft light",
+            "where is the bathroom",
+            "where is the water",
+            "where is the lamp"
+          ],
+          "covered": true,
+          "soft": 0.4222888946533203,
+          "ild": 0.8324856162071228,
+          "base_covered": true,
+          "base_ild": 0.8391157388687134,
+          "pool_lat_s": 16.93,
+          "select_lat_s": 0.1713,
+          "source": "warm"
+        }
+      ]
+    },
+    {
+      "conversation_id": 128,
+      "turns": [
+        {
+          "turn": 0,
+          "gt": "Love local birds",
+          "transcript": "",
+          "diverse_board": [
+            "Can we discuss more experiences?",
+            "What's your favorite animal?",
+            "I don't know",
+            "Can we see more animal videos?",
+            "I feel overwhelmed by all this.",
+            "yes",
+            "This conversation is really inspiring."
+          ],
+          "baseline_board": [
+            "can you repeat that?",
+            "i need more information",
+            "is this interesting?",
+            "i want to understand",
+            "please explain further",
+            "could you elaborate",
+            "i don't understand"
+          ],
+          "covered": false,
+          "soft": 0.3587968051433563,
+          "ild": 0.8341452479362488,
+          "base_covered": false,
+          "base_ild": 0.7439823150634766,
+          "pool_lat_s": 13.098,
+          "select_lat_s": 0.499,
+          "source": "warm"
+        },
+        {
+          "turn": 0,
+          "gt": "Evening. Talk about holidays?",
+          "transcript": "",
+          "diverse_board": [
+            "Czy jest religia w Polsce?",
+            "Ciekawe co robimy z tym.",
+            "Ch\u0119tnie s\u0142ucham.",
+            "yes",
+            "Mam dovolne do herbatki.",
+            "Oczywi\u015bcie, czekam na to.",
+            "Czy mog\u0119 ktos zrobic herbatke?"
+          ],
+          "baseline_board": [
+            "can you repeat that",
+            "i need to go home",
+            "is it late",
+            "i need more water",
+            "can you explain again",
+            "i need to use the restroom",
+            "is it ok to leave"
+          ],
+          "covered": false,
+          "soft": 0.1646813005208969,
+          "ild": 0.6416963338851929,
+          "base_covered": false,
+          "base_ild": 0.7789178490638733,
+          "pool_lat_s": 14.344,
+          "select_lat_s": 0.1084,
+          "source": "warm"
+        },
+        {
+          "turn": 0,
+          "gt": "Lerato likes Mandla",
+          "transcript": "",
+          "diverse_board": [
+            "lamps keep the room cozy",
+            "enjoying the night",
+            "I don't know",
+            "I like the cozy atmosphere",
+            "more tea",
+            "the room is very warm",
+            "the lamp is very nice"
+          ],
+          "baseline_board": [
+            "more light",
+            "i need help",
+            "i am hot",
+            "i am cold",
+            "i need water",
+            "i need tea",
+            "i need more tea"
+          ],
+          "covered": false,
+          "soft": 0.12804526090621948,
+          "ild": 0.743728518486023,
+          "base_covered": false,
+          "base_ild": 0.6561394333839417,
+          "pool_lat_s": 11.837,
+          "select_lat_s": 0.0651,
+          "source": "warm"
+        },
+        {
+          "turn": 0,
+          "gt": "Oliver call my friend?",
+          "transcript": "",
+          "diverse_board": [
+            "More light please.",
+            "Is it bedtime already?",
+            "It's nice here.",
+            "I need to use the bathroom.",
+            "I don't know",
+            "Can you turn off the lights?",
+            "I'm feeling sleepy."
+          ],
+          "baseline_board": [
+            "i need help",
+            "yes",
+            "more light",
+            "where is the bathroom",
+            "i feel sleepy",
+            "i am hot",
+            "i am cold"
+          ],
+          "covered": false,
+          "soft": 0.1564941108226776,
+          "ild": 0.8226469159126282,
+          "base_covered": false,
+          "base_ild": 0.7714652419090271,
+          "pool_lat_s": 10.137,
+          "select_lat_s": 0.0703,
+          "source": "warm"
+        },
+        {
+          "turn": 2,
+          "gt": "Christmas. Big celebration. Family, church, food.",
+          "transcript": "Evening. Talk about holidays?Sure! Which celebration do you want to discuss?",
+          "diverse_board": [
+            "Can we talk about Easter?",
+            "Interesting topic, let's talk",
+            "Could we start with Hanukkah?",
+            "Let's focus on Christmas this year",
+            "yes",
+            "I need help",
+            "I don't know"
+          ],
+          "baseline_board": [
+            "yes please",
+            "evening",
+            "holidays",
+            "discuss",
+            "celebration",
+            "polish",
+            "community"
+          ],
+          "covered": true,
+          "soft": 0.5124844312667847,
+          "ild": 0.8261927366256714,
+          "base_covered": true,
+          "base_ild": 0.7300064563751221,
+          "pool_lat_s": 11.808,
+          "select_lat_s": 0.1139,
+          "source": "warm"
+        },
+        {
+          "turn": 4,
+          "gt": "At the party yesterday",
+          "transcript": "Oh really? That's new!Saw them flirtingDo tell! What happened?",
+          "diverse_board": [
+            "Tell me more about this situation",
+            "I don't know",
+            "wait",
+            "I don't feel comfortable discussing this",
+            "Tell me more about it",
+            "I need help",
+            "It's not happened as you said"
+          ],
+          "baseline_board": [
+            "yes",
+            "do tell",
+            "where is the bathroom",
+            "where is the help",
+            "more please",
+            "where is the water",
+            "where is the tea"
+          ],
+          "covered": false,
+          "soft": 0.24326063692569733,
+          "ild": 0.7786510586738586,
+          "base_covered": true,
+          "base_ild": 0.8417574763298035,
+          "pool_lat_s": 10.314,
+          "select_lat_s": 0.0871,
+          "source": "warm"
+        },
+        {
+          "turn": 6,
+          "gt": "Stories about animals",
+          "transcript": "They add so much life. It's wonderful how our diverse community enjoys nature together.People from everywhereExactly, an",
+          "diverse_board": [
+            "We should include more interactive activities.",
+            "I feel inspired by the culture.",
+            "Can you share more stories?",
+            "I don't know",
+            "yes",
+            "I need help",
+            "wait"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "storytelling",
+            "like that",
+            "more stories",
+            "more appreciate",
+            "more sessions"
+          ],
+          "covered": true,
+          "soft": 0.5053838491439819,
+          "ild": 0.8411401510238647,
+          "base_covered": true,
+          "base_ild": 0.6911579370498657,
+          "pool_lat_s": 12.762,
+          "select_lat_s": 0.1137,
+          "source": "warm"
+        },
+        {
+          "turn": 6,
+          "gt": "Op\u0142atek. Share wishes. Peace, health. Very special.",
+          "transcript": "Yes, Christmas Eve dinner, Wigilia, is very important, right?Wigilia. Twelve dishes. No meat. Fish, pierogi. Tradition.E",
+          "diverse_board": [
+            "Could we share the op\u0142atek too?",
+            "I'm glad we're discussing this.",
+            "I agree, the op\u0142atek is meaningful.",
+            "I don't know",
+            "yes",
+            "That's nice, I agree.",
+            "I need help"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "i need more information",
+            "thank you",
+            "i agree",
+            "could you explain further",
+            "what is next"
+          ],
+          "covered": true,
+          "soft": 0.7503305673599243,
+          "ild": 0.8366028070449829,
+          "base_covered": false,
+          "base_ild": 0.7511293888092041,
+          "pool_lat_s": 12.558,
+          "select_lat_s": 0.0896,
+          "source": "warm"
+        },
+        {
+          "turn": 6,
+          "gt": "I want to see him.",
+          "transcript": "Just checking in on you.Is he coming over?Not sure, he didn't say.",
+          "diverse_board": [
+            "When will he come?",
+            "Thank you for checking on me",
+            "Can you turn the light on?",
+            "It's nice here",
+            "I don't know",
+            "Can you see me?",
+            "wait"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more light",
+            "where is the bathroom",
+            "i need help",
+            "soft light",
+            "where is the water",
+            "where is the lamp"
+          ],
+          "covered": true,
+          "soft": 0.5396513938903809,
+          "ild": 0.8206634521484375,
+          "base_covered": false,
+          "base_ild": 0.8085282444953918,
+          "pool_lat_s": 9.543,
+          "select_lat_s": 0.0633,
+          "source": "warm"
+        },
+        {
+          "turn": 8,
+          "gt": "Community centre fun",
+          "transcript": "Exactly, and each culture brings unique ways to appreciate wildlife. Like the storytelling sessions from different count",
+          "diverse_board": [
+            "How do different cultures view wildlife?",
+            "I don't think those stories help.",
+            "yes",
+            "I need help",
+            "Thanks for sharing your thoughts.",
+            "I don't know",
+            "wait"
+          ],
+          "baseline_board": [
+            "yes",
+            "they help us",
+            "understand and respect",
+            "nature",
+            "each other",
+            "more",
+            "understand"
+          ],
+          "covered": false,
+          "soft": 0.17018252611160278,
+          "ild": 0.879048228263855,
+          "base_covered": false,
+          "base_ild": 0.7265368103981018,
+          "pool_lat_s": 11.675,
+          "select_lat_s": 0.0636,
+          "source": "warm"
+        },
+        {
+          "turn": 8,
+          "gt": "Totally a crush",
+          "transcript": "Spill the tea!She kept gigglingClassic move, right?",
+          "diverse_board": [
+            "The tea was nice",
+            "Giggling is fun",
+            "Did I do it right?",
+            "I don't know",
+            "I want a snack",
+            "wait",
+            "I felt silly"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more tea",
+            "giggle",
+            "keep giggling",
+            "keep talking",
+            "keep joking",
+            "keep laughing"
+          ],
+          "covered": false,
+          "soft": 0.21825487911701202,
+          "ild": 0.8358672261238098,
+          "base_covered": false,
+          "base_ild": 0.6757906079292297,
+          "pool_lat_s": 13.279,
+          "select_lat_s": 0.1006,
+          "source": "warm"
+        },
+        {
+          "turn": 9,
+          "gt": "Tomorrow morning",
+          "transcript": "Got it. What needs moving?Boxes in garageOkay, I can help with that. When?",
+          "diverse_board": [
+            "I need help with the boxes.",
+            "Can I move them now?",
+            "When exactly?",
+            "Thank you for offering.",
+            "Can I get some help?",
+            "I don't know",
+            "I'm tired."
+          ],
+          "baseline_board": [
+            "yes",
+            "help",
+            "more help",
+            "when?",
+            "okay",
+            "need help",
+            "can help"
+          ],
+          "covered": false,
+          "soft": 0.4598406255245209,
+          "ild": 0.8903355002403259,
+          "base_covered": false,
+          "base_ild": 0.5869807600975037,
+          "pool_lat_s": 9.695,
+          "select_lat_s": 0.106,
+          "source": "warm"
+        },
+        {
+          "turn": 11,
+          "gt": "Thank you",
+          "transcript": "Okay, I can help with that. When?Tomorrow morningSounds good. I\u2019ll be ready.",
+          "diverse_board": [
+            "I feel rested.",
+            "Do you need more help?",
+            "No thanks.",
+            "Thank you for being here.",
+            "I need more help with this.",
+            "I don't know",
+            "wait"
+          ],
+          "baseline_board": [
+            "yes",
+            "help",
+            "more help",
+            "where is the light",
+            "where is the flashlight",
+            "where is the lamp",
+            "where is the flashlight please"
+          ],
+          "covered": true,
+          "soft": 0.36694610118865967,
+          "ild": 0.861207127571106,
+          "base_covered": false,
+          "base_ild": 0.6601946353912354,
+          "pool_lat_s": 8.964,
+          "select_lat_s": 0.054,
+          "source": "warm"
+        },
+        {
+          "turn": 14,
+          "gt": "Thank you. Talk more next time?",
+          "transcript": "It's wonderful to keep these traditions alive. They connect us to our culture and faith.Agree. Traditions give strength.",
+          "diverse_board": [
+            "That's nice to hear.",
+            "No, thanks.",
+            "I'm feeling a bit tired tonight.",
+            "Could you repeat that please?",
+            "wait",
+            "I don't know",
+            "I need help"
+          ],
+          "baseline_board": [
+            "yes",
+            "it means a lot",
+            "traditions give strength",
+            "i agree",
+            "thank you",
+            "keep these traditions alive",
+            "i'm glad"
+          ],
+          "covered": false,
+          "soft": 0.3500670790672302,
+          "ild": 0.8787607550621033,
+          "base_covered": true,
+          "base_ild": 0.8005669116973877,
+          "pool_lat_s": 8.287,
+          "select_lat_s": 0.1133,
+          "source": "warm"
+        }
+      ]
+    },
+    {
+      "conversation_id": 20,
+      "turns": [
+        {
+          "turn": 1,
+          "gt": "Feeling okay today",
+          "transcript": "Good morning! How are you feeling today?",
+          "diverse_board": [
+            "My morning routine",
+            "Feeling a bit tired",
+            "Can you please speak slower?",
+            "I need to take a nap",
+            "What's next?",
+            "I don't feel well",
+            "yes"
+          ],
+          "baseline_board": [
+            "yes",
+            "good morning",
+            "how are you feeling today",
+            "more please",
+            "i need help",
+            "where is the bathroom",
+            "where is the water"
+          ],
+          "covered": true,
+          "soft": 0.6281440258026123,
+          "ild": 0.7566612958908081,
+          "base_covered": true,
+          "base_ild": 0.8286917805671692,
+          "pool_lat_s": 11.167,
+          "select_lat_s": 0.0709,
+          "source": "warm"
+        },
+        {
+          "turn": 1,
+          "gt": "Slept okay, thanks",
+          "transcript": "Good morning! How did you sleep?",
+          "diverse_board": [
+            "How was my sleep?",
+            "Good morning!",
+            "Breakfast, please.",
+            "The sunlight is nice.",
+            "I feel rested.",
+            "I want some more sleep.",
+            "I don't know"
+          ],
+          "baseline_board": [
+            "yes",
+            "good morning",
+            "how did you sleep",
+            "more please",
+            "i need help",
+            "where is the spoon",
+            "where is the fork"
+          ],
+          "covered": true,
+          "soft": 0.5602273344993591,
+          "ild": 0.737433671951294,
+          "base_covered": true,
+          "base_ild": 0.8222153186798096,
+          "pool_lat_s": 11.847,
+          "select_lat_s": 0.1254,
+          "source": "warm"
+        },
+        {
+          "turn": 1,
+          "gt": "Good, tried new dish!",
+          "transcript": "Hey, how's your lunch going?",
+          "diverse_board": [
+            "Yummy! The curry is nice.",
+            "How was your day?",
+            "Is the meal ready?",
+            "I love trying different cuisines.",
+            "Thank you for the meal.",
+            "It's too spicy for me.",
+            "Wait, where is the curry?"
+          ],
+          "baseline_board": [
+            "yes",
+            "more please",
+            "where is my water",
+            "i need more curry",
+            "my curry is spicy",
+            "my lunch is ready",
+            "where is my spoon"
+          ],
+          "covered": false,
+          "soft": 0.4760531783103943,
+          "ild": 0.7301852703094482,
+          "base_covered": false,
+          "base_ild": 0.783336877822876,
+          "pool_lat_s": 12.268,
+          "select_lat_s": 0.0473,
+          "source": "warm"
+        },
+        {
+          "turn": 3,
+          "gt": "Spicy curry from India.",
+          "transcript": "Hey, how's your lunch going?Good, tried new dish!Oh nice! What was it?",
+          "diverse_board": [
+            "Can you describe your lunch?",
+            "What dish did you say?",
+            "Curious, tell me about your dish.",
+            "That sounds interesting!",
+            "I appreciate your sharing.",
+            "Can I try it?",
+            "I prefer my usual."
+          ],
+          "baseline_board": [
+            "yes",
+            "more please",
+            "what was it",
+            "good",
+            "spicy",
+            "curry",
+            "tasted"
+          ],
+          "covered": false,
+          "soft": 0.4012482464313507,
+          "ild": 0.7779128551483154,
+          "base_covered": true,
+          "base_ild": 0.7249644994735718,
+          "pool_lat_s": 10.261,
+          "select_lat_s": 0.0749,
+          "source": "warm"
+        },
+        {
+          "turn": 4,
+          "gt": "The title was \"The Exodus Journey.\"",
+          "transcript": "Oh, me too! Have you seen any good ones recently?Yes, I saw a great film about the Passover story.That sounds interestin",
+          "diverse_board": [
+            "yes",
+            "I need help",
+            "wait",
+            "I don't know",
+            "no"
+          ],
+          "baseline_board": [
+            "yes",
+            "i heard a film about the passover story",
+            "that sounds interesting",
+            "i saw a great film",
+            "what was it called",
+            "have you seen any good ones",
+            "me too"
+          ],
+          "covered": false,
+          "soft": 0.09974603354930878,
+          "ild": 0.6819278597831726,
+          "base_covered": false,
+          "base_ild": 0.7877190709114075,
+          "pool_lat_s": 9.088,
+          "select_lat_s": 0.0878,
+          "source": "warm"
+        },
+        {
+          "turn": 5,
+          "gt": "Yes, loves food.",
+          "transcript": "Really? How fast?Like a race.Does she enjoy it?",
+          "diverse_board": [
+            "The food is hot",
+            "I don't enjoy it",
+            "When is it ready?",
+            "The table is clean",
+            "Can we have more drinks?",
+            "wait",
+            "I feel excited"
+          ],
+          "baseline_board": [
+            "yes",
+            "more please",
+            "breakfast",
+            "eat",
+            "need help",
+            "like",
+            "slow down"
+          ],
+          "covered": true,
+          "soft": 0.48129376769065857,
+          "ild": 0.8646567463874817,
+          "base_covered": true,
+          "base_ild": 0.7294703722000122,
+          "pool_lat_s": 11.438,
+          "select_lat_s": 0.1036,
+          "source": "warm"
+        },
+        {
+          "turn": 5,
+          "gt": "Diversity is key",
+          "transcript": "That's good to hear. Any plans for today?Want to talk communitySure! What about the community?",
+          "diverse_board": [
+            "I have plans for today",
+            "More about community",
+            "Can we talk later?",
+            "Feel tired today",
+            "wait",
+            "Let's talk more about it",
+            "What do you mean?"
+          ],
+          "baseline_board": [
+            "yes",
+            "more",
+            "where is the bathroom",
+            "I need help",
+            "where is the water",
+            "where is the snack",
+            "where is the remote"
+          ],
+          "covered": false,
+          "soft": 0.28826475143432617,
+          "ild": 0.8014980554580688,
+          "base_covered": false,
+          "base_ild": 0.824596643447876,
+          "pool_lat_s": 7.361,
+          "select_lat_s": 0.055,
+          "source": "warm"
+        },
+        {
+          "turn": 6,
+          "gt": "Thanks! That\u2019s great",
+          "transcript": "Have you practiced?Not yet. Need helpI can help you train",
+          "diverse_board": [
+            "I need more time to practice",
+            "Can we talk more about training?",
+            "I love hot dog eating",
+            "yes",
+            "I need to improve my technique",
+            "Can I try later?",
+            "Not really needing help"
+          ],
+          "baseline_board": [
+            "yes",
+            "need help",
+            "I need help",
+            "train",
+            "practice",
+            "where is the bathroom",
+            "more help"
+          ],
+          "covered": false,
+          "soft": 0.19114896655082703,
+          "ild": 0.8151209354400635,
+          "base_covered": false,
+          "base_ild": 0.7371109127998352,
+          "pool_lat_s": 12.317,
+          "select_lat_s": 0.105,
+          "source": "warm"
+        },
+        {
+          "turn": 7,
+          "gt": "Good idea. Please help.",
+          "transcript": "Does she enjoy it?Yes, loves food.Maybe slow her down?",
+          "diverse_board": [
+            "hungry",
+            "slow down",
+            "more food",
+            "love it",
+            "I don't know",
+            "bored",
+            "I need help"
+          ],
+          "baseline_board": [
+            "yes",
+            "more please",
+            "slow down",
+            "enjoy",
+            "breakfast",
+            "eat",
+            "hungry"
+          ],
+          "covered": true,
+          "soft": 0.4407690167427063,
+          "ild": 0.7298507690429688,
+          "base_covered": false,
+          "base_ild": 0.7051753997802734,
+          "pool_lat_s": 10.09,
+          "select_lat_s": 0.0802,
+          "source": "warm"
+        },
+        {
+          "turn": 8,
+          "gt": "Next Saturday, 3 PM",
+          "transcript": "I can help you trainThanks! That\u2019s greatWhen is the contest?",
+          "diverse_board": [
+            "I don't understand the contest",
+            "When is the exact date?",
+            "Ooh, exciting! Congrats on the contest",
+            "yes",
+            "I need to check the schedule",
+            "I don't know",
+            "Thanks for the info"
+          ],
+          "baseline_board": [
+            "yes",
+            "when is the contest",
+            "i need more information",
+            "where is the contest",
+            "i need help",
+            "where is themba",
+            "i need more"
+          ],
+          "covered": true,
+          "soft": 0.5371999740600586,
+          "ild": 0.812661349773407,
+          "base_covered": false,
+          "base_ild": 0.797978401184082,
+          "pool_lat_s": 12.372,
+          "select_lat_s": 0.0713,
+          "source": "warm"
+        },
+        {
+          "turn": 17,
+          "gt": "Community matters",
+          "transcript": "Listening is really important. It can make a big difference.Feel understoodExactly! It\u2019s nice to have that support.",
+          "diverse_board": [
+            "I feel supported.",
+            "It's nice to chat.",
+            "It's good to be understood.",
+            "This is important to me.",
+            "Thanks for listening.",
+            "I don't know",
+            "It feels nice."
+          ],
+          "baseline_board": [
+            "yes",
+            "more",
+            "i need help",
+            "where is the bathroom",
+            "where is the water",
+            "i feel understood",
+            "where is the sunlight"
+          ],
+          "covered": false,
+          "soft": 0.2810130715370178,
+          "ild": 0.7799227833747864,
+          "base_covered": false,
+          "base_ild": 0.8389415144920349,
+          "pool_lat_s": 11.763,
+          "select_lat_s": 0.0725,
+          "source": "warm"
+        },
+        {
+          "turn": 19,
+          "gt": "Together, we thrive",
+          "transcript": "Exactly! It\u2019s nice to have that support.Community mattersFor sure! We all need each other.",
+          "diverse_board": [
+            "Support is important for everyone",
+            "I need support for my community",
+            "Who else needs support?",
+            "Support makes me feel more connected",
+            "More sunlight please",
+            "Thank you for your support",
+            "wait"
+          ],
+          "baseline_board": [
+            "yes",
+            "more",
+            "need help",
+            "where is the bathroom",
+            "where is water",
+            "where is the light",
+            "where is the door"
+          ],
+          "covered": false,
+          "soft": 0.44616198539733887,
+          "ild": 0.6642199754714966,
+          "base_covered": false,
+          "base_ild": 0.8021408319473267,
+          "pool_lat_s": 10.895,
+          "select_lat_s": 0.0531,
+          "source": "warm"
+        }
+      ]
+    },
+    {
+      "conversation_id": 60,
+      "turns": [
+        {
+          "turn": 1,
+          "gt": "Day was good, thanks for asking.",
+          "transcript": "Hey, how was your day?",
+          "diverse_board": [
+            "How was your day?",
+            "How's the weather?",
+            "I feel a bit tired",
+            "Thanks for the chat",
+            "It's nice here",
+            "Let's get snacks",
+            "I need to use the restroom"
+          ],
+          "baseline_board": [
+            "yes",
+            "more please",
+            "how was my day",
+            "soft lighting",
+            "comfortable",
+            "music playing",
+            "how is my day"
+          ],
+          "covered": true,
+          "soft": 0.6809623837471008,
+          "ild": 0.8056491613388062,
+          "base_covered": true,
+          "base_ild": 0.8128235340118408,
+          "pool_lat_s": 8.137,
+          "select_lat_s": 0.0706,
+          "source": "warm"
+        },
+        {
+          "turn": 1,
+          "gt": "I slept surprisingly well, thank you for asking. I had some interesting dreams, actually.",
+          "transcript": "Good morning! How did you sleep last night?",
+          "diverse_board": [
+            "I slept well, nothing to share.",
+            "I prefer coffee in the morning.",
+            "Why did you make breakfast?",
+            "I meant last night, not today.",
+            "I already had tea last night.",
+            "wait",
+            "Can we start the day?"
+          ],
+          "baseline_board": [
+            "yes",
+            "good morning",
+            "how did you sleep last night",
+            "more coffee please",
+            "where is the coffee maker",
+            "where is the bathroom",
+            "where is the kitchen"
+          ],
+          "covered": true,
+          "soft": 0.6530497074127197,
+          "ild": 0.7573524713516235,
+          "base_covered": true,
+          "base_ild": 0.7858588695526123,
+          "pool_lat_s": 12.316,
+          "select_lat_s": 0.0656,
+          "source": "warm"
+        },
+        {
+          "turn": 2,
+          "gt": "Near the big tree, on the ground.",
+          "transcript": "Look! That bird is hurt!Oh no, where did you see it?",
+          "diverse_board": [
+            "It's flying towards the trees.",
+            "Do you know where it is?",
+            "I can't see anything clearly.",
+            "I need a drink of water.",
+            "wait",
+            "Let's go find it.",
+            "Is it still alive?"
+          ],
+          "baseline_board": [
+            "yes please",
+            "where is it",
+            "i need help",
+            "oh no",
+            "look",
+            "where did you see it",
+            "that bird"
+          ],
+          "covered": true,
+          "soft": 0.5533968806266785,
+          "ild": 0.8096798658370972,
+          "base_covered": false,
+          "base_ild": 0.7840597033500671,
+          "pool_lat_s": 11.769,
+          "select_lat_s": 0.0859,
+          "source": "warm"
+        },
+        {
+          "turn": 4,
+          "gt": "Should we call someone to help?",
+          "transcript": "Oh no, where did you see it?Near the big tree, on the ground.I see it now. It looks like it can't fly.",
+          "diverse_board": [
+            "Is it in the tree?",
+            "Can you look at the ground?",
+            "I need some more time.",
+            "That's interesting.",
+            "Over there?",
+            "Can I sit here?",
+            "It's on the ground?"
+          ],
+          "baseline_board": [
+            "yes",
+            "where is it?",
+            "it looks hurt",
+            "more help please",
+            "it can't fly",
+            "where did you see it?",
+            "it looks like it can't fly"
+          ],
+          "covered": false,
+          "soft": 0.24130859971046448,
+          "ild": 0.7515025734901428,
+          "base_covered": true,
+          "base_ild": 0.7886173725128174,
+          "pool_lat_s": 10.978,
+          "select_lat_s": 0.0574,
+          "source": "warm"
+        },
+        {
+          "turn": 4,
+          "gt": "Also need pain meds",
+          "transcript": "What do you need to buy?Milk bread eggs urgentOkay, I can go to shop now for you.",
+          "diverse_board": [
+            "Urgently need bread too",
+            "Can you get the shopping list?",
+            "No, I already got milk",
+            "Eggs are very important",
+            "Is it still urgent?",
+            "Can you please wait for me?",
+            "How about buying some cheese?"
+          ],
+          "baseline_board": [
+            "yes please",
+            "i need to buy milk",
+            "i need to buy bread",
+            "i need to buy eggs",
+            "okay, let's go",
+            "where is the shop",
+            "i can go now"
+          ],
+          "covered": true,
+          "soft": 0.21003252267837524,
+          "ild": 0.7720438838005066,
+          "base_covered": true,
+          "base_ild": 0.7839974164962769,
+          "pool_lat_s": 9.925,
+          "select_lat_s": 0.0745,
+          "source": "warm"
+        },
+        {
+          "turn": 5,
+          "gt": "I think it\u2019s a good move.",
+          "transcript": "I\u2019m doing okay, thanks for asking. Did you hear about Bongani supporting the government\u2019s John?Yes, I saw that news toda",
+          "diverse_board": [
+            "What do you think about it?",
+            "Can I have more tea?",
+            "The news was good to hear.",
+            "I support the government's decision.",
+            "Do you see anything?",
+            "Can we talk about it later?",
+            "I feel relieved about it."
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "what do you think",
+            "i need more tea",
+            "where is the bathroom",
+            "i need help",
+            "where is the light switch"
+          ],
+          "covered": true,
+          "soft": 0.3804543912410736,
+          "ild": 0.8136413097381592,
+          "base_covered": true,
+          "base_ild": 0.8031251430511475,
+          "pool_lat_s": 12.112,
+          "select_lat_s": 0.0843,
+          "source": "warm"
+        },
+        {
+          "turn": 7,
+          "gt": "I certainly hope to channel some of that peaceful energy. Maybe I should start my day with some positive thoughts!",
+          "transcript": "That sounds intriguing! What do you think that means?I believe it symbolizes her turning something aggressive into somet",
+          "diverse_board": [
+            "I'll be peaceful today.",
+            "I meant more about the energy.",
+            "What's for breakfast?",
+            "That symbolizes resilience.",
+            "yes",
+            "Please pass the honey.",
+            "I'm feeling a bit energized."
+          ],
+          "baseline_board": [
+            "yes",
+            "more please",
+            "that sounds good",
+            "that's okay",
+            "let's do that",
+            "thank you",
+            "i'm ready"
+          ],
+          "covered": true,
+          "soft": 0.6099560856819153,
+          "ild": 0.8541480302810669,
+          "base_covered": false,
+          "base_ild": 0.6992022395133972,
+          "pool_lat_s": 9.039,
+          "select_lat_s": 0.0897,
+          "source": "warm"
+        },
+        {
+          "turn": 9,
+          "gt": "I hope so, helps build independence.",
+          "transcript": "Absolutely! Plus, he enjoys it.Fresh air is always good for him.Do you think he\u2019ll keep doing it?",
+          "diverse_board": [
+            "I need more fresh air.",
+            "I'm enjoying it.",
+            "no",
+            "I feel relaxed.",
+            "I don't agree with you.",
+            "I'll keep doing it.",
+            "I don't know"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "soft lighting",
+            "gentle music",
+            "keep doing it",
+            "enjoy",
+            "keep doing"
+          ],
+          "covered": false,
+          "soft": 0.20046557486057281,
+          "ild": 0.8023854494094849,
+          "base_covered": false,
+          "base_ild": 0.7337012887001038,
+          "pool_lat_s": 12.336,
+          "select_lat_s": 0.0706,
+          "source": "warm"
+        },
+        {
+          "turn": 11,
+          "gt": "Definitely, community support important.",
+          "transcript": "Absolutely! It\u2019s nice to see support for good causes. Any ideas on how it might impact things?More resources for communi",
+          "diverse_board": [
+            "Support programs need better funding.",
+            "I\u2019m feeling a bit overwhelmed.",
+            "yes",
+            "The impact is significant.",
+            "More ideas please.",
+            "I appreciate your expertise.",
+            "Can you repeat that, please?"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "that would be nice",
+            "more support",
+            "where is the tea",
+            "more tea please",
+            "where is my mug"
+          ],
+          "covered": true,
+          "soft": 0.5415599346160889,
+          "ild": 0.8312256932258606,
+          "base_covered": true,
+          "base_ild": 0.7385554313659668,
+          "pool_lat_s": 11.899,
+          "select_lat_s": 0.0721,
+          "source": "warm"
+        },
+        {
+          "turn": 11,
+          "gt": "Exactly, confidence is key for kids.",
+          "transcript": "Do you think he\u2019ll keep doing it?I hope so, helps build independence.Yeah, and it gives him confidence.",
+          "diverse_board": [
+            "Does he do it already?",
+            "I'm feeling more independent",
+            "Thanks for listening",
+            "That's interesting",
+            "Can you repeat that?",
+            "I'm ready to talk about it",
+            "I don't agree with you"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "i need help",
+            "thank you",
+            "that's good",
+            "i understand",
+            "i agree"
+          ],
+          "covered": false,
+          "soft": 0.20387941598892212,
+          "ild": 0.8739392757415771,
+          "base_covered": false,
+          "base_ild": 0.7338089942932129,
+          "pool_lat_s": 12.276,
+          "select_lat_s": 0.0522,
+          "source": "warm"
+        },
+        {
+          "turn": 13,
+          "gt": "Sounds good, I\u2019ll follow closely.",
+          "transcript": "That would be amazing! We need more of that around here.Definitely, community support important.Well said! Let\u2019s keep an",
+          "diverse_board": [
+            "Community support has improved.",
+            "When do you think it'll start?",
+            "I'm feeling more upbeat now.",
+            "I agree, it's important.",
+            "Look over here, please.",
+            "I don't know",
+            "Community support is crucial."
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "keep talking",
+            "that's good",
+            "let's continue",
+            "more information",
+            "more details"
+          ],
+          "covered": false,
+          "soft": 0.27132734656333923,
+          "ild": 0.8251791000366211,
+          "base_covered": true,
+          "base_ild": 0.6949827671051025,
+          "pool_lat_s": 11.862,
+          "select_lat_s": 0.057,
+          "source": "warm"
+        }
+      ]
+    },
+    {
+      "conversation_id": 105,
+      "turns": [
+        {
+          "turn": 1,
+          "gt": "(partner-assisted scanning) I feel stuck. My goals feel so far away. I want to do more, but it\u2019s hard.",
+          "transcript": "I wanted to check in with you about your progress on the project and discuss your future goals.",
+          "diverse_board": [
+            "That's good progress on the project.",
+            "Could you help me with this?",
+            "yes",
+            "I'm working on improving my skills.",
+            "I don't know",
+            "wait",
+            "I need help"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "check in",
+            "progress",
+            "goals",
+            "check in with you",
+            "discuss"
+          ],
+          "covered": false,
+          "soft": 0.35053175687789917,
+          "ild": 0.8205704689025879,
+          "base_covered": true,
+          "base_ild": 0.7243382334709167,
+          "pool_lat_s": 10.695,
+          "select_lat_s": 0.0547,
+          "source": "warm"
+        },
+        {
+          "turn": 2,
+          "gt": "Like Duran Duran, very much.",
+          "transcript": "Love 80's music, yes?Yes, I do! Some great classics from that decade. Do you have any favourite bands?",
+          "diverse_board": [
+            "Do you have a favorite band?",
+            "yes",
+            "That sounds like fun.",
+            "I love The Pretenders.",
+            "I need help",
+            "I meant that band specifically.",
+            "I love The Clash."
+          ],
+          "baseline_board": [
+            "more please",
+            "love 80's",
+            "yes please",
+            "80's music",
+            "favourite bands",
+            "like this music",
+            "can you play"
+          ],
+          "covered": true,
+          "soft": 0.31893444061279297,
+          "ild": 0.8069520592689514,
+          "base_covered": true,
+          "base_ild": 0.7174516916275024,
+          "pool_lat_s": 9.079,
+          "select_lat_s": 0.0756,
+          "source": "warm"
+        },
+        {
+          "turn": 3,
+          "gt": "Yes, food from home",
+          "transcript": "Hey, how was your day?Good day, met neighborsThat\u2019s great! Did you talk about anything fun?",
+          "diverse_board": [
+            "Neighbors were nice.",
+            "I didn't talk about anything fun.",
+            "My day was good.",
+            "I met new people at work.",
+            "I talked about community events.",
+            "I enjoyed the weather.",
+            "Let's talk more about it."
+          ],
+          "baseline_board": [
+            "yes",
+            "good day",
+            "met neighbors",
+            "that's great",
+            "talked about",
+            "anything fun",
+            "how was"
+          ],
+          "covered": false,
+          "soft": 0.17251509428024292,
+          "ild": 0.7275800704956055,
+          "base_covered": true,
+          "base_ild": 0.7778360247612,
+          "pool_lat_s": 10.564,
+          "select_lat_s": 0.084,
+          "source": "warm"
+        },
+        {
+          "turn": 4,
+          "gt": "Yes, lot memories with songs.",
+          "transcript": "Yes, I do! Some great classics from that decade. Do you have any favourite bands?Like Duran Duran, very much.Duran Duran",
+          "diverse_board": [
+            "I enjoy their visuals and cinematography",
+            "yes",
+            "Let's talk about their concert experiences",
+            "I find their lyrics boring",
+            "I need help",
+            "Their movies were also good",
+            "I was impressed by their choreography"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "duran duran",
+            "i love their music",
+            "i agree",
+            "more details",
+            "thank you"
+          ],
+          "covered": true,
+          "soft": 0.3927093744277954,
+          "ild": 0.7580496072769165,
+          "base_covered": true,
+          "base_ild": 0.7787309885025024,
+          "pool_lat_s": 12.032,
+          "select_lat_s": 0.0791,
+          "source": "warm"
+        },
+        {
+          "turn": 4,
+          "gt": "Loves building blocks, very fun",
+          "transcript": "Yeah, I think that's a good idea. He\u2019s been busy this morning.Busy playing with toys earlierHe loves those toys! What do",
+          "diverse_board": [
+            "Can I play with my toys?",
+            "Thank you for suggesting the nap.",
+            "Those toys are my favorites.",
+            "I need more energy.",
+            "Can I have a snack now?",
+            "wait",
+            "I enjoy playing with them."
+          ],
+          "baseline_board": [
+            "yes please",
+            "more toys",
+            "need a nap",
+            "where is my toys",
+            "I need help",
+            "yes",
+            "no"
+          ],
+          "covered": false,
+          "soft": 0.43835872411727905,
+          "ild": 0.8018503785133362,
+          "base_covered": false,
+          "base_ild": 0.7461458444595337,
+          "pool_lat_s": 9.989,
+          "select_lat_s": 0.0735,
+          "source": "warm"
+        },
+        {
+          "turn": 6,
+          "gt": "Maybe in next hour, perfect timing",
+          "transcript": "He loves those toys! What does he like playing with the most?Loves building blocks, very funBuilding blocks are great fo",
+          "diverse_board": [
+            "No, I don't need another nap.",
+            "I like building blocks!",
+            "Can we just keep playing?",
+            "I don't know",
+            "wait",
+            "Can we finish building this?",
+            "Let's go get the blocks now."
+          ],
+          "baseline_board": [
+            "yes please",
+            "building blocks",
+            "need a nap",
+            "more blocks",
+            "love building blocks",
+            "need more blocks",
+            "need to take a nap"
+          ],
+          "covered": false,
+          "soft": 0.23112477362155914,
+          "ild": 0.8099976778030396,
+          "base_covered": false,
+          "base_ild": 0.621359646320343,
+          "pool_lat_s": 11.513,
+          "select_lat_s": 0.0792,
+          "source": "warm"
+        },
+        {
+          "turn": 8,
+          "gt": "Thanks! He\u2019ll sleep well there",
+          "transcript": "Building blocks are great for creativity! When do you want him to take a nap?Maybe in next hour, perfect timingSounds go",
+          "diverse_board": [
+            "Building blocks inspire me.",
+            "Should I wait?",
+            "How is the light?",
+            "I don't like this spot.",
+            "wait",
+            "That's nice of you.",
+            "I can do it myself."
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "need a nap",
+            "set up spot",
+            "cozy spot",
+            "where is spot",
+            "where is nap"
+          ],
+          "covered": false,
+          "soft": 0.1910218894481659,
+          "ild": 0.8946927189826965,
+          "base_covered": false,
+          "base_ild": 0.7181265354156494,
+          "pool_lat_s": 8.429,
+          "select_lat_s": 0.0504,
+          "source": "warm"
+        },
+        {
+          "turn": 10,
+          "gt": "Definitely! They care so much.",
+          "transcript": "Perfect! Gugu will be okay then.Thabo was worried about that.Worrying is part of being a parent.",
+          "diverse_board": [
+            "Can we talk more about parenting?",
+            "Thank you for your concern.",
+            "Is it hot outside?",
+            "wait",
+            "I miss my family back home.",
+            "No, thanks.",
+            "Can I have some water?"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "i need help",
+            "gugu is okay",
+            "where is the bathroom",
+            "where is the water",
+            "where is the light"
+          ],
+          "covered": false,
+          "soft": 0.19020169973373413,
+          "ild": 0.9059751033782959,
+          "base_covered": false,
+          "base_ild": 0.8267533183097839,
+          "pool_lat_s": 12.321,
+          "select_lat_s": 0.0679,
+          "source": "warm"
+        },
+        {
+          "turn": 13,
+          "gt": "Not yet, need courage.",
+          "transcript": "Sounds like he doesn't notice.He seems unaware. Regretful, I think.Have you mentioned it?",
+          "diverse_board": [
+            "I forgot to mention it.",
+            "I don't know",
+            "I feel frustrated.",
+            "Can we talk?",
+            "Could you be more specific?",
+            "wait",
+            "What about that?"
+          ],
+          "baseline_board": [
+            "yes",
+            "where is the light switch",
+            "more light",
+            "i need more light",
+            "i need help",
+            "i need more help",
+            "where is the bathroom"
+          ],
+          "covered": false,
+          "soft": 0.2585698962211609,
+          "ild": 0.8361468315124512,
+          "base_covered": true,
+          "base_ild": 0.7352060675621033,
+          "pool_lat_s": 8.355,
+          "select_lat_s": 0.0692,
+          "source": "warm"
+        },
+        {
+          "turn": 15,
+          "gt": "Thanks, need sleep",
+          "transcript": "Maybe we can talk to them, see if they can keep it down at night?Yes, good ideaI\u2019ll help you with that. Sleep is importa",
+          "diverse_board": [
+            "I need my sleep, it's important.",
+            "Can we talk about the community?",
+            "I don't mind, it's nice outside.",
+            "I'm feeling a bit stressed.",
+            "I need to use the bathroom.",
+            "I don't know",
+            "I need some peace and quiet."
+          ],
+          "baseline_board": [
+            "yes please",
+            "sleep is important",
+            "I need rest",
+            "more rest",
+            "where is the bathroom",
+            "I need help",
+            "where is the water"
+          ],
+          "covered": true,
+          "soft": 0.6077743172645569,
+          "ild": 0.7952194213867188,
+          "base_covered": true,
+          "base_ild": 0.7923939228057861,
+          "pool_lat_s": 11.462,
+          "select_lat_s": 0.075,
+          "source": "warm"
+        },
+        {
+          "turn": 19,
+          "gt": "Me too, thanks",
+          "transcript": "Let\u2019s make a plan. We can talk to them tomorrow.Tomorrow worksGood. I want you to be comfortable at night.",
+          "diverse_board": [
+            "I need to use the restroom.",
+            "I don't know",
+            "I\u2019m a bit hungry.",
+            "wait",
+            "I need help",
+            "yes",
+            "no"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "comfortable",
+            "good",
+            "let's talk",
+            "plan",
+            "night"
+          ],
+          "covered": false,
+          "soft": 0.20408953726291656,
+          "ild": 0.7591720819473267,
+          "base_covered": false,
+          "base_ild": 0.7218684554100037,
+          "pool_lat_s": 10.19,
+          "select_lat_s": 0.0481,
+          "source": "warm"
+        }
+      ]
+    },
+    {
+      "conversation_id": 22,
+      "turns": [
+        {
+          "turn": 0,
+          "gt": "Hey! Look at those dancers moving like they're doing the salsa with a soccer ball!",
+          "transcript": "",
+          "diverse_board": [
+            "No, thanks.",
+            "The food truck is tasty though.",
+            "Music lover here!",
+            "I need help",
+            "It feels warm in the sun.",
+            "I'm already full.",
+            "I don't know"
+          ],
+          "baseline_board": [
+            "more water",
+            "yes please",
+            "where is the water",
+            "i need help",
+            "where is the snack stand",
+            "where is the bathroom",
+            "more music"
+          ],
+          "covered": false,
+          "soft": 0.13808615505695343,
+          "ild": 0.9117153882980347,
+          "base_covered": false,
+          "base_ild": 0.8304870128631592,
+          "pool_lat_s": 11.877,
+          "select_lat_s": 0.0623,
+          "source": "warm"
+        },
+        {
+          "turn": 0,
+          "gt": "G e o r g e e a t s H e n r y",
+          "transcript": "",
+          "diverse_board": [
+            "It's cozy",
+            "Warm glow",
+            "I don't know",
+            "Couch is comfy",
+            "Look!",
+            "Sun sets",
+            "What's next?"
+          ],
+          "baseline_board": [
+            "more please",
+            "yes",
+            "i need help",
+            "where is the water",
+            "where is the couch",
+            "i want to go to sleep",
+            "i want more light"
+          ],
+          "covered": false,
+          "soft": 0.17223398387432098,
+          "ild": 0.8039931058883667,
+          "base_covered": false,
+          "base_ild": 0.8275485038757324,
+          "pool_lat_s": 6.952,
+          "select_lat_s": 0.0812,
+          "source": "warm"
+        },
+        {
+          "turn": 1,
+          "gt": "Good! Met Ava today.",
+          "transcript": "Hey! How was your day?",
+          "diverse_board": [
+            "Tell me more about your day.",
+            "Good, how's yours?",
+            "I like multicultural decorations.",
+            "Look at the sunset!",
+            "I don't know",
+            "I'm feeling happy.",
+            "I have a good day."
+          ],
+          "baseline_board": [
+            "yes",
+            "more please",
+            "how was my day",
+            "i need more light",
+            "where is the window",
+            "i need help",
+            "where is the bathroom"
+          ],
+          "covered": true,
+          "soft": 0.36818552017211914,
+          "ild": 0.7992441654205322,
+          "base_covered": false,
+          "base_ild": 0.81978440284729,
+          "pool_lat_s": 8.564,
+          "select_lat_s": 0.0513,
+          "source": "warm"
+        },
+        {
+          "turn": 1,
+          "gt": "Yes, I heard that. It's a good opportunity for him to get some exercise.",
+          "transcript": "Hey, did you hear that Themba is walking the rest of the way to school today?",
+          "diverse_board": [
+            "wait",
+            "I'm worried about the weather today.",
+            "I don't know",
+            "Can you please prepare the backpacks?",
+            "yes",
+            "I need help",
+            "no"
+          ],
+          "baseline_board": [
+            "yes",
+            "i need help",
+            "where is the bathroom",
+            "i need more help",
+            "i need water",
+            "i need to go to the bathroom",
+            "i need to go to the water fountain"
+          ],
+          "covered": true,
+          "soft": 0.17122726142406464,
+          "ild": 0.7937126159667969,
+          "base_covered": true,
+          "base_ild": 0.6665065288543701,
+          "pool_lat_s": 12.26,
+          "select_lat_s": 0.0506,
+          "source": "warm"
+        },
+        {
+          "turn": 2,
+          "gt": "I bet they'd score more goals with those hips than Messi with his feet!",
+          "transcript": "Hey! Look at those dancers moving like they're doing the salsa with a soccer ball!Haha! Maybe they're training for the n",
+          "diverse_board": [
+            "Let's focus on the dancers.",
+            "Do you think it's funny?",
+            "wait",
+            "Those dancers are amazing!",
+            "Can you repeat that, please?",
+            "Can I see more dancers?",
+            "I don't know"
+          ],
+          "baseline_board": [
+            "yes please",
+            "where is the water",
+            "more water please",
+            "I need help",
+            "where is the snack",
+            "where is the bathroom",
+            "where is the food"
+          ],
+          "covered": true,
+          "soft": 0.29591602087020874,
+          "ild": 0.8230128884315491,
+          "base_covered": true,
+          "base_ild": 0.7787762880325317,
+          "pool_lat_s": 9.335,
+          "select_lat_s": 0.0921,
+          "source": "warm"
+        },
+        {
+          "turn": 4,
+          "gt": "I would like to visit Japan or Thailand for the celebrations.",
+          "transcript": "Good morning! Happy Chinese New Year to you too. How can I help you today?I am interested in international travel option",
+          "diverse_board": [
+            "I'm interested in Asia.",
+            "Where are the travel packages?",
+            "Can I see some examples?",
+            "wait",
+            "I want to try local dishes.",
+            "I don't want to travel abroad.",
+            "No, thanks."
+          ],
+          "baseline_board": [
+            "yes please",
+            "more options please",
+            "interested in travel",
+            "specific countries",
+            "interested in travel abroad",
+            "more travel options",
+            "specific country"
+          ],
+          "covered": true,
+          "soft": 0.5537150502204895,
+          "ild": 0.874741792678833,
+          "base_covered": false,
+          "base_ild": 0.6637269258499146,
+          "pool_lat_s": 12.15,
+          "select_lat_s": 0.0655,
+          "source": "warm"
+        },
+        {
+          "turn": 7,
+          "gt": "I will talk to him about being careful and staying aware.",
+          "transcript": "True, but what if something happens? You know how kids can be.I believe he can handle it. It\u2019s important for his growth.",
+          "diverse_board": [
+            "How do you stay safe?",
+            "I'm not sure about this",
+            "That\u2019s true, but I worry",
+            "Can I have a snack?",
+            "I can handle it",
+            "wait",
+            "I want to walk to school"
+          ],
+          "baseline_board": [
+            "yes please",
+            "i need help",
+            "where is the bathroom",
+            "i'm worried",
+            "more please",
+            "i want to go outside",
+            "i need more time"
+          ],
+          "covered": true,
+          "soft": 0.38183724880218506,
+          "ild": 0.8724620938301086,
+          "base_covered": false,
+          "base_ild": 0.7636117935180664,
+          "pool_lat_s": 11.94,
+          "select_lat_s": 0.0711,
+          "source": "warm"
+        },
+        {
+          "turn": 8,
+          "gt": "Thank you. I need to consider my health before booking.",
+          "transcript": "Both are wonderful choices. Japan has beautiful festivals and Thailand offers vibrant celebrations as well.Can you provi",
+          "diverse_board": [
+            "I prefer Thailand for its festivals.",
+            "Could you check flight prices?",
+            "I don't need hotel options.",
+            "I meant Thailand, not Japan.",
+            "Interesting, different from Thailand.",
+            "wait",
+            "Could you please move closer?"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "where is the bathroom",
+            "I need more water",
+            "where is the snack area",
+            "where is the exit",
+            "where is the food"
+          ],
+          "covered": true,
+          "soft": 0.3729059100151062,
+          "ild": 0.8247827291488647,
+          "base_covered": true,
+          "base_ild": 0.7997134327888489,
+          "pool_lat_s": 11.2,
+          "select_lat_s": 0.078,
+          "source": "warm"
+        },
+        {
+          "turn": 11,
+          "gt": "Diwali, Chinese New Year.",
+          "transcript": "Wow! Did she share any examples?Yes! Talked about festivals.Festivals are so fun! Which ones?",
+          "diverse_board": [
+            "I enjoyed listening to her stories.",
+            "Can I have more examples?",
+            "Let's watch the sunset together.",
+            "I don't know",
+            "I need help",
+            "yes",
+            "I disagree, they were just brief."
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "i want to know",
+            "more about festivals",
+            "tell me more",
+            "can you explain",
+            "what are festivals"
+          ],
+          "covered": false,
+          "soft": 0.16216503083705902,
+          "ild": 0.8913177847862244,
+          "base_covered": false,
+          "base_ild": 0.7477418184280396,
+          "pool_lat_s": 11.126,
+          "select_lat_s": 0.0554,
+          "source": "warm"
+        },
+        {
+          "turn": 12,
+          "gt": "N o, h e i s h a p p y",
+          "transcript": "Poor Henry! Just a bite-sized morsel in George's feast!H e n r y d o e s n ' t m i n dOh good! At least he's not having ",
+          "diverse_board": [
+            "Henry's pet",
+            "George's favorite snack",
+            "Hi caregiver",
+            "not eating",
+            "I don't know",
+            "Look at Henry",
+            "I feel sad"
+          ],
+          "baseline_board": [
+            "yes please",
+            "more please",
+            "where is the bathroom",
+            "i need help",
+            "i need water",
+            "i am good",
+            "i am hot"
+          ],
+          "covered": false,
+          "soft": 0.18247808516025543,
+          "ild": 0.8129928112030029,
+          "base_covered": false,
+          "base_ild": 0.779751181602478,
+          "pool_lat_s": 8.542,
+          "select_lat_s": 0.0666,
+          "source": "warm"
+        },
+        {
+          "turn": 17,
+          "gt": "Great idea! Excited to try!",
+          "transcript": "Me too! It\u2019s so enriching.We should try new foods!Absolutely! Let\u2019s plan a dinner.",
+          "diverse_board": [
+            "That\u2019s interesting, I agree",
+            "I need help",
+            "yes",
+            "I don't know",
+            "wait",
+            "no"
+          ],
+          "baseline_board": [
+            "yes",
+            "more please",
+            "enjoy",
+            "let's plan",
+            "enriching",
+            "dinner",
+            "more food"
+          ],
+          "covered": false,
+          "soft": 0.11227239668369293,
+          "ild": 0.7560920715332031,
+          "base_covered": false,
+          "base_ild": 0.7421246767044067,
+          "pool_lat_s": 12.257,
+          "select_lat_s": 0.0698,
+          "source": "warm"
+        }
+      ]
+    }
+  ]
+}
