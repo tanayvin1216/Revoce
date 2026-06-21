@@ -1,0 +1,265 @@
+{
+  "_doc": "Curated Phase-1 testbed for the DIVERSE-COVERAGE objective. Unlike the real dataset (single ground-truth utterance), each turn here is annotated with `plausible_utterances`: the SET of genuinely different things the AAC user might want to say at that moment, spanning distinct conversational directions (answer / question-back / redirect / affirm / decline / comment / request). The board's job is to COVER this space within ~7 slots, not to guess one. Coverage = fraction of plausible_utterances with a usable match on the board. Authored by the team for team-only testing (consent guardrail).",
+  "scenarios": [
+    {
+      "id": "classroom-photosynthesis",
+      "setting": "Student (AAC user) in a science class. Teacher is mid-lecture and starting to ask the class questions.",
+      "scene": "A classroom. A teacher stands at a whiteboard with a diagram of a leaf and the sun. Other students sit at desks.",
+      "turns": [
+        {
+          "addressed": false,
+          "last_utterance": "Teacher: So plants make their own food through a process called photosynthesis.",
+          "transcript": "Teacher: Today we're learning about how plants get energy.\nTeacher: So plants make their own food through a process called photosynthesis.",
+          "plausible_utterances": [
+            "sun", "water", "carbon dioxide", "leaf", "I have a question", "what about at night", "energy", "I know this"
+          ]
+        },
+        {
+          "addressed": true,
+          "last_utterance": "Teacher: Can anyone tell me what plants take in from the air?",
+          "transcript": "Teacher: So plants make their own food through a process called photosynthesis.\nTeacher: Can anyone tell me what plants take in from the air?",
+          "plausible_utterances": [
+            "carbon dioxide", "oxygen", "air", "I don't know", "can you repeat that", "sun", "water", "I want to answer"
+          ]
+        },
+        {
+          "addressed": true,
+          "last_utterance": "Teacher: Right! And what do they give back out?",
+          "transcript": "Teacher: Can anyone tell me what plants take in from the air?\nStudent: Carbon dioxide.\nTeacher: Right! And what do they give back out?",
+          "plausible_utterances": [
+            "oxygen", "sugar", "water", "air", "I don't know", "I think I know", "glucose"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cafe-ordering",
+      "setting": "AAC user at a coffee shop counter, barista taking the order.",
+      "scene": "A coffee shop counter with a menu board behind the barista. Pastries in a glass case.",
+      "turns": [
+        {
+          "addressed": true,
+          "last_utterance": "Barista: Hi! What can I get started for you?",
+          "transcript": "Barista: Hi! What can I get started for you?",
+          "plausible_utterances": [
+            "a coffee please", "I need a minute", "what do you recommend", "tea", "water", "do you have decaf", "a muffin", "hello"
+          ]
+        },
+        {
+          "addressed": true,
+          "last_utterance": "Barista: Sure! What size?",
+          "transcript": "Barista: Hi! What can I get started for you?\nUser: a coffee please\nBarista: Sure! What size?",
+          "plausible_utterances": [
+            "small", "medium", "large", "the smallest one", "I don't know", "what sizes do you have"
+          ]
+        },
+        {
+          "addressed": true,
+          "last_utterance": "Barista: Anything else?",
+          "transcript": "Barista: Sure! What size?\nUser: medium\nBarista: Anything else?",
+          "plausible_utterances": [
+            "no thank you", "that's all", "yes", "a muffin too", "how much is it", "where can I sit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "doctor-visit",
+      "setting": "AAC user at a doctor's appointment, being asked about symptoms.",
+      "scene": "A doctor's exam room. A doctor in a white coat sits on a stool with a tablet.",
+      "turns": [
+        {
+          "addressed": true,
+          "last_utterance": "Doctor: So what's been bothering you today?",
+          "transcript": "Doctor: So what's been bothering you today?",
+          "plausible_utterances": [
+            "I have a headache", "my stomach hurts", "I feel tired", "it hurts here", "I'm not sure", "I feel dizzy", "I have a cough"
+          ]
+        },
+        {
+          "addressed": true,
+          "last_utterance": "Doctor: How long has this been going on?",
+          "transcript": "Doctor: So what's been bothering you today?\nUser: my stomach hurts\nDoctor: How long has this been going on?",
+          "plausible_utterances": [
+            "a few days", "a week", "since this morning", "a long time", "I don't remember", "it comes and goes"
+          ]
+        },
+        {
+          "addressed": true,
+          "last_utterance": "Doctor: On a scale of one to ten, how bad is the pain?",
+          "transcript": "Doctor: How long has this been going on?\nUser: a few days\nDoctor: On a scale of one to ten, how bad is the pain?",
+          "plausible_utterances": [
+            "it's really bad", "about a five", "not too bad", "ten", "I can't tell", "it's getting worse"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "home-dinner",
+      "setting": "AAC user at home, family member offering dinner options.",
+      "scene": "A home kitchen. A family member stands by the stove holding a pot.",
+      "turns": [
+        {
+          "addressed": true,
+          "last_utterance": "Mom: Do you want pasta or rice tonight?",
+          "transcript": "Mom: Do you want pasta or rice tonight?",
+          "plausible_utterances": [
+            "pasta", "rice", "I don't mind", "I'm not hungry", "something else", "what are you having", "I'm hungry"
+          ]
+        },
+        {
+          "addressed": true,
+          "last_utterance": "Mom: Okay, pasta it is. Hungry now or in a bit?",
+          "transcript": "Mom: Do you want pasta or rice tonight?\nUser: pasta\nMom: Okay, pasta it is. Hungry now or in a bit?",
+          "plausible_utterances": [
+            "now", "in a little while", "I'm really hungry", "I can wait", "can I help", "thank you"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "friend-weekend",
+      "setting": "A friend chatting casually about weekend plans.",
+      "scene": "A living room couch. A friend sits nearby with their phone.",
+      "turns": [
+        {
+          "addressed": true,
+          "last_utterance": "Friend: Want to do something this weekend?",
+          "transcript": "Friend: Want to do something this weekend?",
+          "plausible_utterances": [
+            "yes", "no", "maybe", "what do you want to do", "I'd love to", "I'm busy", "like what"
+          ]
+        },
+        {
+          "addressed": true,
+          "last_utterance": "Friend: We could see a movie, or go to the park?",
+          "transcript": "Friend: Want to do something this weekend?\nUser: yes\nFriend: We could see a movie, or go to the park?",
+          "plausible_utterances": [
+            "a movie", "the park", "either is fine", "the movie sounds fun", "I'd rather stay in", "what movie"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "airport-help",
+      "setting": "AAC user at a busy airport, approaching a help desk. Sensory-loud environment.",
+      "scene": "A crowded airport terminal. An information desk with an agent. Departure boards overhead.",
+      "turns": [
+        {
+          "addressed": true,
+          "last_utterance": "Agent: Hi there, how can I help you?",
+          "transcript": "Agent: Hi there, how can I help you?",
+          "plausible_utterances": [
+            "where is my gate", "I need help", "where is the bathroom", "I'm lost", "it's too loud", "I need a wheelchair", "what time is my flight"
+          ]
+        },
+        {
+          "addressed": true,
+          "last_utterance": "Agent: Sure, can I see your boarding pass?",
+          "transcript": "Agent: Hi there, how can I help you?\nUser: where is my gate\nAgent: Sure, can I see your boarding pass?",
+          "plausible_utterances": [
+            "here it is", "one moment", "I need help with that", "it's on my phone", "I can't find it"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "store-checkout",
+      "setting": "AAC user at a store checkout.",
+      "scene": "A retail checkout counter with a cashier and a card reader.",
+      "turns": [
+        {
+          "addressed": true,
+          "last_utterance": "Cashier: That'll be twelve fifty. Cash or card?",
+          "transcript": "Cashier: That'll be twelve fifty. Cash or card?",
+          "plausible_utterances": [
+            "card", "cash", "one moment", "do you take this", "I need help", "can I have a bag"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "greeting-neighbor",
+      "setting": "A neighbor greets the AAC user on the street.",
+      "scene": "A sidewalk in front of houses. A neighbor walking a dog stops.",
+      "turns": [
+        {
+          "addressed": true,
+          "last_utterance": "Neighbor: Good morning! How are you doing today?",
+          "transcript": "Neighbor: Good morning! How are you doing today?",
+          "plausible_utterances": [
+            "good thanks", "I'm okay", "not great", "good morning", "how are you", "tired", "nice dog"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "classroom-group-work",
+      "setting": "AAC user in a small student group deciding how to split a project.",
+      "scene": "Students gathered around a table with a poster board and markers.",
+      "turns": [
+        {
+          "addressed": true,
+          "last_utterance": "Classmate: What part do you want to do?",
+          "transcript": "Classmate: Okay let's split it up.\nClassmate: What part do you want to do?",
+          "plausible_utterances": [
+            "the drawing", "the writing", "I can present", "I'm not sure", "what's left", "can I help with that", "I want to do the colors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phone-call-family",
+      "setting": "AAC user on a video call with a grandparent.",
+      "scene": "A tablet propped up showing a grandparent's face on a video call.",
+      "turns": [
+        {
+          "addressed": true,
+          "last_utterance": "Grandma: Hi sweetheart! Did you have a good day?",
+          "transcript": "Grandma: Hi sweetheart! Did you have a good day?",
+          "plausible_utterances": [
+            "yes", "it was good", "I missed you", "hi grandma", "I'm tired", "I went to school", "no not really"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "restaurant-server",
+      "setting": "AAC user at a sit-down restaurant, server checking in.",
+      "scene": "A restaurant table with menus. A server stands with a notepad.",
+      "turns": [
+        {
+          "addressed": true,
+          "last_utterance": "Server: Can I start you off with something to drink?",
+          "transcript": "Server: Can I start you off with something to drink?",
+          "plausible_utterances": [
+            "water please", "a soda", "just water", "I need a minute", "what do you have", "lemonade"
+          ]
+        },
+        {
+          "addressed": true,
+          "last_utterance": "Server: Are you ready to order, or do you need a few more minutes?",
+          "transcript": "Server: Can I start you off with something to drink?\nUser: water please\nServer: Are you ready to order, or do you need a few more minutes?",
+          "plausible_utterances": [
+            "a few more minutes", "I'm ready", "what do you recommend", "I'll have the same as them", "I have a question"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "park-playground",
+      "setting": "AAC user (child) at a playground, another child approaches.",
+      "scene": "A playground with swings and a slide. Another child stands nearby.",
+      "turns": [
+        {
+          "addressed": true,
+          "last_utterance": "Kid: Do you want to play?",
+          "transcript": "Kid: Do you want to play?",
+          "plausible_utterances": [
+            "yes", "no", "what game", "the swings", "the slide", "my turn", "okay", "I want to play"
+          ]
+        }
+      ]
+    }
+  ]
+}
