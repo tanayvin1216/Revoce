@@ -1,0 +1,550 @@
+[
+  {
+    "conversation_id": 104,
+    "turns": [
+      {
+        "turn_number": 0,
+        "scene": "Late night at a vacation home, AAC user with ALS talking to a taxi driver about diverse cuisines.",
+        "transcript": null,
+        "last_utterance": null,
+        "ground_truth": "Love food variety"
+      },
+      {
+        "turn_number": 0,
+        "scene": "The evening light fills the cozy living room. The AAC user sits comfortably in their chair, while the caregiver is nearby, organizing some medicine bottles and chatting cheerfully.",
+        "transcript": null,
+        "last_utterance": null,
+        "ground_truth": "Jacob gave Susan her medicine."
+      },
+      {
+        "turn_number": 1,
+        "scene": "It's evening in a cozy living room. Soft light from a lamp creates a warm atmosphere. The AAC user is sitting comfortably in an armchair with their speech-generating device. The caregiver is nearby, engaged and attentive, listening closely to the user.",
+        "transcript": "Caregiver: Hey, how are you tonight?",
+        "last_utterance": "Hey, how are you tonight?",
+        "ground_truth": "Feeling good tonight"
+      },
+      {
+        "turn_number": 2,
+        "scene": "The evening light fills the cozy living room. The AAC user sits comfortably in their chair, while the caregiver is nearby, organizing some medicine bottles and chatting cheerfully.",
+        "transcript": "AAC User: Jacob gave Susan her medicine.\nCaregiver: Oh, that's great! Was it on time?",
+        "last_utterance": "Oh, that's great! Was it on time?",
+        "ground_truth": "Yes, right on schedule today."
+      },
+      {
+        "turn_number": 5,
+        "scene": "The sun is setting, casting a warm glow in the living room. The AAC user sits comfortably in their chair, using a keyboard-based AAC device. The caregiver stands nearby, attentive and engaged, creating a calm atmosphere for communication.",
+        "transcript": "Caregiver: What\u2019s on your mind?\nAAC User: Sophia goes to nurse.\nCaregiver: Does she need help?",
+        "last_utterance": "Does she need help?",
+        "ground_truth": "Noah without insurance."
+      },
+      {
+        "turn_number": 5,
+        "scene": "It's evening in a cozy living room. Soft light from a lamp creates a warm atmosphere. The AAC user is sitting comfortably in an armchair with their speech-generating device. The caregiver is nearby, engaged and attentive, listening closely to the user.",
+        "transcript": "Caregiver: That's great to hear! What\u2019s on your mind?\nAAC User: Amelia is amazing player\nCaregiver: Yeah? Tell me more about her.",
+        "last_utterance": "Yeah? Tell me more about her.",
+        "ground_truth": "She scores lots points"
+      },
+      {
+        "turn_number": 8,
+        "scene": "The evening light fills the cozy living room. The AAC user sits comfortably in their chair, while the caregiver is nearby, organizing some medicine bottles and chatting cheerfully.",
+        "transcript": "Caregiver: Wow, that\u2019s a win! Any side effects?\nAAC User: No side effects at all today.\nCaregiver: That\u2019s a relief! Good to hear.",
+        "last_utterance": "That\u2019s a relief! Good to hear.",
+        "ground_truth": "Jacob really knows what he\u2019s doing."
+      },
+      {
+        "turn_number": 9,
+        "scene": "The sun is setting, casting a warm glow in the living room. The AAC user sits comfortably in their chair, using a keyboard-based AAC device. The caregiver stands nearby, attentive and engaged, creating a calm atmosphere for communication.",
+        "transcript": "Caregiver: Oh, I see. That\u2019s tough.\nAAC User: Need plan for visit.\nCaregiver: Should we talk to school?",
+        "last_utterance": "Should we talk to school?",
+        "ground_truth": "Yes, good idea."
+      },
+      {
+        "turn_number": 9,
+        "scene": "It's a bright morning in a cozy living room. Sunlight streams through the window, and the smell of fresh coffee fills the air. The caregiver sits beside the AAC user, who is ready to engage in a meaningful conversation about community and relationships.",
+        "transcript": "Caregiver: That's important in a community.\nAAC User: Yes! Diverse community is strong.\nCaregiver: Absolutely! Everyone brings something unique.",
+        "last_utterance": "Absolutely! Everyone brings something unique.",
+        "ground_truth": "Mia shares her culture, food!"
+      },
+      {
+        "turn_number": 11,
+        "scene": "It's evening in a cozy living room. Soft light from a lamp creates a warm atmosphere. The AAC user is sitting comfortably in an armchair with their speech-generating device. The caregiver is nearby, engaged and attentive, listening closely to the user.",
+        "transcript": "Caregiver: Sounds like she\u2019s a star! Do you watch her games?\nAAC User: Always watch her games\nCaregiver: That must be fun! Any favorite moments?",
+        "last_utterance": "That must be fun! Any favorite moments?",
+        "ground_truth": "Last game was epic"
+      },
+      {
+        "turn_number": 11,
+        "scene": "It's a bright morning in a cozy living room. Sunlight streams through the window, and the smell of fresh coffee fills the air. The caregiver sits beside the AAC user, who is ready to engage in a meaningful conversation about community and relationships.",
+        "transcript": "Caregiver: Absolutely! Everyone brings something unique.\nAAC User: Mia shares her culture, food!\nCaregiver: Yum! What else do you enjoy?",
+        "last_utterance": "Yum! What else do you enjoy?",
+        "ground_truth": "Jack joins celebrations, learns more."
+      },
+      {
+        "turn_number": 11,
+        "scene": "The sun is setting, casting a warm glow in the living room. The AAC user sits comfortably in their chair, using a keyboard-based AAC device. The caregiver stands nearby, attentive and engaged, creating a calm atmosphere for communication.",
+        "transcript": "Caregiver: Should we talk to school?\nAAC User: Yes, good idea.\nCaregiver: I can help with that.",
+        "last_utterance": "I can help with that.",
+        "ground_truth": "Thanks for support."
+      },
+      {
+        "turn_number": 13,
+        "scene": "It's a bright morning in a cozy living room. Sunlight streams through the window, and the smell of fresh coffee fills the air. The caregiver sits beside the AAC user, who is ready to engage in a meaningful conversation about community and relationships.",
+        "transcript": "Caregiver: Yum! What else do you enjoy?\nAAC User: Jack joins celebrations, learns more.\nCaregiver: That's lovely! Community spirit is vital.",
+        "last_utterance": "That's lovely! Community spirit is vital.",
+        "ground_truth": "Yes! Together, we grow stronger."
+      },
+      {
+        "turn_number": 15,
+        "scene": "It's a bright morning in a cozy living room. Sunlight streams through the window, and the smell of fresh coffee fills the air. The caregiver sits beside the AAC user, who is ready to engage in a meaningful conversation about community and relationships.",
+        "transcript": "Caregiver: That's lovely! Community spirit is vital.\nAAC User: Yes! Together, we grow stronger.\nCaregiver: Well said! Want to share more stories?",
+        "last_utterance": "Well said! Want to share more stories?",
+        "ground_truth": "Definitely! Love sharing experiences."
+      },
+      {
+        "turn_number": 17,
+        "scene": "It's evening in a cozy living room. Soft light from a lamp creates a warm atmosphere. The AAC user is sitting comfortably in an armchair with their speech-generating device. The caregiver is nearby, engaged and attentive, listening closely to the user.",
+        "transcript": "Caregiver: That sounds intense! How did you feel?\nAAC User: So excited and happy\nCaregiver: I bet! She must be proud.",
+        "last_utterance": "I bet! She must be proud.",
+        "ground_truth": "Yes, very proud player"
+      }
+    ]
+  },
+  {
+    "conversation_id": 128,
+    "turns": [
+      {
+        "turn_number": 0,
+        "scene": "Community centre afternoon, discussing wildlife and multicultural community experiences",
+        "transcript": null,
+        "last_utterance": null,
+        "ground_truth": "Love local birds"
+      },
+      {
+        "turn_number": 0,
+        "scene": "Polish community center, late night, discussion about religious celebrations",
+        "transcript": null,
+        "last_utterance": null,
+        "ground_truth": "Evening. Talk about holidays?"
+      },
+      {
+        "turn_number": 0,
+        "scene": "It's a cozy night at home. The lights are dimmed, and a soft glow from a lamp creates a warm atmosphere. The AAC user is comfortably seated with their touchscreen device while the caregiver is nearby, sipping tea and enjoying the conversation.",
+        "transcript": null,
+        "last_utterance": null,
+        "ground_truth": "Lerato likes Mandla"
+      },
+      {
+        "turn_number": 0,
+        "scene": "It's nighttime in a cozy living room. Soft light from a lamp casts a warm glow. The AAC user sits comfortably in a chair, with the caregiver nearby, checking on them.",
+        "transcript": null,
+        "last_utterance": null,
+        "ground_truth": "Oliver call my friend?"
+      },
+      {
+        "turn_number": 2,
+        "scene": "Polish community center, late night, discussion about religious celebrations",
+        "transcript": "AAC User: Evening. Talk about holidays?\nFriend: Sure! Which celebration do you want to discuss?",
+        "last_utterance": "Sure! Which celebration do you want to discuss?",
+        "ground_truth": "Christmas. Big celebration. Family, church, food."
+      },
+      {
+        "turn_number": 4,
+        "scene": "It's a cozy night at home. The lights are dimmed, and a soft glow from a lamp creates a warm atmosphere. The AAC user is comfortably seated with their touchscreen device while the caregiver is nearby, sipping tea and enjoying the conversation.",
+        "transcript": "Caregiver: Oh really? That's new!\nAAC User: Saw them flirting\nCaregiver: Do tell! What happened?",
+        "last_utterance": "Do tell! What happened?",
+        "ground_truth": "At the party yesterday"
+      },
+      {
+        "turn_number": 6,
+        "scene": "Community centre afternoon, discussing wildlife and multicultural community experiences",
+        "transcript": "Friend: They add so much life. It's wonderful how our diverse community enjoys nature together.\nAAC User: People from everywhere\nFriend: Exactly, and each culture brings unique ways to appreciate wildlife. Like the storytelling sessions from different countries.",
+        "last_utterance": "Exactly, and each culture brings unique ways to appreciate wildlife. Like the storytelling sessions from different countries.",
+        "ground_truth": "Stories about animals"
+      },
+      {
+        "turn_number": 6,
+        "scene": "Polish community center, late night, discussion about religious celebrations",
+        "transcript": "Friend: Yes, Christmas Eve dinner, Wigilia, is very important, right?\nAAC User: Wigilia. Twelve dishes. No meat. Fish, pierogi. Tradition.\nFriend: Exactly! And sharing the op\u0142atek wafer is a meaningful part of Wigilia too.",
+        "last_utterance": "Exactly! And sharing the op\u0142atek wafer is a meaningful part of Wigilia too.",
+        "ground_truth": "Op\u0142atek. Share wishes. Peace, health. Very special."
+      },
+      {
+        "turn_number": 6,
+        "scene": "It's nighttime in a cozy living room. Soft light from a lamp casts a warm glow. The AAC user sits comfortably in a chair, with the caregiver nearby, checking on them.",
+        "transcript": "Caregiver: Just checking in on you.\nAAC User: Is he coming over?\nCaregiver: Not sure, he didn't say.",
+        "last_utterance": "Not sure, he didn't say.",
+        "ground_truth": "I want to see him."
+      },
+      {
+        "turn_number": 8,
+        "scene": "Community centre afternoon, discussing wildlife and multicultural community experiences",
+        "transcript": "Friend: Exactly, and each culture brings unique ways to appreciate wildlife. Like the storytelling sessions from different countries.\nAAC User: Stories about animals\nFriend: Me too. They help us understand and respect nature and each other more.",
+        "last_utterance": "Me too. They help us understand and respect nature and each other more.",
+        "ground_truth": "Community centre fun"
+      },
+      {
+        "turn_number": 8,
+        "scene": "It's a cozy night at home. The lights are dimmed, and a soft glow from a lamp creates a warm atmosphere. The AAC user is comfortably seated with their touchscreen device while the caregiver is nearby, sipping tea and enjoying the conversation.",
+        "transcript": "Caregiver: Spill the tea!\nAAC User: She kept giggling\nCaregiver: Classic move, right?",
+        "last_utterance": "Classic move, right?",
+        "ground_truth": "Totally a crush"
+      },
+      {
+        "turn_number": 9,
+        "scene": "It is a quiet night at home. The room is dimly lit, with shadows dancing on the walls. The caregiver sits beside the AAC user, who has their communication board in front of them. The atmosphere is calm, yet focused as they discuss the need for help.",
+        "transcript": "Caregiver: Got it. What needs moving?\nAAC User: Boxes in garage\nCaregiver: Okay, I can help with that. When?",
+        "last_utterance": "Okay, I can help with that. When?",
+        "ground_truth": "Tomorrow morning"
+      },
+      {
+        "turn_number": 11,
+        "scene": "It is a quiet night at home. The room is dimly lit, with shadows dancing on the walls. The caregiver sits beside the AAC user, who has their communication board in front of them. The atmosphere is calm, yet focused as they discuss the need for help.",
+        "transcript": "Caregiver: Okay, I can help with that. When?\nAAC User: Tomorrow morning\nCaregiver: Sounds good. I\u2019ll be ready.",
+        "last_utterance": "Sounds good. I\u2019ll be ready.",
+        "ground_truth": "Thank you"
+      },
+      {
+        "turn_number": 14,
+        "scene": "Polish community center, late night, discussion about religious celebrations",
+        "transcript": "Friend: It's wonderful to keep these traditions alive. They connect us to our culture and faith.\nAAC User: Agree. Traditions give strength. Faith important for me.\nFriend: I'm glad we can share these moments together. It means a lot.",
+        "last_utterance": "I'm glad we can share these moments together. It means a lot.",
+        "ground_truth": "Thank you. Talk more next time?"
+      }
+    ]
+  },
+  {
+    "conversation_id": 20,
+    "turns": [
+      {
+        "turn_number": 1,
+        "scene": "It's a bright morning in the living room. Sunlight streams through the window. The AAC user is sitting comfortably in their chair, using a communication board to express their thoughts. The caregiver is sitting nearby, engaging in a supportive conversation.",
+        "transcript": "Caregiver: Good morning! How are you feeling today?",
+        "last_utterance": "Good morning! How are you feeling today?",
+        "ground_truth": "Feeling okay today"
+      },
+      {
+        "turn_number": 1,
+        "scene": "It's a bright morning in a cozy kitchen. The sunlight streams through the window, illuminating the cheerful space. The caregiver prepares breakfast while the AAC user sits comfortably at the table, ready to start the day.",
+        "transcript": "Caregiver: Good morning! How did you sleep?",
+        "last_utterance": "Good morning! How did you sleep?",
+        "ground_truth": "Slept okay, thanks"
+      },
+      {
+        "turn_number": 1,
+        "scene": "It's a cozy afternoon at home. Sunlight streams in through the kitchen window. The table is set with a variety of dishes from different cultures. The smell of spicy curry fills the air.",
+        "transcript": "Caregiver: Hey, how's your lunch going?",
+        "last_utterance": "Hey, how's your lunch going?",
+        "ground_truth": "Good, tried new dish!"
+      },
+      {
+        "turn_number": 3,
+        "scene": "It's a cozy afternoon at home. Sunlight streams in through the kitchen window. The table is set with a variety of dishes from different cultures. The smell of spicy curry fills the air.",
+        "transcript": "Caregiver: Hey, how's your lunch going?\nAAC User: Good, tried new dish!\nCaregiver: Oh nice! What was it?",
+        "last_utterance": "Oh nice! What was it?",
+        "ground_truth": "Spicy curry from India."
+      },
+      {
+        "turn_number": 4,
+        "scene": "Passover seder in the afternoon",
+        "transcript": "Stranger: Oh, me too! Have you seen any good ones recently?\nAAC User: Yes, I saw a great film about the Passover story.\nStranger: That sounds interesting! What was it called?",
+        "last_utterance": "That sounds interesting! What was it called?",
+        "ground_truth": "The title was \"The Exodus Journey.\""
+      },
+      {
+        "turn_number": 5,
+        "scene": "It's a bright morning in the kitchen. The table is set for breakfast. The caregiver is preparing food while the AAC user communicates through their eye-gaze device.",
+        "transcript": "Caregiver: Really? How fast?\nAAC User: Like a race.\nCaregiver: Does she enjoy it?",
+        "last_utterance": "Does she enjoy it?",
+        "ground_truth": "Yes, loves food."
+      },
+      {
+        "turn_number": 5,
+        "scene": "It's a bright morning in the living room. Sunlight streams through the window. The AAC user is sitting comfortably in their chair, using a communication board to express their thoughts. The caregiver is sitting nearby, engaging in a supportive conversation.",
+        "transcript": "Caregiver: That's good to hear. Any plans for today?\nAAC User: Want to talk community\nCaregiver: Sure! What about the community?",
+        "last_utterance": "Sure! What about the community?",
+        "ground_truth": "Diversity is key"
+      },
+      {
+        "turn_number": 6,
+        "scene": "The midday sun streams through the window, illuminating the cozy living room. The AAC user sits comfortably in a chair, using their touchscreen device to communicate. The caregiver stands nearby, excitedly engaging in the conversation about Themba's upcoming hot dog eating contest.",
+        "transcript": "Caregiver: Have you practiced?\nAAC User: Not yet. Need help\nCaregiver: I can help you train",
+        "last_utterance": "I can help you train",
+        "ground_truth": "Thanks! That\u2019s great"
+      },
+      {
+        "turn_number": 7,
+        "scene": "It's a bright morning in the kitchen. The table is set for breakfast. The caregiver is preparing food while the AAC user communicates through their eye-gaze device.",
+        "transcript": "Caregiver: Does she enjoy it?\nAAC User: Yes, loves food.\nCaregiver: Maybe slow her down?",
+        "last_utterance": "Maybe slow her down?",
+        "ground_truth": "Good idea. Please help."
+      },
+      {
+        "turn_number": 8,
+        "scene": "The midday sun streams through the window, illuminating the cozy living room. The AAC user sits comfortably in a chair, using their touchscreen device to communicate. The caregiver stands nearby, excitedly engaging in the conversation about Themba's upcoming hot dog eating contest.",
+        "transcript": "Caregiver: I can help you train\nAAC User: Thanks! That\u2019s great\nCaregiver: When is the contest?",
+        "last_utterance": "When is the contest?",
+        "ground_truth": "Next Saturday, 3 PM"
+      },
+      {
+        "turn_number": 17,
+        "scene": "It's a bright morning in the living room. Sunlight streams through the window. The AAC user is sitting comfortably in their chair, using a communication board to express their thoughts. The caregiver is sitting nearby, engaging in a supportive conversation.",
+        "transcript": "Caregiver: Listening is really important. It can make a big difference.\nAAC User: Feel understood\nCaregiver: Exactly! It\u2019s nice to have that support.",
+        "last_utterance": "Exactly! It\u2019s nice to have that support.",
+        "ground_truth": "Community matters"
+      },
+      {
+        "turn_number": 19,
+        "scene": "It's a bright morning in the living room. Sunlight streams through the window. The AAC user is sitting comfortably in their chair, using a communication board to express their thoughts. The caregiver is sitting nearby, engaging in a supportive conversation.",
+        "transcript": "Caregiver: Exactly! It\u2019s nice to have that support.\nAAC User: Community matters\nCaregiver: For sure! We all need each other.",
+        "last_utterance": "For sure! We all need each other.",
+        "ground_truth": "Together, we thrive"
+      }
+    ]
+  },
+  {
+    "conversation_id": 60,
+    "turns": [
+      {
+        "turn_number": 1,
+        "scene": "The evening is calm in the cozy living room, with soft lighting and gentle music playing in the background. The caregiver sits beside the AAC user, who is comfortably positioned with their speech-generating device ready for communication. They are both relaxed, enjoying the quiet time together.",
+        "transcript": "Caregiver: Hey, how was your day?",
+        "last_utterance": "Hey, how was your day?",
+        "ground_truth": "Day was good, thanks for asking."
+      },
+      {
+        "turn_number": 1,
+        "scene": "The morning light filters through the kitchen window, illuminating the cozy space. The AAC user, sitting at the table with their alphabet board, looks relaxed. The caregiver is bustling around, preparing breakfast, creating a warm atmosphere filled with the smell of coffee.",
+        "transcript": "Caregiver: Good morning! How did you sleep last night?",
+        "last_utterance": "Good morning! How did you sleep last night?",
+        "ground_truth": "I slept surprisingly well, thank you for asking. I had some interesting dreams, actually."
+      },
+      {
+        "turn_number": 2,
+        "scene": "A park in the afternoon",
+        "transcript": "AAC User: Look! That bird is hurt!\nTaxi Driver: Oh no, where did you see it?",
+        "last_utterance": "Oh no, where did you see it?",
+        "ground_truth": "Near the big tree, on the ground."
+      },
+      {
+        "turn_number": 4,
+        "scene": "A park in the afternoon",
+        "transcript": "Taxi Driver: Oh no, where did you see it?\nAAC User: Near the big tree, on the ground.\nTaxi Driver: I see it now. It looks like it can't fly.",
+        "last_utterance": "I see it now. It looks like it can't fly.",
+        "ground_truth": "Should we call someone to help?"
+      },
+      {
+        "turn_number": 4,
+        "scene": "Friend's house, afternoon, urgent shopping conversation",
+        "transcript": "Cousin: What do you need to buy?\nAAC User: Milk bread eggs urgent\nCousin: Okay, I can go to shop now for you.",
+        "last_utterance": "Okay, I can go to shop now for you.",
+        "ground_truth": "Also need pain meds"
+      },
+      {
+        "turn_number": 5,
+        "scene": "It's a cozy night at home. The lights are dimmed, and a soft glow from a lamp fills the room. The AAC user is sitting comfortably in a chair, and the caregiver is nearby, ready to assist. They both have warm mugs of tea as they engage in light conversation about current events.",
+        "transcript": "Caregiver: I\u2019m doing okay, thanks for asking. Did you hear about Bongani supporting the government\u2019s John?\nAAC User: Yes, I saw that news today.\nCaregiver: What do you think about it?",
+        "last_utterance": "What do you think about it?",
+        "ground_truth": "I think it\u2019s a good move."
+      },
+      {
+        "turn_number": 7,
+        "scene": "The morning light filters through the kitchen window, illuminating the cozy space. The AAC user, sitting at the table with their alphabet board, looks relaxed. The caregiver is bustling around, preparing breakfast, creating a warm atmosphere filled with the smell of coffee.",
+        "transcript": "Caregiver: That sounds intriguing! What do you think that means?\nAAC User: I believe it symbolizes her turning something aggressive into something constructive. It\u2019s a powerful transformation.\nCaregiver: Absolutely! We could all use a little of that energy. Do you think you\u2019ll go all peaceful warrior today?",
+        "last_utterance": "Absolutely! We could all use a little of that energy. Do you think you\u2019ll go all peaceful warrior today?",
+        "ground_truth": "I certainly hope to channel some of that peaceful energy. Maybe I should start my day with some positive thoughts!"
+      },
+      {
+        "turn_number": 9,
+        "scene": "The evening is calm in the cozy living room, with soft lighting and gentle music playing in the background. The caregiver sits beside the AAC user, who is comfortably positioned with their speech-generating device ready for communication. They are both relaxed, enjoying the quiet time together.",
+        "transcript": "Caregiver: Absolutely! Plus, he enjoys it.\nAAC User: Fresh air is always good for him.\nCaregiver: Do you think he\u2019ll keep doing it?",
+        "last_utterance": "Do you think he\u2019ll keep doing it?",
+        "ground_truth": "I hope so, helps build independence."
+      },
+      {
+        "turn_number": 11,
+        "scene": "It's a cozy night at home. The lights are dimmed, and a soft glow from a lamp fills the room. The AAC user is sitting comfortably in a chair, and the caregiver is nearby, ready to assist. They both have warm mugs of tea as they engage in light conversation about current events.",
+        "transcript": "Caregiver: Absolutely! It\u2019s nice to see support for good causes. Any ideas on how it might impact things?\nAAC User: More resources for community programs.\nCaregiver: That would be amazing! We need more of that around here.",
+        "last_utterance": "That would be amazing! We need more of that around here.",
+        "ground_truth": "Definitely, community support important."
+      },
+      {
+        "turn_number": 11,
+        "scene": "The evening is calm in the cozy living room, with soft lighting and gentle music playing in the background. The caregiver sits beside the AAC user, who is comfortably positioned with their speech-generating device ready for communication. They are both relaxed, enjoying the quiet time together.",
+        "transcript": "Caregiver: Do you think he\u2019ll keep doing it?\nAAC User: I hope so, helps build independence.\nCaregiver: Yeah, and it gives him confidence.",
+        "last_utterance": "Yeah, and it gives him confidence.",
+        "ground_truth": "Exactly, confidence is key for kids."
+      },
+      {
+        "turn_number": 13,
+        "scene": "It's a cozy night at home. The lights are dimmed, and a soft glow from a lamp fills the room. The AAC user is sitting comfortably in a chair, and the caregiver is nearby, ready to assist. They both have warm mugs of tea as they engage in light conversation about current events.",
+        "transcript": "Caregiver: That would be amazing! We need more of that around here.\nAAC User: Definitely, community support important.\nCaregiver: Well said! Let\u2019s keep an eye on how it develops, okay?",
+        "last_utterance": "Well said! Let\u2019s keep an eye on how it develops, okay?",
+        "ground_truth": "Sounds good, I\u2019ll follow closely."
+      }
+    ]
+  },
+  {
+    "conversation_id": 105,
+    "turns": [
+      {
+        "turn_number": 1,
+        "scene": "A friend's house during midday",
+        "transcript": "Boss: I wanted to check in with you about your progress on the project and discuss your future goals.",
+        "last_utterance": "I wanted to check in with you about your progress on the project and discuss your future goals.",
+        "ground_truth": "(partner-assisted scanning) I feel stuck. My goals feel so far away. I want to do more, but it\u2019s hard."
+      },
+      {
+        "turn_number": 2,
+        "scene": "Garden during the morning",
+        "transcript": "AAC User: Love 80's music, yes?\nDelivery Person: Yes, I do! Some great classics from that decade. Do you have any favourite bands?",
+        "last_utterance": "Yes, I do! Some great classics from that decade. Do you have any favourite bands?",
+        "ground_truth": "Like Duran Duran, very much."
+      },
+      {
+        "turn_number": 3,
+        "scene": "The sun sets outside, casting a warm glow through the living room. The AAC user sits comfortably in their chair, the caregiver nearby, both enjoying a relaxed evening together. They talk about their day, sharing stories and thoughts about their multicultural community, while the sound of laughter and cooking wafts through the air from the neighbors' homes.",
+        "transcript": "Caregiver: Hey, how was your day?\nAAC User: Good day, met neighbors\nCaregiver: That\u2019s great! Did you talk about anything fun?",
+        "last_utterance": "That\u2019s great! Did you talk about anything fun?",
+        "ground_truth": "Yes, food from home"
+      },
+      {
+        "turn_number": 4,
+        "scene": "Garden during the morning",
+        "transcript": "Delivery Person: Yes, I do! Some great classics from that decade. Do you have any favourite bands?\nAAC User: Like Duran Duran, very much.\nDelivery Person: Duran Duran, excellent choice! Their style was quite unique back then. Are you a big fan of their music?",
+        "last_utterance": "Duran Duran, excellent choice! Their style was quite unique back then. Are you a big fan of their music?",
+        "ground_truth": "Yes, lot memories with songs."
+      },
+      {
+        "turn_number": 4,
+        "scene": "Morning light fills the cozy living room. Noah is playing quietly with his toys, while the caregiver and the AAC user sit nearby, discussing Noah's need for a nap.",
+        "transcript": "Caregiver: Yeah, I think that's a good idea. He\u2019s been busy this morning.\nAAC User: Busy playing with toys earlier\nCaregiver: He loves those toys! What does he like playing with the most?",
+        "last_utterance": "He loves those toys! What does he like playing with the most?",
+        "ground_truth": "Loves building blocks, very fun"
+      },
+      {
+        "turn_number": 6,
+        "scene": "Morning light fills the cozy living room. Noah is playing quietly with his toys, while the caregiver and the AAC user sit nearby, discussing Noah's need for a nap.",
+        "transcript": "Caregiver: He loves those toys! What does he like playing with the most?\nAAC User: Loves building blocks, very fun\nCaregiver: Building blocks are great for creativity! When do you want him to take a nap?",
+        "last_utterance": "Building blocks are great for creativity! When do you want him to take a nap?",
+        "ground_truth": "Maybe in next hour, perfect timing"
+      },
+      {
+        "turn_number": 8,
+        "scene": "Morning light fills the cozy living room. Noah is playing quietly with his toys, while the caregiver and the AAC user sit nearby, discussing Noah's need for a nap.",
+        "transcript": "Caregiver: Building blocks are great for creativity! When do you want him to take a nap?\nAAC User: Maybe in next hour, perfect timing\nCaregiver: Sounds good! I\u2019ll set up a cozy spot for him.",
+        "last_utterance": "Sounds good! I\u2019ll set up a cozy spot for him.",
+        "ground_truth": "Thanks! He\u2019ll sleep well there"
+      },
+      {
+        "turn_number": 10,
+        "scene": "The sun is shining through the window, casting warm light in the cozy living room. The AAC user sits comfortably in a chair, tapping away on their device. The caregiver stands nearby, smiling and listening attentively, ready to engage in conversation.",
+        "transcript": "Caregiver: Perfect! Gugu will be okay then.\nAAC User: Thabo was worried about that.\nCaregiver: Worrying is part of being a parent.",
+        "last_utterance": "Worrying is part of being a parent.",
+        "ground_truth": "Definitely! They care so much."
+      },
+      {
+        "turn_number": 13,
+        "scene": "The room is dimly lit with soft lights. The caregiver sits beside the AAC user, who is focused on their device. The atmosphere is calm, with a hint of concern in the air.",
+        "transcript": "Caregiver: Sounds like he doesn't notice.\nAAC User: He seems unaware. Regretful, I think.\nCaregiver: Have you mentioned it?",
+        "last_utterance": "Have you mentioned it?",
+        "ground_truth": "Not yet, need courage."
+      },
+      {
+        "turn_number": 15,
+        "scene": "The sun sets outside, casting a warm glow through the living room. The AAC user sits comfortably in their chair, the caregiver nearby, both enjoying a relaxed evening together. They talk about their day, sharing stories and thoughts about their multicultural community, while the sound of laughter and cooking wafts through the air from the neighbors' homes.",
+        "transcript": "Caregiver: Maybe we can talk to them, see if they can keep it down at night?\nAAC User: Yes, good idea\nCaregiver: I\u2019ll help you with that. Sleep is important. You need rest!",
+        "last_utterance": "I\u2019ll help you with that. Sleep is important. You need rest!",
+        "ground_truth": "Thanks, need sleep"
+      },
+      {
+        "turn_number": 19,
+        "scene": "The sun sets outside, casting a warm glow through the living room. The AAC user sits comfortably in their chair, the caregiver nearby, both enjoying a relaxed evening together. They talk about their day, sharing stories and thoughts about their multicultural community, while the sound of laughter and cooking wafts through the air from the neighbors' homes.",
+        "transcript": "Caregiver: Let\u2019s make a plan. We can talk to them tomorrow.\nAAC User: Tomorrow works\nCaregiver: Good. I want you to be comfortable at night.",
+        "last_utterance": "Good. I want you to be comfortable at night.",
+        "ground_truth": "Me too, thanks"
+      }
+    ]
+  },
+  {
+    "conversation_id": 22,
+    "turns": [
+      {
+        "turn_number": 0,
+        "scene": "Caribbean carnival at midday",
+        "transcript": null,
+        "last_utterance": null,
+        "ground_truth": "Hey! Look at those dancers moving like they're doing the salsa with a soccer ball!"
+      },
+      {
+        "turn_number": 0,
+        "scene": "It's a cozy evening at home. The sun is setting, casting a warm glow in the living room. A comfy couch sits in the middle, and the AAC user is focused on their eye-gaze device, while the caregiver is sitting nearby, engaged and curious.",
+        "transcript": null,
+        "last_utterance": null,
+        "ground_truth": "G e o r g e e a t s H e n r y"
+      },
+      {
+        "turn_number": 1,
+        "scene": "The sun is setting, casting a warm glow through the window. The living room is cozy, with soft cushions and a few multicultural decorations. The caregiver sits next to the AAC user, who is using their speech-generating device, sharing an engaging conversation about community diversity.",
+        "transcript": "Caregiver: Hey! How was your day?",
+        "last_utterance": "Hey! How was your day?",
+        "ground_truth": "Good! Met Ava today."
+      },
+      {
+        "turn_number": 1,
+        "scene": "It's a tense morning at home. The sun is shining through the kitchen window, and the caregiver is nervously pacing while the AAC user sits at the kitchen table, typing on their AAC device. There's a hint of worry in the air as they discuss Themba's decision to walk to school.",
+        "transcript": "Caregiver: Hey, did you hear that Themba is walking the rest of the way to school today?",
+        "last_utterance": "Hey, did you hear that Themba is walking the rest of the way to school today?",
+        "ground_truth": "Yes, I heard that. It's a good opportunity for him to get some exercise."
+      },
+      {
+        "turn_number": 2,
+        "scene": "Caribbean carnival at midday",
+        "transcript": "AAC User: Hey! Look at those dancers moving like they're doing the salsa with a soccer ball!\nPartner: Haha! Maybe they're training for the next World Cup halftime show. Imagine that, a football-salsa fusion!",
+        "last_utterance": "Haha! Maybe they're training for the next World Cup halftime show. Imagine that, a football-salsa fusion!",
+        "ground_truth": "I bet they'd score more goals with those hips than Messi with his feet!"
+      },
+      {
+        "turn_number": 4,
+        "scene": "Morning at a Chinese New Year celebration",
+        "transcript": "Shop Assistant: Good morning! Happy Chinese New Year to you too. How can I help you today?\nAAC User: I am interested in international travel options during the holiday.\nShop Assistant: We have several packages for travel abroad. Are you thinking of any specific countries?",
+        "last_utterance": "We have several packages for travel abroad. Are you thinking of any specific countries?",
+        "ground_truth": "I would like to visit Japan or Thailand for the celebrations."
+      },
+      {
+        "turn_number": 7,
+        "scene": "It's a tense morning at home. The sun is shining through the kitchen window, and the caregiver is nervously pacing while the AAC user sits at the kitchen table, typing on their AAC device. There's a hint of worry in the air as they discuss Themba's decision to walk to school.",
+        "transcript": "Caregiver: True, but what if something happens? You know how kids can be.\nAAC User: I believe he can handle it. It\u2019s important for his growth.\nCaregiver: I just want to make sure he's safe. There are so many distractions.",
+        "last_utterance": "I just want to make sure he's safe. There are so many distractions.",
+        "ground_truth": "I will talk to him about being careful and staying aware."
+      },
+      {
+        "turn_number": 8,
+        "scene": "Morning at a Chinese New Year celebration",
+        "transcript": "Shop Assistant: Both are wonderful choices. Japan has beautiful festivals and Thailand offers vibrant celebrations as well.\nAAC User: Can you provide details on flight availability and accommodations?\nShop Assistant: Certainly. For Japan, flights are available daily with several hotel options. Thailand flights are slightly less frequent but still available.",
+        "last_utterance": "Certainly. For Japan, flights are available daily with several hotel options. Thailand flights are slightly less frequent but still available.",
+        "ground_truth": "Thank you. I need to consider my health before booking."
+      },
+      {
+        "turn_number": 11,
+        "scene": "The sun is setting, casting a warm glow through the window. The living room is cozy, with soft cushions and a few multicultural decorations. The caregiver sits next to the AAC user, who is using their speech-generating device, sharing an engaging conversation about community diversity.",
+        "transcript": "Caregiver: Wow! Did she share any examples?\nAAC User: Yes! Talked about festivals.\nCaregiver: Festivals are so fun! Which ones?",
+        "last_utterance": "Festivals are so fun! Which ones?",
+        "ground_truth": "Diwali, Chinese New Year."
+      },
+      {
+        "turn_number": 12,
+        "scene": "It's a cozy evening at home. The sun is setting, casting a warm glow in the living room. A comfy couch sits in the middle, and the AAC user is focused on their eye-gaze device, while the caregiver is sitting nearby, engaged and curious.",
+        "transcript": "Caregiver: Poor Henry! Just a bite-sized morsel in George's feast!\nAAC User: H e n r y d o e s n ' t m i n d\nCaregiver: Oh good! At least he's not having a meltdown over being eaten.",
+        "last_utterance": "Oh good! At least he's not having a meltdown over being eaten.",
+        "ground_truth": "N o, h e i s h a p p y"
+      },
+      {
+        "turn_number": 17,
+        "scene": "The sun is setting, casting a warm glow through the window. The living room is cozy, with soft cushions and a few multicultural decorations. The caregiver sits next to the AAC user, who is using their speech-generating device, sharing an engaging conversation about community diversity.",
+        "transcript": "Caregiver: Me too! It\u2019s so enriching.\nAAC User: We should try new foods!\nCaregiver: Absolutely! Let\u2019s plan a dinner.",
+        "last_utterance": "Absolutely! Let\u2019s plan a dinner.",
+        "ground_truth": "Great idea! Excited to try!"
+      }
+    ]
+  }
+]
