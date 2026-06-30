@@ -75,14 +75,20 @@ def _expanded_phase3(target_extra: int) -> list[dict]:
     return rows
 
 
+def _v2_scenarios() -> list[dict]:
+    """The workflow-authored diverse corpus (10 domains, ~360 rows), if present."""
+    path = HERE / "v2_scenarios.jsonl"
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+
 def build_scenarios(target: int) -> list[dict]:
-    """Only NEW, varied contexts. The Phase-3 curated 120 are deliberately EXCLUDED:
-    their teacher boards already live in phase3/boards.jsonl and training reads them
-    straight from there, so regenerating them is pure waste — worse, they are
-    near-homogeneous (name-only changes) and bias the student toward one global
-    board. We lead with the Phase-1 real AAC turns (genuine context variety, the
-    collapse-breaker) and only then top up with filler-expanded variants."""
-    out = _phase1_scenarios()
+    """Diverse, NEW contexts for distillation. Leads with the workflow-authored v2
+    corpus (10 domains) + the Phase-1 real turns — both genuinely varied, which is
+    the collapse-breaker. The Phase-3 curated 120 are EXCLUDED (already cached in
+    boards.jsonl and near-homogeneous); filler-expanded variants only top up."""
+    out = _v2_scenarios() + _phase1_scenarios()
     seen = {(r["scene"], r["transcript"]) for r in out}
     seen |= {(r.get("scene", ""), r.get("transcript", ""))
              for r in scengen.load_scenarios()}   # don't re-emit Phase-3 contexts

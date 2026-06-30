@@ -71,17 +71,15 @@ def build_untrained(cfg: dict, vocab_size: int) -> StudentRanker:
 
 def main() -> int:
     cfg = load_config()
-    from rank_vocabulary import GUARANTEED_CORE
 
-    # Size the export to a realistic vocab so the proven artifact matches what we
-    # will train. The vocab comes from the Phase-3 teacher boards we already have.
+    # Size the export to a realistic dynamic vocab (core excluded) so the proven
+    # artifact matches what we will train. Falls back to k_dyn when no boards exist.
     if BOARDS.exists():
         rows = d.load_teacher_rows(BOARDS)
-        vocab, _ = d.build_vocab(rows, cfg["vocab"]["min_freq"],
-                                 cfg["vocab"]["max_size"], GUARANTEED_CORE)
+        vocab, _ = d.build_vocab(rows, cfg["vocab"]["min_freq"], cfg["vocab"]["max_size"])
+        vocab_size = max(len(vocab), 1)
     else:
-        vocab = GUARANTEED_CORE
-    vocab_size = max(len(vocab), len(GUARANTEED_CORE))
+        vocab_size = cfg["board"].get("k_dyn", 6)  # minimal proxy; LayerNorm exports fine
     print(f"untrained student: context_dim={cfg['model']['context_dim']} "
           f"hidden={cfg['model']['hidden_dim']} vocab={vocab_size}")
 
