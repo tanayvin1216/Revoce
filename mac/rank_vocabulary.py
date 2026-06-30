@@ -37,6 +37,11 @@ BOARD_SIZE = 10  # the device shows this many tappable phrases at once
 # collapses onto one idea. These are pinned in select_board().
 GUARANTEED_CORE: list[str] = ["yes", "no", "I need help", "wait"]
 
+# Answers to a question must SPREAD across different responses (in the back /
+# not seated / no table), not repeat one answer. A low MMR lambda strongly
+# penalizes near-duplicate answers during selection.
+ANSWER_LAM = 0.35
+
 
 class RankedWord(TypedDict):
     word: str    # the AAC vocabulary word/phrase shown on the board
@@ -310,11 +315,16 @@ def _answer_block(question: str) -> str:
         '\n\nCRITICAL — the user was just asked this question:\n'
         f'    "{question}"\n'
         'The scene above is only minor background context. ANSWER THIS QUESTION.\n'
-        'Add 6 phrases that are DIRECT ANSWERS to that exact question: short '
-        'first-person replies or single concrete concepts (1 to 4 words), each tagged '
-        '{"function": "answer", "topic": "answer"}. If the scene and the question are '
-        'about different things, FOLLOW THE QUESTION, not the scene. Give real, '
-        'specific answers — NOT "I don\'t know", NOT "can you explain".'
+        'Add 6 phrases that are DIRECT ANSWERS to that exact question, and every one '
+        'must be a DIFFERENT possible answer — never a rephrasing of another. Span the '
+        'real range of how the user might respond: an affirmative, a negative, two or '
+        'three SPECIFIC different answers, and an "I am not sure". For "where are you '
+        'seated?" that means answers like "in the back", "by the window", "I am not '
+        'seated", "I do not have a table", "I need a reservation" — NOT five variants '
+        'of "yes, I am seated". Each is short (1 to 5 words), first person where '
+        'natural, tagged {"function": "answer", "topic": "answer"}. If the scene and the '
+        'question differ, FOLLOW THE QUESTION. Two answers that mean the same thing is a '
+        'failure.'
     )
 
 
@@ -510,22 +520,25 @@ def _select_dynamic(
     answer_pos = [p for p, f in enumerate(functions) if f == "answer"]
     quota = min(len(answer_pos), max(n - 1, 1)) if answer_pos else 0
 
-    ranked_answers = list(answer_pos)
+    answer_choice = list(answer_pos[:quota])     # fallback order (no embeddings)
     mmr_order = list(range(len(rest_idx)))
     try:
-        import numpy as np
         from evaluation.embed import embed
         from selection import build_query_vector, mmr_select
         cand_vecs = embed([pool[i]["word"] for i in rest_idx])
         query = build_query_vector(embed, scene, transcript, context)
-        if answer_pos and query is not None and np.linalg.norm(query) > 0:
-            rel = cand_vecs @ query
-            ranked_answers = sorted(answer_pos, key=lambda p: float(rel[p]), reverse=True)
+        if answer_pos:
+            # Pick answers by MMR (diversity), NOT pure relevance — otherwise six
+            # near-duplicate "I'm seated" answers all survive. A low lambda makes
+            # different answers (in the back / not seated / no table) win the slots.
+            answer_vecs = cand_vecs[answer_pos]
+            answer_choice = [answer_pos[i]
+                             for i in mmr_select(answer_vecs, query, quota, ANSWER_LAM, None)]
         mmr_order = mmr_select(cand_vecs, query, len(rest_idx), lam, functions)
     except Exception:
         mmr_order = _function_coverage_order(functions, len(rest_idx))
 
-    chosen: list[int] = ranked_answers[:quota]
+    chosen: list[int] = list(answer_choice)
     for p in mmr_order:
         if len(chosen) >= n:
             break

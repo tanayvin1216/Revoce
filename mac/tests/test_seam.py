@@ -285,6 +285,50 @@ def test_query_ignores_rolling_chatter_when_a_question_is_held():
     assert q[0] > 0 and q[2] == 0, "query must be the held question, not the chatter"
 
 
+def test_near_duplicate_answers_are_diversified_out(monkeypatch):
+    """Six answers where five are 'seated' paraphrases must NOT all reach the
+    board — MMR should keep ~one and surface the genuinely different answers."""
+    import numpy as np
+    import evaluation.embed as embed_mod
+
+    def embed(texts):
+        out = []
+        for t in texts:
+            tl = t.lower()
+            v = np.zeros(384, dtype=np.float32)
+            if "seated" in tl:
+                v[0] = 1.0; v[1] = 0.02      # near-identical cluster
+            elif "back" in tl:
+                v[2] = 1.0
+            elif "reservation" in tl:
+                v[3] = 1.0
+            elif "table" in tl:
+                v[4] = 1.0
+            else:
+                v[5] = 1.0
+            n = np.linalg.norm(v)
+            out.append(v / n if n else v)
+        return np.array(out, dtype=np.float32)
+
+    monkeypatch.setattr(embed_mod, "embed", embed)
+    items = [
+        {"word": "I'm seated", "function": "answer", "topic": "answer"},
+        {"word": "Yes, I'm seated", "function": "answer", "topic": "answer"},
+        {"word": "Yes, seated here", "function": "answer", "topic": "answer"},
+        {"word": "in the back", "function": "answer", "topic": "answer"},
+        {"word": "I need a reservation", "function": "answer", "topic": "answer"},
+        {"word": "I don't have a table", "function": "answer", "topic": "answer"},
+    ]
+    board = rank_vocabulary(
+        "a restaurant", "where are you seated?", {}, FakeRanker(items), strategy="diverse",
+    )
+    words = _words(board)
+    seated = [w for w in words if "seated" in w]
+    assert len(seated) <= 2, f"too many near-duplicate seated answers: {seated}"
+    # at least one genuinely different answer made it in
+    assert any(k in " ".join(words) for k in ("back", "reservation", "table"))
+
+
 def test_only_genuine_questions_are_held():
     from perception.audio_worker import is_question_to_user
     assert is_question_to_user("Where do I sit?")
