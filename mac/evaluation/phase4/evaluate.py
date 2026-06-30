@@ -59,6 +59,9 @@ def student_board(model, vocab, scene, transcript, k) -> list[str]:
     return [vocab[i] for i in idxs]
 
 
+BOARD_VARIETY_FLOOR = 0.5  # >=50% of held-out boards must be distinct (anti-collapse)
+
+
 def _df_and_dup(board: list[str]) -> tuple[int, float]:
     from evaluation.embed import embed
     top = board[:METRIC_K]
@@ -67,67 +70,67 @@ def _df_and_dup(board: list[str]) -> tuple[int, float]:
         metrics3.near_dup_rate(vecs)
 
 
-def diversity_retention(model, vocab, k) -> dict:
-    """(1) student vs teacher distinct-functions + near-dup over Phase-3 scenarios."""
-    scenarios = scengen.load_scenarios()
-    teacher_by_id = {}
-    if PHASE3_BOARDS.exists():
-        for line in PHASE3_BOARDS.read_text().splitlines():
-            if line.strip():
-                r = json.loads(line)
-                if r.get("strategy") == "diverse":
-                    teacher_by_id[r["id"]] = r["board"]
-
-    s_df, s_dup, t_df, t_dup = [], [], [], []
-    distinct_boards: set[tuple] = set()
-    for sc in scenarios:
-        sb = student_board(model, vocab, sc.get("scene", ""), sc.get("transcript", ""), k)
-        distinct_boards.add(tuple(sorted(w.lower() for w in sb[:METRIC_K])))
-        df, dup = _df_and_dup(sb)
-        s_df.append(df)
-        s_dup.append(dup)
-        tb = teacher_by_id.get(sc["id"])
-        if tb:
-            tdf, tdup = _df_and_dup(tb)
-            t_df.append(tdf)
-            t_dup.append(tdup)
-
-    sd, td = float(np.mean(s_df)), float(np.mean(t_df)) if t_df else float("nan")
-    sdup = float(np.mean(s_dup))
-    retention = sd / td if td else float("nan")
-    # Degeneracy guard: a student that emits ONE diverse-looking board for every
-    # context would still score high distinct-functions + low near-dup but be
-    # useless. Report how many DISTINCT top-7 boards it actually produced.
-    board_variety = len(distinct_boards) / len(scenarios) if scenarios else 0.0
-    return {
-        "student_distinct_functions": round(sd, 3),
-        "teacher_distinct_functions": round(td, 3),
-        "retention_ratio": round(retention, 3),
-        "student_near_dup": round(sdup, 4),
-        "teacher_near_dup": round(float(np.mean(t_dup)), 4) if t_dup else None,
-        "distinct_student_boards": len(distinct_boards),
-        "board_variety": round(board_variety, 3),
-        "pass": bool(retention >= 0.90 and sdup <= 0.08),
-        "need": "student distinct-fn >= 90% of teacher AND student near-dup <= 0.08",
-    }
-
-
-def agreement(model, vocab, k) -> dict:
-    """(2) top-7 set-overlap with the teacher on HELD-OUT (test-split) contexts."""
+def _held_out_rows() -> list[dict]:
+    """The test-split rows, with a fingerprint guard so a regenerated source file
+    can't silently shift the partition (would leak train rows into 'held-out')."""
     rows = train_mod.gather_rows()
     splits = json.loads(d.SPLITS_PATH.read_text())
-    test = [i for i in splits.get("test", []) if i < len(rows)]
-    overlaps = []
-    for i in test:
-        r = rows[i]
-        sb = set(w.lower() for w in
-                 student_board(model, vocab, r["scene"], r["transcript"], k)[:METRIC_K])
-        tb = set(w.lower() for w in r["board"][:METRIC_K])
-        if tb:
-            overlaps.append(len(sb & tb) / len(tb))
-    mean = float(np.mean(overlaps)) if overlaps else 0.0
-    return {"set_overlap_top7": round(mean, 3), "n_heldout": len(overlaps),
-            "pass": bool(mean >= 0.70), "need": "top-7 set-overlap >= 0.70"}
+    fp = splits.get("fingerprint")
+    if fp and fp != d.rows_fingerprint(rows):
+        raise SystemExit(
+            "splits.json fingerprint mismatch — teacher data changed since training; "
+            "retrain before evaluating (otherwise the held-out split is not held-out).")
+    return [rows[i] for i in splits.get("test", []) if i < len(rows)]
+
+
+def held_out_eval(model, vocab, k) -> dict:
+    """(1) diversity retention + (2) agreement, BOTH on the held-out test split.
+
+    ① is measured on held-out contexts only — NOT the in-sample Phase-3 set — so the
+    retention number is a generalisation claim, not memorisation. Each held-out row
+    carries its own teacher board, so student vs teacher is apples-to-apples."""
+    held = _held_out_rows()
+    s_df, s_dup, t_df, t_dup, overlaps = [], [], [], [], []
+    distinct_boards: set[tuple] = set()
+    for r in held:
+        sb = student_board(model, vocab, r["scene"], r["transcript"], k)
+        distinct_boards.add(tuple(sorted(w.lower() for w in sb[:METRIC_K])))
+        sdf, sdup = _df_and_dup(sb)
+        tdf, tdup = _df_and_dup(r["board"])
+        s_df.append(sdf); s_dup.append(sdup); t_df.append(tdf); t_dup.append(tdup)
+        sset = set(w.lower() for w in sb[:METRIC_K])
+        tset = set(w.lower() for w in r["board"][:METRIC_K])
+        if tset:
+            overlaps.append(len(sset & tset) / len(tset))
+
+    n = len(held)
+    sd = float(np.mean(s_df)) if s_df else 0.0
+    td = float(np.mean(t_df)) if t_df else float("nan")
+    sdup = float(np.mean(s_dup)) if s_dup else 0.0
+    retention = sd / td if td else float("nan")
+    variety = len(distinct_boards) / n if n else 0.0
+    overlap = float(np.mean(overlaps)) if overlaps else 0.0
+
+    diversity_pass = bool(retention >= 0.90 and sdup <= 0.08
+                          and variety >= BOARD_VARIETY_FLOOR)
+    return {
+        "diversity_retention": {
+            "n_heldout": n,
+            "student_distinct_functions": round(sd, 3),
+            "teacher_distinct_functions": round(td, 3),
+            "retention_ratio": round(retention, 3),
+            "student_near_dup": round(sdup, 4),
+            "teacher_near_dup": round(float(np.mean(t_dup)), 4) if t_dup else None,
+            "distinct_student_boards": len(distinct_boards),
+            "board_variety": round(variety, 3),
+            "pass": diversity_pass,
+            "need": (f"HELD-OUT: distinct-fn >= 90% of teacher AND near-dup <= 0.08 "
+                     f"AND board-variety >= {BOARD_VARIETY_FLOOR}"),
+        },
+        "agreement": {
+            "set_overlap_top7": round(overlap, 3), "n_heldout": len(overlaps),
+            "pass": bool(overlap >= 0.70), "need": "HELD-OUT: top-7 set-overlap >= 0.70"},
+    }
 
 
 def speedup(model, vocab, k, teacher_samples: int) -> dict:
@@ -162,11 +165,16 @@ def speedup(model, vocab, k, teacher_samples: int) -> dict:
             note = f"teacher latency unmeasured ({e})"
     teacher_s = float(np.median(t_times)) if t_times else float("nan")
     ratio = (teacher_s * 1000 / student_ms) if (t_times and student_ms) else float("nan")
+    t_iqr = ([round(float(np.percentile(t_times, 25)), 2),
+              round(float(np.percentile(t_times, 75)), 2)] if t_times else None)
     return {
         "student_latency_ms": round(student_ms, 3),
+        "student_latency_iqr_ms": [round(float(np.percentile(s_times, 25)) * 1000, 2),
+                                   round(float(np.percentile(s_times, 75)) * 1000, 2)],
         "teacher_latency_s": round(teacher_s, 2) if t_times else None,
+        "teacher_latency_iqr_s": t_iqr,
         "speedup_x": round(ratio, 1) if t_times else None,
-        "teacher_samples": len(t_times), "note": note,
+        "teacher_samples": len(t_times), "student_samples": len(s_times), "note": note,
         "pass": bool(t_times and ratio >= 10.0),
         "need": "student >= 10x faster than teacher",
     }
@@ -182,19 +190,22 @@ def write_report(res: dict) -> None:
         f"student rows={res['meta']['n_rows']} vocab={res['meta']['vocab']} "
         f"config_hash={res['meta']['config_hash']}",
         "",
-        "## The three numbers",
+        f"## The three numbers (① and ② on the HELD-OUT split, n={g1['n_heldout']})",
         "",
         "| # | metric | student | teacher | bar | verdict |",
         "|---|--------|---------|---------|-----|---------|",
-        f"| ① | distinct-functions@7 | {g1['student_distinct_functions']} | "
+        f"| ① | distinct-functions@7 (held-out) | {g1['student_distinct_functions']} | "
         f"{g1['teacher_distinct_functions']} | ≥90% retention | "
-        f"{'PASS' if g1['pass'] else 'FAIL'} (ret {g1['retention_ratio']}) |",
-        f"| ① | near-duplicate rate | {g1['student_near_dup']} | "
+        f"{'PASS' if g1['retention_ratio'] >= 0.90 else 'FAIL'} (ret {g1['retention_ratio']}) |",
+        f"| ① | near-duplicate rate (held-out) | {g1['student_near_dup']} | "
         f"{g1['teacher_near_dup']} | ≤0.08 | "
         f"{'PASS' if g1['student_near_dup'] <= 0.08 else 'FAIL'} |",
-        f"| ① | distinct student boards (degeneracy guard) | "
-        f"{g1.get('distinct_student_boards')} distinct "
-        f"(variety {g1.get('board_variety')}) | — | not a global constant | — |",
+        f"| ① | board-variety (degeneracy guard) | "
+        f"{g1.get('distinct_student_boards')} distinct of {g1['n_heldout']} "
+        f"(variety {g1.get('board_variety')}) | — | ≥{BOARD_VARIETY_FLOOR} | "
+        f"{'PASS' if g1.get('board_variety', 0) >= BOARD_VARIETY_FLOOR else 'FAIL'} |",
+        f"| ① | **combined** | — | — | all three above | "
+        f"**{'PASS' if g1['pass'] else 'FAIL'}** |",
         f"| ② | top-7 set-overlap (held-out) | {g2['set_overlap_top7']} | — | ≥0.70 | "
         f"{'PASS' if g2['pass'] else 'FAIL'} (n={g2['n_heldout']}) |",
         f"| ③ | speedup | {g3['student_latency_ms']} ms | "
@@ -242,11 +253,12 @@ def main() -> int:
     ck = torch.load(CKPT, map_location="cpu", weights_only=False)
     model, vocab = load_student()
 
+    held = held_out_eval(model, vocab, k)
     res = {
         "meta": {"n_rows": ck.get("n_rows"), "vocab": ck.get("vocab_size"),
                  "config_hash": ck.get("config_hash")},
-        "diversity_retention": diversity_retention(model, vocab, k),
-        "agreement": agreement(model, vocab, k),
+        "diversity_retention": held["diversity_retention"],
+        "agreement": held["agreement"],
         "speedup": speedup(model, vocab, k, args.teacher_samples),
     }
     (HERE / "phase4_results.json").write_text(json.dumps(res, indent=2))
