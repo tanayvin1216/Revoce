@@ -84,14 +84,12 @@ def _v2_scenarios() -> list[dict]:
 
 
 def build_scenarios(target: int) -> list[dict]:
-    """Diverse, NEW contexts for distillation. Leads with the workflow-authored v2
-    corpus (10 domains) + the Phase-1 real turns — both genuinely varied, which is
-    the collapse-breaker. The Phase-3 curated 120 are EXCLUDED (already cached in
-    boards.jsonl and near-homogeneous); filler-expanded variants only top up."""
-    out = _v2_scenarios() + _phase1_scenarios()
-    seen = {(r["scene"], r["transcript"]) for r in out}
-    seen |= {(r.get("scene", ""), r.get("transcript", ""))
-             for r in scengen.load_scenarios()}   # don't re-emit Phase-3 contexts
+    """ALL training contexts, regenerated fresh with the current seam prompt:
+    Phase-3 curated (incl. the photosynthesis classroom case) + workflow-authored v2
+    (10 domains) + Phase-1 real turns, topped up with filler variants. Phase-3 is
+    included now (not excluded) so the answer-mode prompt fix reaches every context."""
+    out = scengen.load_scenarios() + _v2_scenarios() + _phase1_scenarios()
+    seen = {(r.get("scene", ""), r.get("transcript", "")) for r in out}
     for r in _expanded_phase3(max(0, target - len(out)) + 50):
         key = (r["scene"], r["transcript"])
         if key not in seen:
