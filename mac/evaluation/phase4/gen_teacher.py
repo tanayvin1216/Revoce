@@ -76,10 +76,17 @@ def _expanded_phase3(target_extra: int) -> list[dict]:
 
 
 def build_scenarios(target: int) -> list[dict]:
-    base = scengen.load_scenarios() + _phase1_scenarios()
-    seen = {(r["scene"], r["transcript"]) for r in base}
-    out = list(base)
-    for r in _expanded_phase3(max(0, target - len(base)) + 50):
+    """Only NEW, varied contexts. The Phase-3 curated 120 are deliberately EXCLUDED:
+    their teacher boards already live in phase3/boards.jsonl and training reads them
+    straight from there, so regenerating them is pure waste — worse, they are
+    near-homogeneous (name-only changes) and bias the student toward one global
+    board. We lead with the Phase-1 real AAC turns (genuine context variety, the
+    collapse-breaker) and only then top up with filler-expanded variants."""
+    out = _phase1_scenarios()
+    seen = {(r["scene"], r["transcript"]) for r in out}
+    seen |= {(r.get("scene", ""), r.get("transcript", ""))
+             for r in scengen.load_scenarios()}   # don't re-emit Phase-3 contexts
+    for r in _expanded_phase3(max(0, target - len(out)) + 50):
         key = (r["scene"], r["transcript"])
         if key not in seen:
             seen.add(key)

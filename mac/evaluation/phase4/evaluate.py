@@ -79,8 +79,10 @@ def diversity_retention(model, vocab, k) -> dict:
                     teacher_by_id[r["id"]] = r["board"]
 
     s_df, s_dup, t_df, t_dup = [], [], [], []
+    distinct_boards: set[tuple] = set()
     for sc in scenarios:
         sb = student_board(model, vocab, sc.get("scene", ""), sc.get("transcript", ""), k)
+        distinct_boards.add(tuple(sorted(w.lower() for w in sb[:METRIC_K])))
         df, dup = _df_and_dup(sb)
         s_df.append(df)
         s_dup.append(dup)
@@ -93,12 +95,18 @@ def diversity_retention(model, vocab, k) -> dict:
     sd, td = float(np.mean(s_df)), float(np.mean(t_df)) if t_df else float("nan")
     sdup = float(np.mean(s_dup))
     retention = sd / td if td else float("nan")
+    # Degeneracy guard: a student that emits ONE diverse-looking board for every
+    # context would still score high distinct-functions + low near-dup but be
+    # useless. Report how many DISTINCT top-7 boards it actually produced.
+    board_variety = len(distinct_boards) / len(scenarios) if scenarios else 0.0
     return {
         "student_distinct_functions": round(sd, 3),
         "teacher_distinct_functions": round(td, 3),
         "retention_ratio": round(retention, 3),
         "student_near_dup": round(sdup, 4),
         "teacher_near_dup": round(float(np.mean(t_dup)), 4) if t_dup else None,
+        "distinct_student_boards": len(distinct_boards),
+        "board_variety": round(board_variety, 3),
         "pass": bool(retention >= 0.90 and sdup <= 0.08),
         "need": "student distinct-fn >= 90% of teacher AND student near-dup <= 0.08",
     }
@@ -184,6 +192,9 @@ def write_report(res: dict) -> None:
         f"| ① | near-duplicate rate | {g1['student_near_dup']} | "
         f"{g1['teacher_near_dup']} | ≤0.08 | "
         f"{'PASS' if g1['student_near_dup'] <= 0.08 else 'FAIL'} |",
+        f"| ① | distinct student boards (degeneracy guard) | "
+        f"{g1.get('distinct_student_boards')} distinct "
+        f"(variety {g1.get('board_variety')}) | — | not a global constant | — |",
         f"| ② | top-7 set-overlap (held-out) | {g2['set_overlap_top7']} | — | ≥0.70 | "
         f"{'PASS' if g2['pass'] else 'FAIL'} (n={g2['n_heldout']}) |",
         f"| ③ | speedup | {g3['student_latency_ms']} ms | "
