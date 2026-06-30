@@ -11,6 +11,7 @@ student sees the world in the same space its teacher's selection was scored in.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -114,6 +115,14 @@ def split_indices(n: int, val_frac: float, test_frac: float, seed: int) -> dict:
     val = perm[n_test:n_test + n_val]
     train = perm[n_test + n_val:]
     return {"train": train, "val": val, "test": test}
+
+
+def rows_fingerprint(rows: list[dict]) -> str:
+    """Hash of the ORDERED context texts. Stored with the split so evaluate.py can
+    detect if gather_rows() drifted (a regenerated source file) and refuse to score
+    against a stale partition — preventing silent train/test leakage."""
+    blob = "\n".join(context_text(r) for r in rows)
+    return hashlib.sha256(blob.encode()).hexdigest()[:16]
 
 
 def save_splits(splits: dict, path: Path = SPLITS_PATH) -> None:

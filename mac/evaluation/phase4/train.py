@@ -92,6 +92,7 @@ def train() -> dict:
     X, Y = d.make_xy(rows, word2idx)
     splits = d.split_indices(len(rows), cfg["train"]["val_frac"],
                              cfg["train"]["test_frac"], cfg["seed"])
+    splits["fingerprint"] = d.rows_fingerprint(rows)   # guards against stale re-gather
     d.save_splits(splits)
 
     Xt = torch.from_numpy(X)
