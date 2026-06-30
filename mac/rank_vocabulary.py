@@ -23,9 +23,17 @@ Symbols are resolved from a locally-cached ARASAAC pictogram set.
 
 from __future__ import annotations
 
+import re
 from typing import Optional, TypedDict
 
 BOARD_SIZE = 7  # the device shows this many tappable phrases at once
+
+# The safety words that MUST always reach the board, in this fixed order. They
+# are deliberately 4 DISTINCT communication functions (yes=comment, no=reject,
+# "I need help"=request, wait=direct-attention), so pinning them into every
+# board makes "never mode-collapsed" structurally true even when the LLM
+# collapses onto one idea. These are pinned in select_board().
+GUARANTEED_CORE: list[str] = ["yes", "no", "I need help", "wait"]
 
 
 class RankedWord(TypedDict):
@@ -322,6 +330,45 @@ def generate_pool(
     return pool
 
 
+# Words too generic to be a useful "topic in play" for the diverse prompt.
+_TOPIC_STOPWORDS = frozenset({
+    "the", "and", "with", "that", "this", "they", "them", "their", "there",
+    "here", "have", "has", "had", "are", "was", "were", "will", "would",
+    "your", "you", "yours", "what", "when", "where", "which", "who", "whom",
+    "about", "into", "from", "then", "than", "some", "just", "like", "want",
+    "need", "going", "gonna", "okay", "yeah", "right", "really", "very",
+    "user", "scene", "none", "available", "said", "say", "says", "talking",
+})
+
+
+def topics_from_context(
+    scene: Optional[str],
+    transcript: Optional[str],
+    context: Optional[dict] = None,
+    max_topics: int = 6,
+) -> list[str]:
+    """Cheap, model-free salient-term extraction for the diverse prompt's topic
+    slots. Pulls distinct content words from scene + transcript + last utterance.
+
+    Pure and deterministic — NOT a model call (the server passes the result into
+    rank_vocabulary's `topics=`; it must never block the audio path).
+    """
+    ctx = context or {}
+    text = " ".join(
+        s for s in (scene, transcript, ctx.get("last_utterance")) if s
+    )
+    topics: list[str] = []
+    seen: set[str] = set()
+    for tok in re.findall(r"[A-Za-z][A-Za-z'-]+", text.lower()):
+        if len(tok) < 4 or tok in _TOPIC_STOPWORDS or tok in seen:
+            continue
+        seen.add(tok)
+        topics.append(tok)
+        if len(topics) >= max_topics:
+            break
+    return topics
+
+
 def _to_ranked(items: list[dict]) -> list[RankedWord]:
     """Resolve symbol keywords to pictogram paths / emoji."""
     from symbol_map import resolve_symbol, EMOJI_FALLBACK
@@ -334,6 +381,43 @@ def _to_ranked(items: list[dict]) -> list[RankedWord]:
     return out
 
 
+def _split_core(pool: list[dict]) -> tuple[list[int], list[int]]:
+    """Partition pool indices into (pinned core, everything else).
+
+    Core indices are returned in GUARANTEED_CORE order so the safety strip is
+    deterministic; every other item (including non-guaranteed core words like
+    "I don't know") goes to the rest, which MMR selects from.
+    """
+    rank_of = {w.lower(): r for r, w in enumerate(GUARANTEED_CORE)}
+    core_by_rank: dict[int, int] = {}
+    rest: list[int] = []
+    for idx, p in enumerate(pool):
+        r = rank_of.get(str(p.get("word", "")).lower())
+        if r is not None and r not in core_by_rank:
+            core_by_rank[r] = idx
+        else:
+            rest.append(idx)
+    core_idx = [core_by_rank[r] for r in sorted(core_by_rank)]
+    return core_idx, rest
+
+
+def _pad_to_k(items: list[RankedWord], k: int) -> list[RankedWord]:
+    """Guarantee EXACTLY k items: truncate if long, top up from stubs if short.
+
+    Ensures the board is never empty and never under-fills the device, no matter
+    how badly generation degraded.
+    """
+    out = list(items[:k])
+    seen = {it["word"].lower() for it in out}
+    for stub in _STUB_WORDS:
+        if len(out) >= k:
+            break
+        if stub["word"].lower() not in seen:
+            out.append(stub)
+            seen.add(stub["word"].lower())
+    return out[:k]
+
+
 def select_board(
     pool: list[dict],
     scene: Optional[str],
@@ -342,26 +426,38 @@ def select_board(
     k: int = BOARD_SIZE,
     lam: float = 0.6,
 ) -> list[RankedWord]:
-    """Pick k diverse, situation-relevant items from the pool (the cheap half).
+    """Pick exactly k items: PIN the core safety words, MMR-fill the rest.
 
-    Uses MMR over MiniLM embeddings. If embeddings are unavailable, falls back
-    to function-coverage ordering (still diverse). Pure-python, sub-millisecond.
+    Two structural guarantees the board cannot lose:
+      1. The GUARANTEED_CORE safety words are always present (pinned first).
+      2. The result is always exactly k items (padded from stubs if short).
+    The remaining slots are filled by MMR over MiniLM embeddings for coverage;
+    if embeddings are unavailable it falls back to function-coverage ordering
+    (still diverse). Pure-python after the one pool-generation call.
     """
     if not pool:
-        return list(_STUB_WORDS)[:k]
-    words = [p["word"] for p in pool]
-    functions = [p.get("function", "") for p in pool]
+        return _pad_to_k([], k)
 
-    try:
-        from evaluation.embed import embed
-        from selection import build_query_vector, mmr_select
-        cand_vecs = embed(words)
-        query = build_query_vector(embed, scene, transcript, context)
-        idx = mmr_select(cand_vecs, query, k, lam, functions)
-    except Exception:
-        idx = _function_coverage_order(functions, k)
+    core_idx, rest_idx = _split_core(pool)
+    pinned = core_idx[:k]
+    remaining = k - len(pinned)
 
-    return _to_ranked([pool[i] for i in idx])
+    chosen_rest: list[int] = []
+    if remaining > 0 and rest_idx:
+        rest_words = [pool[i]["word"] for i in rest_idx]
+        rest_functions = [pool[i].get("function", "") for i in rest_idx]
+        try:
+            from evaluation.embed import embed
+            from selection import build_query_vector, mmr_select
+            cand_vecs = embed(rest_words)
+            query = build_query_vector(embed, scene, transcript, context)
+            sel = mmr_select(cand_vecs, query, remaining, lam, rest_functions)
+        except Exception:
+            sel = _function_coverage_order(rest_functions, remaining)
+        chosen_rest = [rest_idx[s] for s in sel]
+
+    ordered = pinned + chosen_rest
+    return _pad_to_k(_to_ranked([pool[i] for i in ordered]), k)
 
 
 def _function_coverage_order(functions: list[str], k: int) -> list[int]:
