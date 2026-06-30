@@ -203,11 +203,16 @@ def test_topics_from_context_handles_empty_inputs():
 
 def test_is_question_detection():
     from rank_vocabulary import _is_question
+    # direct/console call: the transcript is the question
     assert _is_question("How do plants make sugar?", {})
-    assert _is_question(None, {"last_utterance": "Do you want water"})
-    assert _is_question("are you cold", {})
+    assert _is_question("are you cold?", {})
+    # live path: the held active_question is the question
+    assert _is_question(None, {"active_question": "Do you want water?"})
+    # not questions
     assert not _is_question("the sky is blue today", {})
     assert not _is_question(None, None)
+    # a cleared/expired held question must not register as a question (H1/H2)
+    assert not _is_question(None, {"active_question": None, "last_utterance": "Do you want water?"})
 
 
 def test_answer_mode_surfaces_direct_answers_for_a_question(fast_embed):
@@ -243,3 +248,110 @@ def test_non_question_is_unaffected_by_answer_mode(fast_embed):
     assert len(board) == BOARD_SIZE
     for core in GUARANTEED_CORE:
         assert core.lower() in _words(board)
+
+
+# --- the question drives the board; the scene is only background -------------
+
+def test_current_question_uses_held_question_only_on_live_path():
+    from rank_vocabulary import _current_question
+    # live path (active_question key present): only the held question counts
+    ctx = {"active_question": "Where do I sit?", "last_utterance": "anyway it's late"}
+    assert _current_question(None, ctx) == "Where do I sit?"
+    # cleared/expired held question must NOT resurrect from last_utterance (H1/H2)
+    assert _current_question(None, {"active_question": None, "last_utterance": "Do you want water?"}) == ""
+    # direct/console call (no active_question key): the transcript is the question
+    assert _current_question("typed question?", {}) == "typed question?"
+
+
+def test_query_ignores_rolling_chatter_when_a_question_is_held():
+    """H4: with a held question, later chatter in the transcript must not dilute
+    the query signal."""
+    import numpy as np
+    from selection import build_query_vector
+
+    def embed(texts):
+        out = []
+        for t in texts:
+            v = np.zeros(384, dtype=np.float32)
+            if "QWORD" in t:
+                v[0] = 1.0
+            if "CHATTER" in t:
+                v[2] = 1.0
+            n = np.linalg.norm(v)
+            out.append(v / n if n else v)
+        return np.array(out, dtype=np.float32)
+
+    q = build_query_vector(embed, "a scene", "CHATTER CHATTER late", {"active_question": "QWORD"})
+    assert q[0] > 0 and q[2] == 0, "query must be the held question, not the chatter"
+
+
+def test_only_genuine_questions_are_held():
+    from perception.audio_worker import is_question_to_user
+    assert is_question_to_user("Where do I sit?")
+    assert is_question_to_user("how are you")          # wh-word opener
+    assert not is_question_to_user("you want some water")   # second-person, not a question
+    assert not is_question_to_user("ready to go")
+    assert not is_question_to_user("")
+
+
+def test_answer_block_centers_the_question_over_the_scene():
+    from rank_vocabulary import _answer_block
+    block = _answer_block("Where were you supposed to sit?")
+    assert "Where were you supposed to sit?" in block
+    assert "ANSWER THIS QUESTION" in block
+    assert "FOLLOW THE QUESTION" in block
+
+
+def test_query_weights_favor_the_question_over_the_scene():
+    """The query vector must lean toward the question, not the scene, so a vivid
+    scene can't hijack relevance ranking."""
+    import numpy as np
+    from selection import build_query_vector
+
+    def embed(texts):
+        out = []
+        for t in texts:
+            v = np.zeros(384, dtype=np.float32)
+            if "QWORD" in t:
+                v[0] = 1.0          # question axis
+            if "SWORD" in t:
+                v[1] = 1.0          # scene axis
+            n = np.linalg.norm(v)
+            out.append(v / n if n else v)
+        return np.array(out, dtype=np.float32)
+
+    q = build_query_vector(embed, "SWORD a busy scene", "QWORD the question", {})
+    assert q[0] > q[1], "question axis must outweigh scene axis in the query"
+
+
+# --- active-question hold: ContextState ---------------------------------------
+
+def test_active_question_held_across_later_chatter():
+    from context_state import ContextState
+    cs = ContextState()
+    # an addressed question lands
+    cs.update_audio(last_utterance="Where do I sit?", addressed=True)
+    cs.set_active_question("Where do I sit?")
+    # later, non-addressed chatter overwrites last_utterance...
+    cs.update_audio(last_utterance="anyway, it's getting late", addressed=False)
+    _, _, ctx = cs.snapshot()
+    assert ctx["last_utterance"] == "anyway, it's getting late"
+    assert ctx["active_question"] == "Where do I sit?"   # ...but the question is held
+
+
+def test_active_question_clears_on_answer():
+    from context_state import ContextState
+    cs = ContextState()
+    cs.set_active_question("Where do I sit?")
+    cs.clear_active_question()
+    _, _, ctx = cs.snapshot()
+    assert ctx["active_question"] is None
+
+
+def test_active_question_expires_after_ttl(monkeypatch):
+    import context_state
+    monkeypatch.setattr(context_state, "ACTIVE_QUESTION_TTL_S", -1.0)  # everything is stale
+    cs = context_state.ContextState()
+    cs.set_active_question("Where do I sit?")
+    _, _, ctx = cs.snapshot()
+    assert ctx["active_question"] is None

@@ -36,6 +36,18 @@ def classify_speaker(rms: float, result: TranscriptionResult, partner_rms_thresh
     return "partner" if rms >= partner_rms_threshold else "other"
 
 
+def is_question_to_user(utterance: str) -> bool:
+    """A genuine question (ends with '?' or opens with a wh-word). Only these are
+    HELD as the active question; broader second-person prompts still trigger a
+    board via is_addressed but aren't pinned as the question to answer."""
+    u = (utterance or "").strip().lower().rstrip(".!")
+    if not u:
+        return False
+    if u.endswith("?"):
+        return True
+    return (u.split()[0] if u.split() else "") in _WH
+
+
 def is_addressed(utterance: str, speaker: str) -> bool:
     """True when the partner just said something aimed at the user that likely
     wants a response (a question or a second-person prompt). Heuristic v1."""
@@ -126,4 +138,9 @@ class AudioWorker(threading.Thread):
             speaker=speaker,
             addressed=addressed,
         )
+        # Hold a genuine addressed QUESTION as the active question — so later
+        # ambient chatter (which overwrites last_utterance) can't pull the board
+        # off it. Non-question prompts still trigger a board but aren't pinned.
+        if addressed and is_question_to_user(text):
+            self._ctx.set_active_question(text)
         print(f"[audio] {speaker:<7} addressed={str(addressed):<5} «{text}»")
