@@ -593,6 +593,51 @@ def _function_coverage_order(functions: list[str], k: int) -> list[int]:
     return order
 
 
+# ---------------------------------------------------------------------------
+# STUDENT strategy (Phase 4) — the distilled MLP REPLACES the LLM pool-gen.
+# Same seam, swapped inference backend: it scores a fixed dynamic vocabulary from
+# the context embedding (~8 ms) and assembles core + dynamic, instead of a ~9 s
+# LLM pool-gen. Loaded lazily so the seam stays importable without torch.
+# ---------------------------------------------------------------------------
+_student_singleton = None
+
+
+def _load_student():
+    global _student_singleton
+    if _student_singleton is None:
+        import json
+        from pathlib import Path
+
+        import torch
+        base = Path(__file__).resolve().parent / "evaluation" / "phase4"
+        ck = torch.load(base / "student.pt", map_location="cpu", weights_only=False)
+        from evaluation.phase4.student import StudentRanker
+        model = StudentRanker(ck["context_dim"], ck["hidden_dim"],
+                              ck["vocab_size"], ck["dropout"])
+        model.load_state_dict(ck["state_dict"])
+        model.eval()
+        vocab = json.loads((base / "vocab.json").read_text())
+        _student_singleton = (model, vocab, ck["guaranteed_core"], ck["k_dyn"])
+    return _student_singleton
+
+
+def _student_board(scene, transcript, context, k) -> list[RankedWord]:
+    """One board from the distilled student (no LLM). Returns [] on any failure
+    so the caller can fall back to the diverse path and never strand the user."""
+    try:
+        import torch
+        from evaluation.phase4 import data as d
+        model, vocab, core, k_dyn = _load_student()
+        is_q = _is_question(transcript, context)
+        feat = torch.from_numpy(
+            d.row_features(scene or "", transcript or "", is_q)).unsqueeze(0)
+        idxs = model.board_indices(feat, k_dyn)
+        words = d.assemble_board(core, [vocab[i] for i in idxs], k)
+        return _to_ranked([{"word": w, "symbol_keyword": w.lower()} for w in words])
+    except Exception:
+        return []
+
+
 def rank_vocabulary(
     scene: Optional[str] = None,
     transcript: Optional[str] = None,
@@ -621,6 +666,15 @@ def rank_vocabulary(
     from symbol_map import resolve_symbol, EMOJI_FALLBACK
 
     ctx = context or {}
+
+    # STUDENT strategy: the distilled MLP (no LLM). Falls back to diverse if the
+    # trained student artifacts are missing, so the board is never empty.
+    if strategy == "student":
+        board = _student_board(scene, transcript, ctx, k)
+        if board:
+            return board
+        pool = generate_pool(scene, transcript, ctx, ranker=ranker, topics=topics)
+        return select_board(pool, scene, transcript, ctx, k=k, lam=lam)
 
     # DIVERSE strategy: over-generate a wide pool, then MMR-select for coverage.
     if strategy == "diverse":

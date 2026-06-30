@@ -219,7 +219,11 @@ async def _run_console_payload(state: dict, payload: dict, image_bytes: bytes | 
     }
 
     capture_ranker = _CaptureRanker(state["ranker"])
-    strategy = state.get("board_strategy", "diverse")
+    # The console may pick the strategy per run (so you can compare student vs
+    # diverse live); otherwise fall back to the server default.
+    requested = str(payload.get("strategy") or "").strip()
+    strategy = requested if requested in ("diverse", "topk", "student") \
+        else state.get("board_strategy", "diverse")
     topics = topics_from_context(scene, transcript, context)
     start = time.perf_counter()
     board = await asyncio.to_thread(
@@ -518,7 +522,8 @@ async def on_startup(app: web.Application) -> None:
 
     # Server board strategy (config-flagged; "diverse" by default, "topk" fallback).
     strategy = getattr(ranker_config, "BOARD_STRATEGY", "diverse")
-    app["state"]["board_strategy"] = strategy if strategy in ("diverse", "topk") else "diverse"
+    app["state"]["board_strategy"] = (
+        strategy if strategy in ("diverse", "topk", "student") else "diverse")
     print(f"[server] board strategy: {app['state']['board_strategy']}")
 
     # Perception: shared context state + concurrent workers

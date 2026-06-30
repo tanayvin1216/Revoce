@@ -290,6 +290,13 @@
       <label for="profile">Profile</label>
       <select id="profile"></select>
 
+      <label for="strategy">Ranking backend</label>
+      <select id="strategy">
+        <option value="diverse">diverse — LLM pool + MMR (~9s)</option>
+        <option value="student">student — distilled MLP (~8ms)</option>
+        <option value="topk">topk — single-shot LLM</option>
+      </select>
+
       <label for="scenario">Scripted scenario</label>
       <select id="scenario"></select>
       <button class="secondary" id="loadScenario">Load scenario</button>
@@ -339,6 +346,7 @@
     const sceneEl = document.getElementById("scene");
     const transcriptEl = document.getElementById("transcript");
     const profileEl = document.getElementById("profile");
+    const strategyEl = document.getElementById("strategy");
     const scenarioEl = document.getElementById("scenario");
     const loadScenarioBtn = document.getElementById("loadScenario");
     const fakeDeviceEl = document.getElementById("fakeDevice");
@@ -464,6 +472,7 @@
           fd.append("scene", sceneEl.value);
           fd.append("transcript", transcriptEl.value);
           fd.append("profile_name", profileEl.value);
+          fd.append("strategy", strategyEl.value);
           res = await fetch("/api/console/run", { method: "POST", body: fd });
         } else {
           res = await fetch("/api/console/run", {
@@ -473,6 +482,7 @@
               scene: sceneEl.value,
               transcript: transcriptEl.value,
               profile_name: profileEl.value,
+              strategy: strategyEl.value,
             }),
           });
         }
