@@ -26,7 +26,9 @@ from __future__ import annotations
 import re
 from typing import Optional, TypedDict
 
-BOARD_SIZE = 7  # the device shows this many tappable phrases at once
+BOARD_SIZE = 10  # the device shows this many tappable phrases at once
+# 10 (not 7) so the 4 pinned core safety words don't crowd out real content:
+# 4 core + 6 dynamic leaves real room for situation-specific vocabulary/answers.
 
 # The safety words that MUST always reach the board, in this fixed order. They
 # are deliberately 4 DISTINCT communication functions (yes=comment, no=reject,
@@ -269,6 +271,38 @@ def _speakable(word: str) -> bool:
     return True
 
 
+_QUESTION_STARTERS = (
+    "how ", "what ", "what's", "where ", "when ", "why ", "who ", "which ",
+    "do you", "does ", "did you", "can you", "could you", "would you",
+    "will you", "are you", "is there", "is it", "have you", "tell me",
+)
+
+
+def _is_question(transcript: Optional[str], context: Optional[dict]) -> bool:
+    """True when the partner just put a question TO the user (a question mark, or
+    an interrogative opener). Drives answer-mode in generate_pool."""
+    ctx = context or {}
+    text = " ".join(
+        s for s in (ctx.get("last_utterance"), transcript) if s
+    ).strip().lower()
+    if not text:
+        return False
+    return "?" in text or text.startswith(_QUESTION_STARTERS)
+
+
+# Appended to the diverse prompt ONLY when the user is being asked a question.
+# Forces real candidate answers (the photosynthesis failure mode) instead of the
+# model's default deflections ("can you explain...").
+_ANSWER_BLOCK = """
+
+The person just asked the user a QUESTION. IN ADDITION to the moves above, add 5
+phrases that are DIRECT ANSWERS the user could give to THAT exact question: each a
+short first-person reply or a single concrete concept (1 to 4 words), tagged
+{"function": "answer", "topic": "answer"}. Give real candidate answers — including
+specific facts or objects when the question is factual — NOT "I don't know" and
+NOT "can you explain". Add these to the same JSON array."""
+
+
 def generate_pool(
     scene: Optional[str],
     transcript: Optional[str],
@@ -296,6 +330,8 @@ def generate_pool(
         topics=", ".join(topics or []) or "none",
         people=people,
     )
+    if _is_question(transcript, ctx):
+        user_prompt += _ANSWER_BLOCK
 
     r = ranker if ranker is not None else _default_ranker()
     try:
@@ -418,6 +454,53 @@ def _pad_to_k(items: list[RankedWord], k: int) -> list[RankedWord]:
     return out[:k]
 
 
+def _select_dynamic(
+    pool: list[dict],
+    rest_idx: list[int],
+    scene: Optional[str],
+    transcript: Optional[str],
+    context: Optional[dict],
+    n: int,
+    lam: float,
+) -> list[int]:
+    """Choose n non-core items for the board.
+
+    ANSWER-MODE: if the pool carries answer candidates (function == "answer",
+    emitted only when the partner asked the user a question), surface the most
+    situation-relevant answers FIRST — reserving up to n-1 slots so at least one
+    diverse slot remains — then MMR-fill the rest for breadth. With no answer
+    candidates this is exactly the old pure-MMR behavior.
+    """
+    if n <= 0 or not rest_idx:
+        return []
+    functions = [pool[i].get("function", "") for i in rest_idx]
+    answer_pos = [p for p, f in enumerate(functions) if f == "answer"]
+    quota = min(len(answer_pos), max(n - 1, 1)) if answer_pos else 0
+
+    ranked_answers = list(answer_pos)
+    mmr_order = list(range(len(rest_idx)))
+    try:
+        import numpy as np
+        from evaluation.embed import embed
+        from selection import build_query_vector, mmr_select
+        cand_vecs = embed([pool[i]["word"] for i in rest_idx])
+        query = build_query_vector(embed, scene, transcript, context)
+        if answer_pos and query is not None and np.linalg.norm(query) > 0:
+            rel = cand_vecs @ query
+            ranked_answers = sorted(answer_pos, key=lambda p: float(rel[p]), reverse=True)
+        mmr_order = mmr_select(cand_vecs, query, len(rest_idx), lam, functions)
+    except Exception:
+        mmr_order = _function_coverage_order(functions, len(rest_idx))
+
+    chosen: list[int] = ranked_answers[:quota]
+    for p in mmr_order:
+        if len(chosen) >= n:
+            break
+        if p not in chosen:
+            chosen.append(p)
+    return [rest_idx[p] for p in chosen[:n]]
+
+
 def select_board(
     pool: list[dict],
     scene: Optional[str],
@@ -441,20 +524,7 @@ def select_board(
     core_idx, rest_idx = _split_core(pool)
     pinned = core_idx[:k]
     remaining = k - len(pinned)
-
-    chosen_rest: list[int] = []
-    if remaining > 0 and rest_idx:
-        rest_words = [pool[i]["word"] for i in rest_idx]
-        rest_functions = [pool[i].get("function", "") for i in rest_idx]
-        try:
-            from evaluation.embed import embed
-            from selection import build_query_vector, mmr_select
-            cand_vecs = embed(rest_words)
-            query = build_query_vector(embed, scene, transcript, context)
-            sel = mmr_select(cand_vecs, query, remaining, lam, rest_functions)
-        except Exception:
-            sel = _function_coverage_order(rest_functions, remaining)
-        chosen_rest = [rest_idx[s] for s in sel]
+    chosen_rest = _select_dynamic(pool, rest_idx, scene, transcript, context, remaining, lam)
 
     ordered = pinned + chosen_rest
     return _pad_to_k(_to_ranked([pool[i] for i in ordered]), k)
