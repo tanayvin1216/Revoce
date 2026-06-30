@@ -72,6 +72,9 @@ HEARTBEAT_INTERVAL_S = 30.0  # slow liveness push when no trigger fires
 
 PROFILE_PATH = Path(__file__).parent / "personal_context.json"
 SAMPLE_PROFILE_PATH = Path(__file__).parent / "personal_context.sample.json"
+# Console image uploads: lift aiohttp's 1 MB default so real phone photos fit.
+# The VLM downscales past 768px anyway, so this only bounds the upload itself.
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 # ----------------------------------------------------------------------------
 
 
@@ -172,9 +175,37 @@ def _profile_for_name(name: str | None, fallback: dict | None = None) -> dict:
     return fallback or profiles[0]["profile"]
 
 
-async def _run_console_payload(state: dict, payload: dict) -> dict:
-    scene = str(payload.get("scene") or "").strip() or None
+async def _get_scene_describer(state: dict):
+    """Lazily build ONE real VLM scene describer for the console image route.
+
+    Built on first image use (off the event loop) so text-only console runs never
+    pay for the VLM load. Independent of perception, so the console is a complete
+    standalone simulator: image -> real VLM -> seam -> board.
+    """
+    if state.get("scene_describer") is None:
+        import perception.config as perception_config
+        from perception.scene_describer import make_scene_describer
+        state["scene_describer"] = await asyncio.to_thread(
+            make_scene_describer, perception_config
+        )
+    return state["scene_describer"]
+
+
+async def _run_console_payload(state: dict, payload: dict, image_bytes: bytes | None = None) -> dict:
     transcript = str(payload.get("transcript") or "").strip() or None
+
+    # When an image is supplied, the REAL VLM produces the scene (the full
+    # pipeline). Otherwise the scene comes from the typed text (seam-only).
+    vlm_ms = 0.0
+    if image_bytes:
+        describer = await _get_scene_describer(state)
+        vlm_start = time.perf_counter()
+        scene = await asyncio.to_thread(describer.describe, image_bytes)
+        vlm_ms = (time.perf_counter() - vlm_start) * 1000
+        scene = (scene or "").strip() or None
+    else:
+        scene = str(payload.get("scene") or "").strip() or None
+
     profile = _profile_for_name(payload.get("profile_name"), state.get("personal_context"))
     context = {
         "speaker": "partner" if transcript else None,
@@ -208,7 +239,7 @@ async def _run_console_payload(state: dict, payload: dict) -> dict:
         "board": board,
         "latency_ms": {
             "whisper": 0.0,
-            "vlm": 0.0,
+            "vlm": round(vlm_ms, 1),
             "pool_gen": round(pool_ms, 1),
             "selection": round(max(total_ms - pool_ms, 0.0), 1),
             "total": round(total_ms, 1),
@@ -268,6 +299,11 @@ def _record_tap(app: web.Application, msg: dict, peer: str) -> None:
     }
     with TAP_LOG_PATH.open("a") as f:
         f.write(json.dumps(entry) + "\n")
+
+    # The user just answered, so drop the held question and let the board move on.
+    ctx = app["state"].get("context")
+    if ctx is not None:
+        ctx.clear_active_question()
 
 
 async def _handle_client_message(app: web.Application, raw: str, peer: str) -> None:
@@ -332,13 +368,26 @@ async def console_profiles_handler(request: web.Request) -> web.Response:
 
 
 async def console_run_handler(request: web.Request) -> web.Response:
-    try:
-        payload = await request.json()
-    except json.JSONDecodeError:
-        return web.json_response({"error": "invalid JSON"}, status=400)
-    if not isinstance(payload, dict):
-        return web.json_response({"error": "payload must be an object"}, status=400)
-    result = await _run_console_payload(request.app["state"], payload)
+    # Two body shapes: multipart (image upload -> real VLM) or JSON (text scene).
+    content_type = request.headers.get("Content-Type") or ""
+    image_bytes: bytes | None = None
+    if content_type.startswith("multipart/"):
+        payload: dict = {}
+        reader = await request.multipart()
+        async for part in reader:
+            if part.name == "image":
+                data = await part.read(decode=False)
+                image_bytes = data or None
+            else:
+                payload[part.name] = await part.text()
+    else:
+        try:
+            payload = await request.json()
+        except json.JSONDecodeError:
+            return web.json_response({"error": "invalid JSON"}, status=400)
+        if not isinstance(payload, dict):
+            return web.json_response({"error": "payload must be an object"}, status=400)
+    result = await _run_console_payload(request.app["state"], payload, image_bytes=image_bytes)
     return web.json_response(result)
 
 
@@ -515,7 +564,7 @@ async def on_cleanup(app: web.Application) -> None:
 
 
 def make_app() -> web.Application:
-    app = web.Application()
+    app = web.Application(client_max_size=MAX_UPLOAD_BYTES)
     app["state"] = {
         "clients": set(),
         "boards": {},
@@ -526,6 +575,7 @@ def make_app() -> web.Application:
         "personal_context": None,
         "ranker": None,
         "board_strategy": "diverse",  # set from ranker_config in on_startup
+        "scene_describer": None,      # lazy VLM for the console image route
         "last_trigger_sig": None,
         "last_push_ts": 0.0,
         "trigger_task": None,
