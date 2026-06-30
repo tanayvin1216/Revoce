@@ -24,18 +24,27 @@ import numpy as np
 DEFAULT_LAMBDA = 0.6
 TIE_EPS = 0.02  # MMR scores within this -> break by unmet communication function
 
-# Query is built from what the system already knows about the situation.
-_Q_WEIGHTS = {"transcript": 0.5, "scene": 0.35, "context": 0.15}
+# Query weights: what the user was ASKED dominates; the scene is only background
+# context. (A vivid scene must not pull the board away from the actual question —
+# e.g. "where do I sit?" in a restaurant must not become reservation/menu vocab.)
+_Q_WEIGHTS = {"transcript": 0.7, "scene": 0.2, "context": 0.1}
 
 
 def build_query_vector(embed_fn, scene, transcript, context) -> np.ndarray:
-    """One unit query vector summarizing the situation (weighted parts)."""
+    """One unit query vector summarizing the situation, weighted toward the
+    question the user must answer (active_question / last utterance / transcript)."""
     ctx = context or {}
-    last = ctx.get("last_utterance") or ""
     personal = ctx.get("personal_context") or {}
     blurb = personal.get("about") or personal.get("name") or ""
+    if "active_question" in ctx:
+        # Live path: the held question alone drives the query — later chatter in
+        # the rolling transcript must not dilute it. No held question -> transcript.
+        question_text = (ctx.get("active_question") or transcript or "").strip()
+    else:
+        # Direct/console call: the transcript is the question.
+        question_text = (transcript or "").strip()
     parts = {
-        "transcript": (transcript or "") + " " + str(last),
+        "transcript": question_text,
         "scene": scene or "",
         "context": str(blurb),
     }

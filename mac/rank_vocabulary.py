@@ -278,29 +278,44 @@ _QUESTION_STARTERS = (
 )
 
 
-def _is_question(transcript: Optional[str], context: Optional[dict]) -> bool:
-    """True when the partner just put a question TO the user (a question mark, or
-    an interrogative opener). Drives answer-mode in generate_pool."""
+def _current_question(transcript: Optional[str], context: Optional[dict]) -> str:
+    """The question the board must answer.
+
+    Live path — a ContextState snapshot always carries an "active_question" key,
+    so ONLY the held question counts: once it is cleared (the user tapped) or
+    expired (TTL), it must NOT resurrect from last_utterance or rolling chatter.
+    Direct/console calls have no such key, so the transcript is the question.
+    """
     ctx = context or {}
-    text = " ".join(
-        s for s in (ctx.get("last_utterance"), transcript) if s
-    ).strip().lower()
+    if "active_question" in ctx:
+        return (ctx.get("active_question") or "").strip()
+    return (transcript or "").strip()
+
+
+def _is_question(transcript: Optional[str], context: Optional[dict]) -> bool:
+    """True when the user is being asked something (a question mark or an
+    interrogative opener). Drives answer-mode in generate_pool."""
+    text = _current_question(transcript, context).lower()
     if not text:
         return False
     return "?" in text or text.startswith(_QUESTION_STARTERS)
 
 
-# Appended to the diverse prompt ONLY when the user is being asked a question.
-# Forces real candidate answers (the photosynthesis failure mode) instead of the
-# model's default deflections ("can you explain...").
-_ANSWER_BLOCK = """
-
-The person just asked the user a QUESTION. IN ADDITION to the moves above, add 5
-phrases that are DIRECT ANSWERS the user could give to THAT exact question: each a
-short first-person reply or a single concrete concept (1 to 4 words), tagged
-{"function": "answer", "topic": "answer"}. Give real candidate answers — including
-specific facts or objects when the question is factual — NOT "I don't know" and
-NOT "can you explain". Add these to the same JSON array."""
+def _answer_block(question: str) -> str:
+    """Appended to the diverse prompt when the user is asked a question. Centers
+    THE QUESTION and demotes the scene to background, so a vivid scene can't pull
+    the answers off-topic (e.g. a restaurant scene hijacking "where do I sit?").
+    """
+    return (
+        '\n\nCRITICAL — the user was just asked this question:\n'
+        f'    "{question}"\n'
+        'The scene above is only minor background context. ANSWER THIS QUESTION.\n'
+        'Add 6 phrases that are DIRECT ANSWERS to that exact question: short '
+        'first-person replies or single concrete concepts (1 to 4 words), each tagged '
+        '{"function": "answer", "topic": "answer"}. If the scene and the question are '
+        'about different things, FOLLOW THE QUESTION, not the scene. Give real, '
+        'specific answers — NOT "I don\'t know", NOT "can you explain".'
+    )
 
 
 def generate_pool(
@@ -330,12 +345,16 @@ def generate_pool(
         topics=", ".join(topics or []) or "none",
         people=people,
     )
-    if _is_question(transcript, ctx):
-        user_prompt += _ANSWER_BLOCK
+    answer_mode = _is_question(transcript, ctx)
+    if answer_mode:
+        user_prompt += _answer_block(_current_question(transcript, ctx))
+    # Answer-mode asks for ~6 extra phrases; widen the budget so the JSON array
+    # isn't truncated mid-answer (M3).
+    max_tokens = 720 if answer_mode else 520
 
     r = ranker if ranker is not None else _default_ranker()
     try:
-        raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt, max_tokens=520)
+        raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt, max_tokens=max_tokens)
     except TypeError:
         raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt)  # ranker w/o max_tokens
     except Exception:
@@ -377,32 +396,46 @@ _TOPIC_STOPWORDS = frozenset({
 })
 
 
+_SCENE_TOPIC_CAP = 3  # the scene fills at most this many of the topic slots
+
+
+def _content_terms(text: Optional[str]) -> list[str]:
+    return [
+        tok for tok in re.findall(r"[A-Za-z][A-Za-z'-]+", (text or "").lower())
+        if len(tok) >= 4 and tok not in _TOPIC_STOPWORDS
+    ]
+
+
 def topics_from_context(
     scene: Optional[str],
     transcript: Optional[str],
     context: Optional[dict] = None,
     max_topics: int = 6,
 ) -> list[str]:
-    """Cheap, model-free salient-term extraction for the diverse prompt's topic
-    slots. Pulls distinct content words from scene + transcript + last utterance.
+    """Model-free salient topic terms for the diverse prompt, in PRIORITY order:
+    the question and speech first, the scene only filling leftover slots (capped)
+    so a vivid scene can't take over the topics.
 
-    Pure and deterministic — NOT a model call (the server passes the result into
-    rank_vocabulary's `topics=`; it must never block the audio path).
+    Pure and deterministic — NOT a model call; it must never block the audio path.
     """
     ctx = context or {}
-    text = " ".join(
-        s for s in (scene, transcript, ctx.get("last_utterance")) if s
-    )
     topics: list[str] = []
     seen: set[str] = set()
-    for tok in re.findall(r"[A-Za-z][A-Za-z'-]+", text.lower()):
-        if len(tok) < 4 or tok in _TOPIC_STOPWORDS or tok in seen:
-            continue
-        seen.add(tok)
-        topics.append(tok)
-        if len(topics) >= max_topics:
-            break
-    return topics
+
+    def take(tokens: list[str], cap: int) -> None:
+        for tok in tokens:
+            if len(topics) >= max_topics or cap <= 0:
+                return
+            if tok not in seen:
+                seen.add(tok)
+                topics.append(tok)
+                cap -= 1
+
+    take(_content_terms(ctx.get("active_question"))
+         + _content_terms(transcript)
+         + _content_terms(ctx.get("last_utterance")), max_topics)
+    take(_content_terms(scene), _SCENE_TOPIC_CAP)
+    return topics[:max_topics]
 
 
 def _to_ranked(items: list[dict]) -> list[RankedWord]:

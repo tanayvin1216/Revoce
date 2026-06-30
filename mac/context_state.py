@@ -14,6 +14,11 @@ import copy
 import threading
 import time
 
+# How long the most recent addressed question stays the "active question" the
+# board answers — long enough for a nonverbal user to compose a reply, short
+# enough that a stale question doesn't keep driving the board forever.
+ACTIVE_QUESTION_TTL_S = 90.0
+
 
 class ContextState:
     def __init__(self) -> None:
@@ -21,9 +26,14 @@ class ContextState:
         # latest structured audio understanding
         self._audio = {
             "recent_transcript": "",
-            "last_utterance": None,   # last COMPLETE utterance
+            "last_utterance": None,   # last COMPLETE utterance (overwritten freely)
             "speaker": None,          # "partner" | "other" | "ambient"
             "addressed": False,       # partner just said something wanting a response
+            # The active question is HELD: set only when an addressed question
+            # lands, and NOT overwritten by later non-question chatter, so the
+            # board keeps answering it until the user replies or it times out.
+            "active_question": None,
+            "active_question_ts": 0.0,
             "ts": 0.0,
         }
         # latest scene understanding
@@ -37,6 +47,18 @@ class ContextState:
         with self._lock:
             self._audio.update(fields)
             self._audio["ts"] = time.time()
+
+    def set_active_question(self, question: str) -> None:
+        """Hold a new addressed question as the one the board should answer."""
+        with self._lock:
+            self._audio["active_question"] = question
+            self._audio["active_question_ts"] = time.time()
+
+    def clear_active_question(self) -> None:
+        """Drop the held question (e.g. the user tapped an answer)."""
+        with self._lock:
+            self._audio["active_question"] = None
+            self._audio["active_question_ts"] = 0.0
 
     def update_vision(self, **fields) -> None:
         with self._lock:
@@ -55,10 +77,15 @@ class ContextState:
             vision = copy.deepcopy(self._vision)
         scene = vision["description"]
         transcript = audio["recent_transcript"] or None
+        # Expire the held question once it's older than the TTL.
+        active_question = audio["active_question"]
+        if active_question and (time.time() - audio["active_question_ts"]) > ACTIVE_QUESTION_TTL_S:
+            active_question = None
         context = {
             "speaker": audio["speaker"],
             "addressed": audio["addressed"],
             "last_utterance": audio["last_utterance"],
+            "active_question": active_question,
             "recent_transcript": audio["recent_transcript"],
             "scene_changed": vision["scene_changed"],
             "audio_ts": audio["ts"],
