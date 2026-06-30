@@ -90,11 +90,15 @@ def test_coverage_of_intent_empty_board_or_moves(fast_embed):
 # --- taxonomy classification -------------------------------------------------
 
 def test_classify_functions_counts_distinct(fast_embed):
-    protos = taxonomy._prototypes()                  # (9, 384) under fake embed
-    # A board equal to three different prototypes -> 3 distinct functions.
-    assert taxonomy.classify_functions(protos[:3])[0] == 3
-    # A board of one prototype repeated -> 1 distinct function.
-    repeated = np.repeat(protos[0:1], 4, axis=0)
+    vecs, funcs = taxonomy._exemplars()              # (M, 384) under fake embed
+    # One exemplar from each of three DIFFERENT functions -> 3 distinct.
+    first_of: dict[str, int] = {}
+    for i, f in enumerate(funcs):
+        first_of.setdefault(f, i)
+    idxs = [first_of[name] for name in list(first_of)[:3]]
+    assert taxonomy.classify_functions(vecs[idxs])[0] == 3
+    # A board of one exemplar repeated -> 1 distinct function.
+    repeated = np.repeat(vecs[idxs[0]:idxs[0] + 1], 4, axis=0)
     assert taxonomy.classify_functions(repeated)[0] == 1
 
 
@@ -103,9 +107,9 @@ def test_classify_functions_empty():
 
 
 def test_distinct_functions_at_respects_k(fast_embed):
-    protos = taxonomy._prototypes()
+    protos = taxonomy._prototypes()[:10]
     board = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
-    # Feed 9 distinct prototype vectors; @7 must only see the first 7.
+    # Feed 10 exemplar vectors; @7 must only see the first 7 -> at most 7 distinct.
     n = metrics3.distinct_functions_at(board, k=7, board_vecs=protos)
     assert n <= 7
 
