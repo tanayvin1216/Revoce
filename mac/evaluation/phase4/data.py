@@ -156,13 +156,37 @@ def dedup_rows(rows: list[dict]) -> list[dict]:
     return [rows[i] for i in kept_indices]
 
 
-def embed_contexts(rows: list[dict]) -> np.ndarray:
+# v2.2 RICHER INPUT. v1/v2 fed ONE pooled MiniLM embedding of "<scene> || <transcript>"
+# (384-d); with more data its dynamic_overlap got WORSE, which told us that single
+# pooled vector cannot separate the teacher's specific dynamic choice. So the input is
+# now the scene and transcript embedded SEPARATELY and concatenated (2*384=768), plus
+# the is_question flag (1) -> 769-d. This gives the head a scene axis and a speech axis
+# it can weight independently, instead of one averaged blur.
+CONTEXT_DIM = 769
+
+
+def row_features(scene: str, transcript: str, is_question: bool) -> np.ndarray:
+    """The 769-d input for ONE context (used identically at train and inference)."""
+    from evaluation.embed import embed
+    v = embed([scene or "", transcript or ""])           # (2, 384)
+    flag = np.array([1.0 if is_question else 0.0], dtype=np.float32)
+    return np.concatenate([v[0], v[1], flag]).astype(np.float32)
+
+
+def context_features(rows: list[dict]) -> np.ndarray:
+    """Batched 769-d features for many rows (separate scene/transcript embeds + flag)."""
     from evaluation.embed import embed  # lazy, shared MiniLM
-    return embed([context_text(r) for r in rows])
+    if not rows:
+        return np.zeros((0, CONTEXT_DIM), np.float32)
+    scenes = embed([r.get("scene", "") for r in rows])       # (N, 384)
+    trans = embed([r.get("transcript", "") for r in rows])   # (N, 384)
+    flags = np.array([[1.0 if r.get("is_question") else 0.0] for r in rows],
+                     dtype=np.float32)
+    return np.concatenate([scenes, trans, flags], axis=1).astype(np.float32)
 
 
 def make_xy(rows: list[dict], word2idx: dict[str, int]) -> tuple[np.ndarray, np.ndarray]:
-    X = embed_contexts(rows)
+    X = context_features(rows)
     Y = np.stack([multihot(r["board"], word2idx) for r in rows]) if rows \
         else np.zeros((0, len(word2idx)), np.float32)
     return X, Y

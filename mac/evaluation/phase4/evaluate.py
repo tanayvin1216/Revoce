@@ -57,10 +57,12 @@ def load_student() -> tuple[StudentRanker, list[str], list[str], int]:
     return model, vocab, core_words, k_dyn
 
 
-def student_board(model, vocab, scene, transcript, k, k_dyn, core_words) -> list[str]:
-    """Assemble full board: core pinned first, student dynamic top-k_dyn after."""
-    from evaluation.embed import embed
-    emb = torch.from_numpy(embed([f"{scene} || {transcript}".strip()]))
+def student_board(model, vocab, scene, transcript, is_question, k, k_dyn, core_words) -> list[str]:
+    """Assemble full board: core pinned first, student dynamic top-k_dyn after.
+
+    Uses the v2.2 richer 769-d feature (separate scene/transcript embeds + is_question),
+    the SAME builder training used, so train and inference see identical inputs."""
+    emb = torch.from_numpy(d.row_features(scene, transcript, is_question)).unsqueeze(0)
     idxs = model.board_indices(emb, k_dyn)
     dynamic_words = [vocab[i] for i in idxs]
     return d.assemble_board(core_words, dynamic_words, k)
@@ -98,7 +100,7 @@ def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
 
     for r in held:
         sb = student_board(model, vocab, r["scene"], r["transcript"],
-                           k, k_dyn, core_words)
+                           r.get("is_question", False), k, k_dyn, core_words)
         distinct_boards.add(tuple(sorted(w.lower() for w in sb[:METRIC_K])))
 
         sb_dynamic = [w for w in sb if w.lower() not in core_lower]
@@ -163,13 +165,14 @@ def speedup(model, vocab, k, k_dyn, core_words, teacher_samples: int) -> dict:
     from evaluation.embed import embed
     scenarios = scengen.load_scenarios()
 
-    _ = student_board(model, vocab, scenarios[0]["scene"],
-                      scenarios[0]["transcript"], k, k_dyn, core_words)
+    _ = student_board(model, vocab, scenarios[0]["scene"], scenarios[0]["transcript"],
+                      scenarios[0].get("is_question", False), k, k_dyn, core_words)
     s_times = []
     for sc in scenarios[:50]:
         t0 = time.time()
-        emb = torch.from_numpy(
-            embed([f"{sc.get('scene','')} || {sc.get('transcript','')}".strip()]))
+        emb = torch.from_numpy(d.row_features(
+            sc.get("scene", ""), sc.get("transcript", ""), sc.get("is_question", False))
+        ).unsqueeze(0)
         idxs = model.board_indices(emb, k_dyn)
         d.assemble_board(core_words, [vocab[i] for i in idxs], k)
         s_times.append(time.time() - t0)
