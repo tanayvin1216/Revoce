@@ -197,3 +197,49 @@ def test_topics_from_context_extracts_salient_terms():
 
 def test_topics_from_context_handles_empty_inputs():
     assert topics_from_context(None, None, None) == []
+
+
+# --- answer-mode: questions to the user surface real answers -----------------
+
+def test_is_question_detection():
+    from rank_vocabulary import _is_question
+    assert _is_question("How do plants make sugar?", {})
+    assert _is_question(None, {"last_utterance": "Do you want water"})
+    assert _is_question("are you cold", {})
+    assert not _is_question("the sky is blue today", {})
+    assert not _is_question(None, None)
+
+
+def test_answer_mode_surfaces_direct_answers_for_a_question(fast_embed):
+    # The (faked) LLM returns answer-tagged candidates plus the usual deflections.
+    items = [
+        {"word": "sunlight", "function": "answer", "topic": "answer"},
+        {"word": "water", "function": "answer", "topic": "answer"},
+        {"word": "carbon dioxide", "function": "answer", "topic": "answer"},
+        {"word": "from the sun", "function": "answer", "topic": "answer"},
+        {"word": "Can you explain more?", "function": "clarify", "topic": "photosynthesis"},
+        {"word": "I feel confused.", "function": "express-feeling", "topic": "photosynthesis"},
+    ]
+    board = rank_vocabulary(
+        "a biology classroom",
+        "How do plants make sugar during photosynthesis?",
+        {}, FakeRanker(items), strategy="diverse",
+    )
+    words = set(_words(board))
+    answers = {"sunlight", "water", "carbon dioxide", "from the sun"}
+    assert len(answers & words) >= 3, f"expected >=3 answers, got {answers & words}"
+    # core safety net and exact size are still intact in answer-mode
+    for core in GUARANTEED_CORE:
+        assert core.lower() in words
+    assert len(board) == BOARD_SIZE
+
+
+def test_non_question_is_unaffected_by_answer_mode(fast_embed):
+    # No question, no answer tags -> behaves exactly like the diverse path.
+    board = rank_vocabulary(
+        "a kitchen", "we are making dinner together", {},
+        FakeRanker(_VARIED_ITEMS), strategy="diverse",
+    )
+    assert len(board) == BOARD_SIZE
+    for core in GUARANTEED_CORE:
+        assert core.lower() in _words(board)
