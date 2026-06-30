@@ -50,7 +50,7 @@ from pathlib import Path
 from aiohttp import WSMsgType, web
 
 from context_state import ContextState
-from rank_vocabulary import rank_vocabulary
+from rank_vocabulary import rank_vocabulary, topics_from_context
 from symbol_map import SYMBOLS_DIR
 import perception.config as perception_config
 from perception.runner import Perception
@@ -85,7 +85,12 @@ async def _make_board(app: web.Application) -> tuple[dict, dict]:
     context["personal_context"] = state["personal_context"]
 
     ranker = state["ranker"]
-    items = await asyncio.to_thread(rank_vocabulary, scene, transcript, context, ranker)
+    strategy = state["board_strategy"]
+    topics = topics_from_context(scene, transcript, context)
+    items = await asyncio.to_thread(
+        rank_vocabulary, scene, transcript, context, ranker,
+        strategy=strategy, topics=topics,
+    )
 
     board = {
         "type": "vocab_update",
@@ -255,6 +260,11 @@ async def on_startup(app: web.Application) -> None:
     app["state"]["personal_context"] = load_profile(PROFILE_PATH)
     app["state"]["ranker"] = make_ranker(ranker_config)
 
+    # Server board strategy (config-flagged; "diverse" by default, "topk" fallback).
+    strategy = getattr(ranker_config, "BOARD_STRATEGY", "diverse")
+    app["state"]["board_strategy"] = strategy if strategy in ("diverse", "topk") else "diverse"
+    print(f"[server] board strategy: {app['state']['board_strategy']}")
+
     # Perception: shared context state + concurrent workers
     app["state"]["context"] = ContextState()
     if perception_config.PERCEPTION_ENABLED:
@@ -305,6 +315,7 @@ def make_app() -> web.Application:
         # Task 5 additions — all initialised here before the app freezes
         "personal_context": None,
         "ranker": None,
+        "board_strategy": "diverse",  # set from ranker_config in on_startup
         "last_trigger_sig": None,
         "last_push_ts": 0.0,
         "trigger_task": None,
