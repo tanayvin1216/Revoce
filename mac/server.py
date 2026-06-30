@@ -46,6 +46,7 @@ import socket
 import time
 import uuid
 from pathlib import Path
+from typing import Any
 
 from aiohttp import WSMsgType, web
 
@@ -61,6 +62,7 @@ PORT = 8080
 SCHEMA_VERSION = 1
 WEB_DIR = Path(__file__).parent / "web"
 TAP_LOG_PATH = Path(__file__).parent / "taps.jsonl"
+PHASE_STATUS_PATH = Path(__file__).parent.parent / "phase_status.json"
 MAX_REMEMBERED_BOARDS = 200
 
 # Trigger-driven push: fire on (scene_changed OR addressed), debounced.
@@ -69,7 +71,149 @@ TRIGGER_DEBOUNCE_S = 2.0    # minimum gap between consecutive pushes
 HEARTBEAT_INTERVAL_S = 30.0  # slow liveness push when no trigger fires
 
 PROFILE_PATH = Path(__file__).parent / "personal_context.json"
+SAMPLE_PROFILE_PATH = Path(__file__).parent / "personal_context.sample.json"
 # ----------------------------------------------------------------------------
+
+
+class _CaptureRanker:
+    """Records the pool returned by the ranker during a seam call.
+
+    The console must not call models directly. It wraps the same ranker instance
+    passed into rank_vocabulary(), so any captured candidates were produced only
+    inside the seam call.
+    """
+
+    def __init__(self, inner: Any) -> None:
+        self._inner = inner
+        self.candidates: list[dict] = []
+        self.elapsed_ms = 0.0
+
+    def rank(self, system_prompt: str, user_prompt: str, max_tokens: int | None = None) -> list[dict]:
+        start = time.perf_counter()
+        try:
+            if max_tokens is None:
+                result = self._inner.rank(system_prompt, user_prompt)
+            else:
+                try:
+                    result = self._inner.rank(system_prompt, user_prompt, max_tokens=max_tokens)
+                except TypeError:
+                    result = self._inner.rank(system_prompt, user_prompt)
+        finally:
+            self.elapsed_ms += (time.perf_counter() - start) * 1000
+        self.candidates = [dict(item) for item in result if isinstance(item, dict)]
+        return result
+
+
+def _console_scenarios() -> list[dict]:
+    return [
+        {
+            "id": "airport",
+            "label": "Airport",
+            "scene": "a crowded airport gate with boarding screens, luggage, and a loud announcement",
+            "transcript": "Boarding group B can line up now. Do you want to use the bathroom before we board?",
+            "profile_name": "Jordan",
+        },
+        {
+            "id": "photosynthesis",
+            "label": "Photosynthesis classroom",
+            "scene": "a biology classroom with a whiteboard diagram of sunlight, leaves, water, and carbon dioxide",
+            "transcript": "How do plants make sugar during photosynthesis?",
+            "profile_name": "Jordan",
+        },
+        {
+            "id": "doctor",
+            "label": "Doctor",
+            "scene": "a quiet exam room with a doctor, a blood pressure cuff, and a pain chart",
+            "transcript": "Can you show me where it hurts and tell me if the pain is sharp or dull?",
+            "profile_name": "Jordan",
+        },
+    ]
+
+
+def _phase_status_payload(path: Path = PHASE_STATUS_PATH) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError) as exc:
+        return {
+            "updated_ts": None,
+            "phases": [],
+            "error": f"could not read phase status: {exc}",
+        }
+
+
+def _load_json_file(path: Path) -> dict | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _profile_options() -> list[dict]:
+    options: list[dict] = []
+    for label, path in (("local", PROFILE_PATH), ("sample", SAMPLE_PROFILE_PATH)):
+        profile = _load_json_file(path)
+        if profile is None:
+            continue
+        identity = profile.get("identity", {})
+        name = identity.get("name") or label
+        options.append({"id": label, "name": name, "profile": profile})
+    if not options:
+        options.append({"id": "minimal", "name": "User", "profile": {}})
+    return options
+
+
+def _profile_for_name(name: str | None, fallback: dict | None = None) -> dict:
+    profiles = _profile_options()
+    target = (name or "").strip().lower()
+    for option in profiles:
+        if target in {option["id"].lower(), option["name"].lower()}:
+            return option["profile"]
+    return fallback or profiles[0]["profile"]
+
+
+async def _run_console_payload(state: dict, payload: dict) -> dict:
+    scene = str(payload.get("scene") or "").strip() or None
+    transcript = str(payload.get("transcript") or "").strip() or None
+    profile = _profile_for_name(payload.get("profile_name"), state.get("personal_context"))
+    context = {
+        "speaker": "partner" if transcript else None,
+        "addressed": bool(transcript),
+        "last_utterance": transcript,
+        "recent_transcript": transcript or "",
+        "scene_changed": bool(scene),
+        "audio_ts": time.time() if transcript else 0.0,
+        "vision_ts": time.time() if scene else 0.0,
+        "personal_context": profile,
+    }
+
+    capture_ranker = _CaptureRanker(state["ranker"])
+    strategy = state.get("board_strategy", "diverse")
+    topics = topics_from_context(scene, transcript, context)
+    start = time.perf_counter()
+    board = await asyncio.to_thread(
+        rank_vocabulary, scene, transcript, context, capture_ranker,
+        strategy=strategy, topics=topics,
+    )
+    total_ms = (time.perf_counter() - start) * 1000
+    pool_ms = capture_ranker.elapsed_ms
+
+    return {
+        "scene_description": scene or "not available",
+        "transcript": transcript or "",
+        "profile": (profile.get("identity", {}) or {}).get("name") or "User",
+        "strategy": strategy,
+        "topics": topics,
+        "candidate_pool": capture_ranker.candidates,
+        "board": board,
+        "latency_ms": {
+            "whisper": 0.0,
+            "vlm": 0.0,
+            "pool_gen": round(pool_ms, 1),
+            "selection": round(max(total_ms - pool_ms, 0.0), 1),
+            "total": round(total_ms, 1),
+        },
+    }
 
 
 async def _make_board(app: web.Application) -> tuple[dict, dict]:
@@ -167,6 +311,37 @@ async def index_handler(request: web.Request) -> web.FileResponse:
     return web.FileResponse(WEB_DIR / "index.html")
 
 
+async def console_handler(request: web.Request) -> web.FileResponse:
+    return web.FileResponse(WEB_DIR / "console.html")
+
+
+async def phase_status_handler(request: web.Request) -> web.Response:
+    return web.json_response(_phase_status_payload(request.app["state"]["phase_status_path"]))
+
+
+async def console_scenarios_handler(request: web.Request) -> web.Response:
+    return web.json_response({"scenarios": _console_scenarios()})
+
+
+async def console_profiles_handler(request: web.Request) -> web.Response:
+    profiles = [
+        {"id": option["id"], "name": option["name"]}
+        for option in _profile_options()
+    ]
+    return web.json_response({"profiles": profiles})
+
+
+async def console_run_handler(request: web.Request) -> web.Response:
+    try:
+        payload = await request.json()
+    except json.JSONDecodeError:
+        return web.json_response({"error": "invalid JSON"}, status=400)
+    if not isinstance(payload, dict):
+        return web.json_response({"error": "payload must be an object"}, status=400)
+    result = await _run_console_payload(request.app["state"], payload)
+    return web.json_response(result)
+
+
 async def _produce_and_broadcast(app: web.Application) -> None:
     board, produced_from = await _make_board(app)
 
@@ -251,6 +426,38 @@ def _lan_ip() -> str:
         s.close()
 
 
+async def _warm_up_ranker(app: web.Application) -> None:
+    """Pay the model's one-time kernel-compile cost at STARTUP, not on the first
+    user click.
+
+    The first real diverse generation compiles MLX/Metal kernels for a full
+    ~520-token run (~110s cold). We force that here with a representative prompt
+    and discard the board, so the first board the user fires comes back at the
+    warm latency (~30s) instead of the cold one. Never blocks on failure — a
+    HeuristicRanker warm-up is instant and harmless.
+    """
+    warm_context = {
+        "addressed": True,
+        "last_utterance": "can you tell me how this works?",
+        "personal_context": app["state"]["personal_context"],
+    }
+    try:
+        t0 = time.perf_counter()
+        await asyncio.to_thread(
+            rank_vocabulary,
+            "a classroom with a whiteboard and students at their desks",
+            "Can you explain how this works?",
+            warm_context,
+            app["state"]["ranker"],
+            strategy=app["state"]["board_strategy"],
+            topics=["science", "lesson", "classroom"],
+        )
+        print(f"\n[server] ranker warm-up done in {time.perf_counter() - t0:.1f}s "
+              f"(first board will be warm)", flush=True)
+    except Exception as exc:
+        print(f"\n[server] ranker warm-up skipped: {exc}", flush=True)
+
+
 async def on_startup(app: web.Application) -> None:
     # Load personal context profile (safe: returns minimal stub if file absent)
     from personal_context_loader import load_profile
@@ -271,6 +478,9 @@ async def on_startup(app: web.Application) -> None:
         perception = Perception(app["state"]["context"])
         perception.start(asyncio.get_running_loop())
         app["state"]["perception"] = perception
+
+    # Pay the one-time model kernel-compile cost now, before the first click.
+    await _warm_up_ranker(app)
 
     # Trigger-driven push replaces the old blind 4s push loop.
     app["state"]["trigger_task"] = asyncio.create_task(trigger_loop(app))
@@ -320,10 +530,16 @@ def make_app() -> web.Application:
         "last_push_ts": 0.0,
         "trigger_task": None,
         "heartbeat_task": None,
+        "phase_status_path": PHASE_STATUS_PATH,
     }
     app.add_routes([
         web.get("/", index_handler),
+        web.get("/console", console_handler),
         web.get("/ws", ws_handler),
+        web.get("/api/phase-status", phase_status_handler),
+        web.get("/api/console/scenarios", console_scenarios_handler),
+        web.get("/api/console/profiles", console_profiles_handler),
+        web.post("/api/console/run", console_run_handler),
     ])
     # Static route for locally-cached ARASAAC pictograms — same origin, no internet
     app.router.add_static("/symbols/", path=SYMBOLS_DIR, show_index=False)
