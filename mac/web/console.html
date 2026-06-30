@@ -279,7 +279,7 @@
   <main>
     <section>
       <h2>Inputs</h2>
-      <div class="dropzone" id="dropzone">Drop an image here for preview<br>No VLM route is called</div>
+      <div class="dropzone" id="dropzone">Drop or click to add an image<br>Fire runs the real VLM on it (Esc clears)</div>
 
       <label for="scene">Scene description</label>
       <textarea id="scene" placeholder="Describe the visual scene or load a scenario"></textarea>
@@ -354,6 +354,7 @@
     let scenarios = [];
     let fakeTimer = null;
     let fakeIndex = 0;
+    let droppedImageFile = null;   // when set, Fire sends it to the real VLM
 
     function setStatus(text) {
       runStatus.textContent = text;
@@ -452,18 +453,29 @@
     }
 
     async function fireRun() {
-      setStatus("running seam...");
+      setStatus(droppedImageFile ? "running VLM + seam..." : "running seam...");
       fireBtn.disabled = true;
       try {
-        const res = await fetch("/api/console/run", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            scene: sceneEl.value,
-            transcript: transcriptEl.value,
-            profile_name: profileEl.value,
-          }),
-        });
+        let res;
+        if (droppedImageFile) {
+          // Full pipeline: the server runs the real VLM on the image for the scene.
+          const fd = new FormData();
+          fd.append("image", droppedImageFile);
+          fd.append("scene", sceneEl.value);
+          fd.append("transcript", transcriptEl.value);
+          fd.append("profile_name", profileEl.value);
+          res = await fetch("/api/console/run", { method: "POST", body: fd });
+        } else {
+          res = await fetch("/api/console/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              scene: sceneEl.value,
+              transcript: transcriptEl.value,
+              profile_name: profileEl.value,
+            }),
+          });
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const result = await res.json();
         sceneOut.textContent = result.scene_description || "not available";
@@ -566,16 +578,37 @@
       dropzone.classList.add("drag");
     });
     dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag"));
-    dropzone.addEventListener("drop", (event) => {
-      event.preventDefault();
-      dropzone.classList.remove("drag");
-      const file = event.dataTransfer.files[0];
+    const imageInput = document.createElement("input");
+    imageInput.type = "file";
+    imageInput.accept = "image/*";
+    imageInput.style.display = "none";
+    document.body.appendChild(imageInput);
+
+    function useImageFile(file) {
       if (!file || !file.type.startsWith("image/")) return;
+      droppedImageFile = file;
       const img = document.createElement("img");
       img.src = URL.createObjectURL(file);
       img.onload = () => URL.revokeObjectURL(img.src);
       dropzone.replaceChildren(img);
-      setStatus("image preview loaded; scene text unchanged");
+      setStatus(`image ready: ${file.name} — Fire runs the real VLM on it`);
+    }
+
+    function clearImageFile() {
+      droppedImageFile = null;
+      dropzone.textContent = "Drop or click to add an image — Fire runs the real VLM on it (Esc clears)";
+      setStatus("image cleared — scene uses the text box");
+    }
+
+    dropzone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dropzone.classList.remove("drag");
+      useImageFile(event.dataTransfer.files[0]);
+    });
+    dropzone.addEventListener("click", () => imageInput.click());
+    imageInput.addEventListener("change", () => useImageFile(imageInput.files[0]));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && droppedImageFile) clearImageFile();
     });
 
     loadScenarioBtn.addEventListener("click", () => {
