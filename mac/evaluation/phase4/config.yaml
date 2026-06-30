@@ -1,0 +1,33 @@
+# Phase-4 distillation v1 — all hyperparameters live here (CLAUDE.md §6: no
+# inline hyperparams). The config is hashed and the hash logged on every train
+# run; identical hashes mean identical configuration.
+
+seed: 0
+
+# Student architecture — STANDARD LAYERS ONLY so it exports cleanly to
+# ONNX / OpenVINO (Linear + ReLU + Dropout; no custom or dynamic ops).
+model:
+  context_dim: 384        # MiniLM all-MiniLM-L6-v2 embedding width (the input)
+  hidden_dim: 512
+  dropout: 0.1
+
+# Vocabulary — the fixed candidate set the student scores over. Built from the
+# teacher's boards; an item must appear at least this many times to be kept
+# (the always-on core words are force-included regardless).
+vocab:
+  min_freq: 2
+  max_size: 600
+
+# Training
+train:
+  epochs: 60
+  batch_size: 32
+  lr: 0.001
+  weight_decay: 0.00001
+  val_frac: 0.15
+  test_frac: 0.15
+
+# Board / metric window (mirrors Phase 3)
+board:
+  k: 10                    # full board the device shows
+  metric_k: 7              # the window the Phase-3 metrics judge
