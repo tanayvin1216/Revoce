@@ -22,22 +22,49 @@ from evaluation.phase4.student import StudentRanker  # noqa: E402
 
 # --- data plumbing -----------------------------------------------------------
 
-def test_build_vocab_forces_core_and_respects_freq():
+def test_build_vocab_excludes_core_and_respects_freq():
+    """Core words never enter the dynamic vocab; freq gate still applies."""
     rows = [
-        {"board": ["water", "more", "water"]},
-        {"board": ["water", "snack"]},
+        {"board": ["yes", "water", "no", "water"]},   # yes/no are core
+        {"board": ["yes", "no", "water", "snack"]},
     ]
-    vocab, w2i = d.build_vocab(rows, min_freq=2, max_size=50, core_words=["yes", "no"])
-    assert vocab[:2] == ["yes", "no"]          # core force-included, in order
-    assert "water" in w2i                       # freq 3 >= min_freq
-    assert "snack" not in w2i                   # freq 1 < min_freq
+    vocab, w2i = d.build_vocab(rows, min_freq=2, max_size=50)
+    assert "yes" not in w2i            # core excluded even though frequent
+    assert "no" not in w2i             # core excluded
+    assert "i need help" not in w2i    # core excluded
+    assert "wait" not in w2i           # core excluded
+    assert "water" in w2i              # freq 3 >= min_freq, not core
+    assert "snack" not in w2i          # freq 1 < min_freq
 
 
-def test_multihot_marks_only_known_words():
-    _, w2i = d.build_vocab([{"board": ["water", "water"]}], 1, 50, ["yes"])
+def test_multihot_excludes_core_marks_dynamic():
+    """Core words on the board are NOT included in the multihot target."""
+    rows = [{"board": ["water", "water"]}]
+    _, w2i = d.build_vocab(rows, 1, 50)
+    assert "yes" not in w2i            # core excluded from vocab
     y = d.multihot(["yes", "water", "unknown-phrase"], w2i)
-    assert y[w2i["yes"]] == 1.0 and y[w2i["water"]] == 1.0
-    assert y.sum() == 2.0                        # unknown dropped
+    assert y[w2i["water"]] == 1.0
+    assert y.sum() == 1.0              # only water; yes is core, unknown dropped
+
+
+def test_assemble_board_pins_core_exactly_k_disjoint():
+    """Core is pinned first in order; result is exactly k; dynamic section has no core."""
+    core = ["yes", "no", "I need help", "wait"]
+    dynamic = ["drink", "eat", "more", "stop", "go", "home"]
+    board = d.assemble_board(core, dynamic, k=10)
+    assert board[:4] == core                    # core pinned in order
+    assert len(board) == 10                     # exactly k
+    core_lower = {w.lower() for w in core}
+    assert not any(w.lower() in core_lower for w in board[4:])  # dynamic section is disjoint
+
+
+def test_assemble_board_truncates_to_k():
+    """assemble_board never exceeds k even if core + dynamic > k."""
+    core = ["yes", "no", "I need help", "wait"]
+    dynamic = ["a", "b", "c", "d", "e", "f", "g", "h"]
+    board = d.assemble_board(core, dynamic, k=6)
+    assert len(board) == 6
+    assert board[:4] == core
 
 
 def test_load_teacher_rows_filters_topk(tmp_path):

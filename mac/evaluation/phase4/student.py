@@ -1,16 +1,15 @@
 """The student model — a small, ONNX-clean MLP ranker.
 
 Input : a single MiniLM context embedding (context_dim,) for "<scene> || <transcript>".
-Output: one logit per fixed-vocabulary item (vocab_size,). Sigmoid + BCE makes this
-        a multi-label "which of these phrases belong on the board right now" head.
+Output: one logit per DYNAMIC-vocabulary item (vocab_size = V_dyn). Sigmoid + BCE makes
+        this a multi-label "which of these phrases belong on the board right now" head.
 
-Inference board = the top-k highest-scoring vocab items, mapped back to words. The
-diversity the Phase-3 ruler measures therefore comes from what the student learned
-to rank highly — NOT from any post-hoc MMR — so a mode-collapsed student is caught.
+v2: LayerNorm is prepended to normalise the MiniLM embeddings before the projection.
+    LayerNorm is in ONNX opset 17 and the OpenVINO operator set, so the export-first
+    checkpoint still passes. The core safety words are assembled by the caller (via
+    assemble_board) — this model scores only the dynamic vocabulary.
 
-Only Linear / ReLU / Dropout are used: every op is in the ONNX opset and the
-OpenVINO operator set, which is why the export-first checkpoint can pass before a
-single training step.
+Inference board = assemble_board(GUARANTEED_CORE, top-k_dyn from this model, k).
 """
 
 from __future__ import annotations
@@ -26,6 +25,7 @@ class StudentRanker(nn.Module):
         self.context_dim = context_dim
         self.vocab_size = vocab_size
         self.net = nn.Sequential(
+            nn.LayerNorm(context_dim),
             nn.Linear(context_dim, hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
@@ -38,7 +38,7 @@ class StudentRanker(nn.Module):
 
     @torch.no_grad()
     def board_indices(self, context_emb: torch.Tensor, k: int) -> list[int]:
-        """Top-k vocab indices for ONE context embedding (1D or (1,D))."""
+        """Top-k dynamic vocab indices for ONE context embedding (1D or (1,D))."""
         if context_emb.dim() == 1:
             context_emb = context_emb.unsqueeze(0)
         logits = self.forward(context_emb)[0]

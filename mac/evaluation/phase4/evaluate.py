@@ -3,10 +3,11 @@
 Three numbers, three bars — the "wrapper critique is dead" definition:
 
   (1) DIVERSITY RETENTION (make-or-break): student distinct-functions@7 >= 90% of
-      the teacher's AND student near-duplicate rate <= 8%. Measured over the SAME
-      Phase-3 scenario set, with the SAME metrics3 functions.
-  (2) TEACHER-STUDENT AGREEMENT (supporting): top-7 set-overlap on HELD-OUT contexts
-      (the persisted test split). PASS >= 70%.
+      the teacher's AND student near-duplicate rate <= 8% AND board-variety >= 50%.
+      Measured on the HELD-OUT test split with the SAME metrics3 functions.
+  (2) TEACHER-STUDENT AGREEMENT (supporting, v2): dynamic_overlap = fraction of
+      teacher's non-core top-7 words the student's dynamic predictions include.
+      GATE >= 0.45. Also reports full_overlap_top7 for continuity.
   (3) SPEEDUP (the Intel story): end-to-end board latency, student vs teacher pipeline,
       same machine. PASS >= 10x.
 
@@ -37,29 +38,32 @@ from evaluation.phase4 import data as d, train as train_mod  # noqa: E402
 from evaluation.phase4.student import StudentRanker          # noqa: E402
 
 CKPT = HERE / "student.pt"
-PHASE3_BOARDS = MAC / "evaluation" / "phase3" / "boards.jsonl"
 REPORT = HERE / "PHASE4_REPORT.md"
 METRIC_K = metrics3.TOPK  # 7
+BOARD_VARIETY_FLOOR = 0.5
+DYNAMIC_OVERLAP_GATE = 0.45
 
 
-def load_student() -> tuple[StudentRanker, list[str]]:
+def load_student() -> tuple[StudentRanker, list[str], list[str], int]:
+    """Returns (model, dynamic_vocab, core_words, k_dyn)."""
     ck = torch.load(CKPT, map_location="cpu", weights_only=False)
     model = StudentRanker(ck["context_dim"], ck["hidden_dim"], ck["vocab_size"],
                           ck["dropout"])
     model.load_state_dict(ck["state_dict"])
     model.eval()
     vocab, _ = d.load_vocab()
-    return model, vocab
+    core_words = ck.get("guaranteed_core", [])
+    k_dyn = ck.get("k_dyn", 6)
+    return model, vocab, core_words, k_dyn
 
 
-def student_board(model, vocab, scene, transcript, k) -> list[str]:
+def student_board(model, vocab, scene, transcript, k, k_dyn, core_words) -> list[str]:
+    """Assemble full board: core pinned first, student dynamic top-k_dyn after."""
     from evaluation.embed import embed
     emb = torch.from_numpy(embed([f"{scene} || {transcript}".strip()]))
-    idxs = model.board_indices(emb, k)
-    return [vocab[i] for i in idxs]
-
-
-BOARD_VARIETY_FLOOR = 0.5  # >=50% of held-out boards must be distinct (anti-collapse)
+    idxs = model.board_indices(emb, k_dyn)
+    dynamic_words = [vocab[i] for i in idxs]
+    return d.assemble_board(core_words, dynamic_words, k)
 
 
 def _df_and_dup(board: list[str]) -> tuple[int, float]:
@@ -71,8 +75,7 @@ def _df_and_dup(board: list[str]) -> tuple[int, float]:
 
 
 def _held_out_rows() -> list[dict]:
-    """The test-split rows, with a fingerprint guard so a regenerated source file
-    can't silently shift the partition (would leak train rows into 'held-out')."""
+    """Test-split rows with fingerprint guard against stale partitions."""
     rows = train_mod.gather_rows()
     splits = json.loads(d.SPLITS_PATH.read_text())
     fp = splits.get("fingerprint")
@@ -83,35 +86,52 @@ def _held_out_rows() -> list[dict]:
     return [rows[i] for i in splits.get("test", []) if i < len(rows)]
 
 
-def held_out_eval(model, vocab, k) -> dict:
-    """(1) diversity retention + (2) agreement, BOTH on the held-out test split.
-
-    ① is measured on held-out contexts only — NOT the in-sample Phase-3 set — so the
-    retention number is a generalisation claim, not memorisation. Each held-out row
-    carries its own teacher board, so student vs teacher is apples-to-apples."""
+def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
+    """(1) diversity retention + (2) agreement on the held-out test split."""
+    core_lower = {w.lower() for w in core_words}
     held = _held_out_rows()
-    s_df, s_dup, t_df, t_dup, overlaps = [], [], [], [], []
+    s_df, s_dup, t_df, t_dup = [], [], [], []
+    full_overlaps: list[float] = []
+    dynamic_overlaps: list[float] = []
     distinct_boards: set[tuple] = set()
+    dynamic_triples: set[frozenset] = set()
+
     for r in held:
-        sb = student_board(model, vocab, r["scene"], r["transcript"], k)
+        sb = student_board(model, vocab, r["scene"], r["transcript"],
+                           k, k_dyn, core_words)
         distinct_boards.add(tuple(sorted(w.lower() for w in sb[:METRIC_K])))
+
+        sb_dynamic = [w for w in sb if w.lower() not in core_lower]
+        if len(sb_dynamic) >= 3:
+            dynamic_triples.add(frozenset(w.lower() for w in sb_dynamic[:3]))
+
         sdf, sdup = _df_and_dup(sb)
         tdf, tdup = _df_and_dup(r["board"])
-        s_df.append(sdf); s_dup.append(sdup); t_df.append(tdf); t_dup.append(tdup)
-        sset = set(w.lower() for w in sb[:METRIC_K])
-        tset = set(w.lower() for w in r["board"][:METRIC_K])
+        s_df.append(sdf); s_dup.append(sdup)
+        t_df.append(tdf); t_dup.append(tdup)
+
+        sset = {w.lower() for w in sb[:METRIC_K]}
+        tset = {w.lower() for w in r["board"][:METRIC_K]}
         if tset:
-            overlaps.append(len(sset & tset) / len(tset))
+            full_overlaps.append(len(sset & tset) / len(tset))
+
+        teacher_dyn = {w.lower() for w in r["board"][:METRIC_K]
+                       if w.lower() not in core_lower}
+        student_dyn = {w.lower() for w in sb_dynamic}
+        if teacher_dyn:
+            dynamic_overlaps.append(len(student_dyn & teacher_dyn) / len(teacher_dyn))
 
     n = len(held)
     sd = float(np.mean(s_df)) if s_df else 0.0
     td = float(np.mean(t_df)) if t_df else float("nan")
-    sdup = float(np.mean(s_dup)) if s_dup else 0.0
+    sdup_mean = float(np.mean(s_dup)) if s_dup else 0.0
     retention = sd / td if td else float("nan")
     variety = len(distinct_boards) / n if n else 0.0
-    overlap = float(np.mean(overlaps)) if overlaps else 0.0
+    dyn_variety = len(dynamic_triples) / n if n else 0.0
+    full_overlap = float(np.mean(full_overlaps)) if full_overlaps else 0.0
+    dyn_overlap = float(np.mean(dynamic_overlaps)) if dynamic_overlaps else 0.0
 
-    diversity_pass = bool(retention >= 0.90 and sdup <= 0.08
+    diversity_pass = bool(retention >= 0.90 and sdup_mean <= 0.08
                           and variety >= BOARD_VARIETY_FLOOR)
     return {
         "diversity_retention": {
@@ -119,37 +139,42 @@ def held_out_eval(model, vocab, k) -> dict:
             "student_distinct_functions": round(sd, 3),
             "teacher_distinct_functions": round(td, 3),
             "retention_ratio": round(retention, 3),
-            "student_near_dup": round(sdup, 4),
+            "student_near_dup": round(sdup_mean, 4),
             "teacher_near_dup": round(float(np.mean(t_dup)), 4) if t_dup else None,
             "distinct_student_boards": len(distinct_boards),
             "board_variety": round(variety, 3),
+            "dynamic_variety": round(dyn_variety, 3),
             "pass": diversity_pass,
             "need": (f"HELD-OUT: distinct-fn >= 90% of teacher AND near-dup <= 0.08 "
                      f"AND board-variety >= {BOARD_VARIETY_FLOOR}"),
         },
         "agreement": {
-            "set_overlap_top7": round(overlap, 3), "n_heldout": len(overlaps),
-            "pass": bool(overlap >= 0.70), "need": "HELD-OUT: top-7 set-overlap >= 0.70"},
+            "full_overlap_top7": round(full_overlap, 3),
+            "dynamic_overlap": round(dyn_overlap, 3),
+            "n_heldout": len(dynamic_overlaps),
+            "pass": bool(dyn_overlap >= DYNAMIC_OVERLAP_GATE),
+            "need": f"HELD-OUT: dynamic_overlap >= {DYNAMIC_OVERLAP_GATE}",
+        },
     }
 
 
-def speedup(model, vocab, k, teacher_samples: int) -> dict:
-    """(3) end-to-end board latency: student (embed+MLP+topk) vs teacher (LLM+MMR)."""
+def speedup(model, vocab, k, k_dyn, core_words, teacher_samples: int) -> dict:
+    """(3) end-to-end board latency: student (embed+MLP+assemble) vs teacher."""
     from evaluation.embed import embed
     scenarios = scengen.load_scenarios()
 
-    # Student: warm, then time the full board path.
-    _ = student_board(model, vocab, scenarios[0]["scene"], scenarios[0]["transcript"], k)
+    _ = student_board(model, vocab, scenarios[0]["scene"],
+                      scenarios[0]["transcript"], k, k_dyn, core_words)
     s_times = []
     for sc in scenarios[:50]:
         t0 = time.time()
-        emb = torch.from_numpy(embed([f"{sc.get('scene','')} || {sc.get('transcript','')}".strip()]))
-        idxs = model.board_indices(emb, k)
-        _ = [vocab[i] for i in idxs]
+        emb = torch.from_numpy(
+            embed([f"{sc.get('scene','')} || {sc.get('transcript','')}".strip()]))
+        idxs = model.board_indices(emb, k_dyn)
+        d.assemble_board(core_words, [vocab[i] for i in idxs], k)
         s_times.append(time.time() - t0)
     student_ms = float(np.median(s_times)) * 1000
 
-    # Teacher: time the real diverse seam on a small sample (one LLM load).
     t_times = []
     note = ""
     if teacher_samples > 0:
@@ -184,7 +209,7 @@ def write_report(res: dict) -> None:
     g1, g2, g3 = res["diversity_retention"], res["agreement"], res["speedup"]
     wrapper_dead = g1["pass"] and g3["pass"]
     lines = [
-        "# Phase-4 distillation v1 — evaluation report",
+        "# Phase-4 distillation v2 — evaluation report",
         "",
         f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}  |  "
         f"student rows={res['meta']['n_rows']} vocab={res['meta']['vocab']} "
@@ -204,10 +229,13 @@ def write_report(res: dict) -> None:
         f"{g1.get('distinct_student_boards')} distinct of {g1['n_heldout']} "
         f"(variety {g1.get('board_variety')}) | — | ≥{BOARD_VARIETY_FLOOR} | "
         f"{'PASS' if g1.get('board_variety', 0) >= BOARD_VARIETY_FLOOR else 'FAIL'} |",
+        f"| ① | dynamic-variety (distinct triples) | {g1.get('dynamic_variety')} | — | — | — |",
         f"| ① | **combined** | — | — | all three above | "
         f"**{'PASS' if g1['pass'] else 'FAIL'}** |",
-        f"| ② | top-7 set-overlap (held-out) | {g2['set_overlap_top7']} | — | ≥0.70 | "
+        f"| ② | dynamic_overlap (gate) | {g2['dynamic_overlap']} | — "
+        f"| ≥{DYNAMIC_OVERLAP_GATE} | "
         f"{'PASS' if g2['pass'] else 'FAIL'} (n={g2['n_heldout']}) |",
+        f"| ② | full_overlap_top7 (continuity) | {g2['full_overlap_top7']} | — | — | — |",
         f"| ③ | speedup | {g3['student_latency_ms']} ms | "
         f"{g3['teacher_latency_s']} s | ≥10× | "
         f"{'PASS' if g3['pass'] else 'FAIL'} ({g3['speedup_x']}×) |",
@@ -224,14 +252,14 @@ def write_report(res: dict) -> None:
             f"communicative diversity at a {g3['speedup_x']}× speedup.")
     elif g3["pass"] and not g1["pass"]:
         lines.append(
-            "> The v1 student achieved the speedup but did NOT retain teacher diversity "
+            "> The v2 student achieved the speedup but did NOT retain teacher diversity "
             "(mode-collapse). Iterating on diversity loss / more teacher data. Not a win.")
     else:
-        lines.append("> v1 did not clear the bars; see numbers above. Honest finding, iterate.")
+        lines.append("> v2 did not clear the bars; see numbers above. Honest finding, iterate.")
     lines += [
         "",
         "## Honesty note",
-        "v1 is validated against TEACHER behaviour on SYNTHETIC scenarios; the teacher is "
+        "v2 is validated against TEACHER behaviour on SYNTHETIC scenarios; the teacher is "
         "itself an LLM (Qwen) over curated/synthetic contexts. A student that passes here "
         "may be imitating the teacher imitating GPT. Human/pilot validation on consented "
         "interaction logs is the next step and the number that ultimately matters.",
@@ -251,15 +279,15 @@ def main() -> int:
     cfg = yaml.safe_load((HERE / "config.yaml").read_text())
     k = cfg["board"]["k"]
     ck = torch.load(CKPT, map_location="cpu", weights_only=False)
-    model, vocab = load_student()
+    model, vocab, core_words, k_dyn = load_student()
 
-    held = held_out_eval(model, vocab, k)
+    held = held_out_eval(model, vocab, k, k_dyn, core_words)
     res = {
         "meta": {"n_rows": ck.get("n_rows"), "vocab": ck.get("vocab_size"),
                  "config_hash": ck.get("config_hash")},
         "diversity_retention": held["diversity_retention"],
         "agreement": held["agreement"],
-        "speedup": speedup(model, vocab, k, args.teacher_samples),
+        "speedup": speedup(model, vocab, k, k_dyn, core_words, args.teacher_samples),
     }
     (HERE / "phase4_results.json").write_text(json.dumps(res, indent=2))
     write_report(res)

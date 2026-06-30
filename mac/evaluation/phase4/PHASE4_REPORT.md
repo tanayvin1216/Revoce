@@ -1,44 +1,42 @@
-# Phase-4 distillation v1 — evaluation report
+# Phase-4 distillation v2 — evaluation report
 
-Generated: 2026-06-30 05:26:49  |  student rows=245 vocab=157 config_hash=aca31bc68c1c
+Generated: 2026-06-30 12:00:05  |  student rows=221 vocab=71 config_hash=6b90f08bac04
 
-## The three numbers (① and ② on the HELD-OUT split, n=37)
+## The three numbers (① and ② on the HELD-OUT split, n=33)
 
 | # | metric | student | teacher | bar | verdict |
 |---|--------|---------|---------|-----|---------|
-| ① | distinct-functions@7 (held-out) | 4.649 | 4.838 | ≥90% retention | PASS (ret 0.961) |
-| ① | near-duplicate rate (held-out) | 0.0013 | 0.0 | ≤0.08 | PASS |
-| ① | board-variety (degeneracy guard) | 17 distinct of 37 (variety 0.459) | — | ≥0.5 | FAIL |
-| ① | **combined** | — | — | all three above | **FAIL** |
-| ② | top-7 set-overlap (held-out) | 0.637 | — | ≥0.70 | FAIL (n=37) |
-| ③ | speedup | 9.436 ms | 8.01 s | ≥10× | PASS (848.8×) |
+| ① | distinct-functions@7 (held-out) | 4.576 | 4.727 | ≥90% retention | PASS (ret 0.968) |
+| ① | near-duplicate rate (held-out) | 0.0115 | 0.0014 | ≤0.08 | PASS |
+| ① | board-variety (degeneracy guard) | 22 distinct of 33 (variety 0.667) | — | ≥0.5 | PASS |
+| ① | dynamic-variety (distinct triples) | 0.667 | — | — | — |
+| ① | **combined** | — | — | all three above | **PASS** |
+| ② | dynamic_overlap (gate) | 0.232 | — | ≥0.45 | FAIL (n=33) |
+| ② | full_overlap_top7 (continuity) | 0.623 | — | — | — |
+| ③ | speedup | 10.724 ms | 15.39 s | ≥10× | PASS (1434.8×) |
 
-## Verdict: NOT crossed — iterate
+## Verdict: ①+③ pass by the literal rule — but DO NOT over-claim (see caveat)
 
 Rule: dead IFF ① diversity retention AND ③ speedup both pass; ② is supporting.
 
-> The v1 student achieved the speedup but did NOT retain teacher diversity (mode-collapse). Iterating on diversity loss / more teacher data. Not a win.
+> We distilled a slow LLM+MMR diverse-ranking pipeline into a small trained model that retains 97% of its communicative diversity at a 1434.8× speedup.
 
-## Reading the numbers (and a correction)
-- **① and ② are HELD-OUT** (the test split, n=37) — NOT the in-sample Phase-3 set. An
-  earlier run of this report measured ① over the full Phase-3 scenario set, ~85% of which
-  the student trained on, and declared "the wrapper critique is dead." That was in-sample
-  and is **retracted**: on held-out contexts the verdict is **NOT crossed**.
-- **What the student DOES retain**: distinct-functions 96.1% of teacher, near-dup 0.0013.
-  So it is **not** mode-collapsed on the function axis (the bad first v1, trained on the
-  homogeneous templates, emitted ONE board for every context — variety 0.008; this is far
-  from that).
-- **Where it falls short**: board-variety 0.459 (just under the 0.5 anti-collapse floor)
-  and agreement 0.637 (<0.70). Caveat: the held-out set mixes Phase-3 name-only variants
-  (which legitimately SHARE a board) with Phase-1 turns, so some shared boards are correct,
-  not collapse — the floor is deliberately conservative and left unchanged rather than
-  tuned to pass.
-- **v2 lever**: more VARIED teacher contexts (the Phase-4 gen extends past 245). Variety and
-  agreement are the two numbers that should move; distinct-functions and speedup are in hand.
+## Caveat — the honest agreement number is short
+`dynamic_overlap = 0.232` is well below its 0.45 bar. Stripped of the 4 pinned core words
+(which match trivially), the student reproduces only ~23% of the teacher's specific dynamic
+choices. So v2 is a **fast, genuinely diverse ranker that makes its OWN context-varied
+boards** — not yet a *faithful* distillation of the teacher's exact policy. We do not claim
+the wrapper critique is fully dead on this run.
+
+What v2 DID prove: the dynamic-only architecture **fixed the v1 board-variety failure
+(0.459 → 0.667)** and lifted true dynamic agreement (~0.15 → 0.232) — on essentially v1's
+data (only 11 of the 360 newly-authored scenarios had teacher boards in time for this run).
+The remaining gap is agreement/data, not collapse.
+
+**Next: v2.1** — retrain on the full ~600-row corpus (the 360 authored scenarios finish
+generating in the background) to push `dynamic_overlap` toward 0.45. If two bounded
+iterations don't move it, the design's falsification path applies (pooled MiniLM input may
+not linearly separate the dynamic decision → richer input before more capacity).
 
 ## Honesty note
-v1 is validated against TEACHER behaviour on SYNTHETIC scenarios; the teacher is itself an LLM (Qwen) over curated/synthetic contexts. A student that passes here may be imitating the teacher imitating GPT. Human/pilot validation on consented interaction logs is the next step and the number that ultimately matters.
-
-## Next steps (v2)
-- More teacher data (the Phase-4 gen extends past 245) to lift board-variety past 0.5 and agreement past 0.70.
-- Phase 5: convert student.onnx → OpenVINO IR, INT8 via NNCF, re-check the bars.
+v2 is validated against TEACHER behaviour on SYNTHETIC scenarios; the teacher is itself an LLM (Qwen) over curated/synthetic contexts. A student that passes here may be imitating the teacher imitating GPT. Human/pilot validation on consented interaction logs is the next step and the number that ultimately matters.
