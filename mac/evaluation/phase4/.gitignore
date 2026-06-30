@@ -1,0 +1,7 @@
+# Generated artifacts — rebuilt by gen_teacher/train/evaluate; never committed.
+teacher_data.jsonl
+student.pt
+student.onnx
+vocab.json
+splits.json
+phase4_results.json
