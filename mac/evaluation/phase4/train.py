@@ -65,7 +65,9 @@ def gather_rows() -> list[dict]:
     final preprocessed set — evaluate.py compares against this fingerprint.
     """
     rows: list[dict] = []
-    for src in (PHASE3_BOARDS, TEACHER_DATA):
+    # TEACHER_DATA first so freshly-regenerated boards win the context dedup over
+    # any stale duplicate in PHASE3_BOARDS (e.g. after an answer-mode prompt fix).
+    for src in (TEACHER_DATA, PHASE3_BOARDS):
         if src.exists():
             rows.extend(d.load_teacher_rows(src))
     seen: set[str] = set()
