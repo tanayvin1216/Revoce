@@ -1,0 +1,256 @@
+<?xml version="1.0"?>
+<net name="onnx_Frontend_IR" version="11">
+	<layers>
+		<layer id="0" name="context_emb" type="Parameter" version="opset1">
+			<data shape="?,769" element_type="f32" />
+			<output>
+				<port id="0" precision="FP32" names="context_emb">
+					<dim>-1</dim>
+					<dim>769</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="1" name="Range_7" type="Const" version="opset1">
+			<data element_type="i64" shape="1" offset="0" size="8" />
+			<output>
+				<port id="0" precision="I64">
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="2" name="MVN_8" type="MVN" version="opset6">
+			<data eps="9.9999997473787516e-06" normalize_variance="true" eps_mode="INSIDE_SQRT" />
+			<input>
+				<port id="0" precision="FP32">
+					<dim>-1</dim>
+					<dim>769</dim>
+				</port>
+				<port id="1" precision="I64">
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" precision="FP32">
+					<dim>-1</dim>
+					<dim>769</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="3" name="Constant_2296" type="Const" version="opset1">
+			<data element_type="f32" shape="1, 769" offset="8" size="3076" />
+			<output>
+				<port id="0" precision="FP32">
+					<dim>1</dim>
+					<dim>769</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="4" name="Multiply_15" type="Multiply" version="opset1">
+			<data auto_broadcast="numpy" />
+			<input>
+				<port id="0" precision="FP32">
+					<dim>-1</dim>
+					<dim>769</dim>
+				</port>
+				<port id="1" precision="FP32">
+					<dim>1</dim>
+					<dim>769</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" precision="FP32">
+					<dim>-1</dim>
+					<dim>769</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="5" name="Constant_2297" type="Const" version="opset1">
+			<data element_type="f32" shape="1, 769" offset="3084" size="3076" />
+			<output>
+				<port id="0" precision="FP32">
+					<dim>1</dim>
+					<dim>769</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="6" name="node_layer_norm" type="Add" version="opset1">
+			<data auto_broadcast="numpy" />
+			<input>
+				<port id="0" precision="FP32">
+					<dim>-1</dim>
+					<dim>769</dim>
+				</port>
+				<port id="1" precision="FP32">
+					<dim>1</dim>
+					<dim>769</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" precision="FP32" names="layer_norm">
+					<dim>-1</dim>
+					<dim>769</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="7" name="net.1.weight" type="Const" version="opset1">
+			<data element_type="f32" shape="192, 769" offset="6160" size="590592" />
+			<output>
+				<port id="0" precision="FP32" names="net.1.weight">
+					<dim>192</dim>
+					<dim>769</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="8" name="node_linear/WithoutBiases" type="MatMul" version="opset1">
+			<data transpose_a="false" transpose_b="true" />
+			<input>
+				<port id="0" precision="FP32">
+					<dim>-1</dim>
+					<dim>769</dim>
+				</port>
+				<port id="1" precision="FP32">
+					<dim>192</dim>
+					<dim>769</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" precision="FP32">
+					<dim>-1</dim>
+					<dim>192</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="9" name="Constant_2298" type="Const" version="opset1">
+			<data element_type="f32" shape="1, 192" offset="596752" size="768" />
+			<output>
+				<port id="0" precision="FP32">
+					<dim>1</dim>
+					<dim>192</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="10" name="node_linear" type="Add" version="opset1">
+			<data auto_broadcast="numpy" />
+			<input>
+				<port id="0" precision="FP32">
+					<dim>-1</dim>
+					<dim>192</dim>
+				</port>
+				<port id="1" precision="FP32">
+					<dim>1</dim>
+					<dim>192</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" precision="FP32" names="linear">
+					<dim>-1</dim>
+					<dim>192</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="11" name="node_relu" type="ReLU" version="opset1">
+			<input>
+				<port id="0" precision="FP32">
+					<dim>-1</dim>
+					<dim>192</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" precision="FP32" names="relu">
+					<dim>-1</dim>
+					<dim>192</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="12" name="net.4.weight" type="Const" version="opset1">
+			<data element_type="f32" shape="116, 192" offset="597520" size="89088" />
+			<output>
+				<port id="0" precision="FP32" names="net.4.weight">
+					<dim>116</dim>
+					<dim>192</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="13" name="node_linear_1/WithoutBiases" type="MatMul" version="opset1">
+			<data transpose_a="false" transpose_b="true" />
+			<input>
+				<port id="0" precision="FP32">
+					<dim>-1</dim>
+					<dim>192</dim>
+				</port>
+				<port id="1" precision="FP32">
+					<dim>116</dim>
+					<dim>192</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" precision="FP32">
+					<dim>-1</dim>
+					<dim>116</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="14" name="Constant_2299" type="Const" version="opset1">
+			<data element_type="f32" shape="1, 116" offset="686608" size="464" />
+			<output>
+				<port id="0" precision="FP32">
+					<dim>1</dim>
+					<dim>116</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="15" name="logits" type="Add" version="opset1">
+			<data auto_broadcast="numpy" />
+			<input>
+				<port id="0" precision="FP32">
+					<dim>-1</dim>
+					<dim>116</dim>
+				</port>
+				<port id="1" precision="FP32">
+					<dim>1</dim>
+					<dim>116</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" precision="FP32" names="logits">
+					<dim>-1</dim>
+					<dim>116</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="16" name="logits/sink_port_0" type="Result" version="opset1" output_names="logits">
+			<input>
+				<port id="0" precision="FP32">
+					<dim>-1</dim>
+					<dim>116</dim>
+				</port>
+			</input>
+		</layer>
+	</layers>
+	<edges>
+		<edge from-layer="0" from-port="0" to-layer="2" to-port="0" />
+		<edge from-layer="1" from-port="0" to-layer="2" to-port="1" />
+		<edge from-layer="2" from-port="2" to-layer="4" to-port="0" />
+		<edge from-layer="3" from-port="0" to-layer="4" to-port="1" />
+		<edge from-layer="4" from-port="2" to-layer="6" to-port="0" />
+		<edge from-layer="5" from-port="0" to-layer="6" to-port="1" />
+		<edge from-layer="6" from-port="2" to-layer="8" to-port="0" />
+		<edge from-layer="7" from-port="0" to-layer="8" to-port="1" />
+		<edge from-layer="8" from-port="2" to-layer="10" to-port="0" />
+		<edge from-layer="9" from-port="0" to-layer="10" to-port="1" />
+		<edge from-layer="10" from-port="2" to-layer="11" to-port="0" />
+		<edge from-layer="11" from-port="1" to-layer="13" to-port="0" />
+		<edge from-layer="12" from-port="0" to-layer="13" to-port="1" />
+		<edge from-layer="13" from-port="2" to-layer="15" to-port="0" />
+		<edge from-layer="14" from-port="0" to-layer="15" to-port="1" />
+		<edge from-layer="15" from-port="2" to-layer="16" to-port="0" />
+	</edges>
+	<rt_info>
+		<info name="OpenVINO Runtime" value="2026.2.1-21919-ede283a88e3-releases/2026/2" />
+		<Runtime_version value="2026.2.1-21919-ede283a88e3-releases/2026/2" />
+		<conversion_parameters>
+			<input_model value="DIR/student.onnx" />
+			<is_python_object value="False" />
+		</conversion_parameters>
+	</rt_info>
+</net>
