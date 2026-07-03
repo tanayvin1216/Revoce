@@ -163,10 +163,10 @@
 			</output>
 		</layer>
 		<layer id="12" name="net.4.weight" type="Const" version="opset1">
-			<data element_type="f32" shape="116, 192" offset="597520" size="89088" />
+			<data element_type="f32" shape="94, 192" offset="597520" size="72192" />
 			<output>
 				<port id="0" precision="FP32" names="net.4.weight">
-					<dim>116</dim>
+					<dim>94</dim>
 					<dim>192</dim>
 				</port>
 			</output>
@@ -179,23 +179,23 @@
 					<dim>192</dim>
 				</port>
 				<port id="1" precision="FP32">
-					<dim>116</dim>
+					<dim>94</dim>
 					<dim>192</dim>
 				</port>
 			</input>
 			<output>
 				<port id="2" precision="FP32">
 					<dim>-1</dim>
-					<dim>116</dim>
+					<dim>94</dim>
 				</port>
 			</output>
 		</layer>
 		<layer id="14" name="Constant_2299" type="Const" version="opset1">
-			<data element_type="f32" shape="1, 116" offset="686608" size="464" />
+			<data element_type="f32" shape="1, 94" offset="669712" size="376" />
 			<output>
 				<port id="0" precision="FP32">
 					<dim>1</dim>
-					<dim>116</dim>
+					<dim>94</dim>
 				</port>
 			</output>
 		</layer>
@@ -204,17 +204,17 @@
 			<input>
 				<port id="0" precision="FP32">
 					<dim>-1</dim>
-					<dim>116</dim>
+					<dim>94</dim>
 				</port>
 				<port id="1" precision="FP32">
 					<dim>1</dim>
-					<dim>116</dim>
+					<dim>94</dim>
 				</port>
 			</input>
 			<output>
 				<port id="2" precision="FP32" names="logits">
 					<dim>-1</dim>
-					<dim>116</dim>
+					<dim>94</dim>
 				</port>
 			</output>
 		</layer>
@@ -222,7 +222,7 @@
 			<input>
 				<port id="0" precision="FP32">
 					<dim>-1</dim>
-					<dim>116</dim>
+					<dim>94</dim>
 				</port>
 			</input>
 		</layer>
