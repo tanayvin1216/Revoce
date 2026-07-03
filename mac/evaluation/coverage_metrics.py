@@ -19,6 +19,8 @@ matches the existing harness so Coverage@7 == semantic recall@7, no drift.
 
 from __future__ import annotations
 
+import re
+
 import numpy as np
 
 from evaluation.embed import embed
@@ -64,11 +66,20 @@ def function_coverage(board_vecs: np.ndarray) -> tuple[int, list[str]]:
     return len(set(labels)), labels
 
 
+def _phrase_in(needle: str, haystack: str) -> bool:
+    """Word-boundary containment. Plain substring let core "no" match "now"
+    (INVESTIGATION_useless_boards.md §3); lookarounds keep multi-word and
+    punctuation-edged phrases matching while killing the intra-word leak."""
+    if not needle or not haystack:
+        return False
+    return re.search(rf"(?<!\w){re.escape(needle)}(?!\w)", haystack) is not None
+
+
 def _lexical_hit(phrase: str, gt_tokens: set[str], gt_text: str) -> bool:
     p = (phrase or "").lower().strip()
     if not p or not gt_tokens:
         return False
-    if p in gt_text or gt_text in p:
+    if _phrase_in(p, gt_text) or _phrase_in(gt_text, p):
         return True
     return bool(content_tokens(p) & gt_tokens)
 
