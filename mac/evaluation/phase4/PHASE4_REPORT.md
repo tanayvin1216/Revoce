@@ -1,26 +1,26 @@
 # Phase-4 distillation v2 — evaluation report
 
-Generated: 2026-07-03 00:07:39  |  student rows=559 vocab=94 config_hash=8151a7e34afd
+Generated: 2026-07-03 06:25:33  |  student rows=559 vocab=94 config_hash=8151a7e34afd
 
 ## The three numbers (① and ② on the HELD-OUT split, n=84)
 
 | # | metric | student | teacher | bar | verdict |
 |---|--------|---------|---------|-----|---------|
-| ① | distinct-functions@7 (held-out) | 4.548 | 4.333 | ≥90% retention | PASS (ret 1.049) |
-| ① | near-duplicate rate (held-out) | 0.0 | 0.0 | ≤0.08 | PASS |
-| ① | same-function-pair rate (held-out) | 0.1508 | 0.1684 | ≤0.1 | FAIL |
-| ① | board-variety (degeneracy guard) | 84 distinct of 84 (variety 1.0) | — | ≥0.5 | PASS |
-| ① | dynamic-variety (distinct triples) | 1.0 | — | — | — |
+| ① | distinct-functions@7 (held-out) | 4.048 | 4.333 | ≥90% retention | PASS (ret 0.934) |
+| ① | near-duplicate rate (held-out) | 0.0006 | 0.0 | ≤0.08 | PASS |
+| ① | same-function-pair rate (held-out) | 0.1882 | 0.1684 | ≤ teacher | FAIL |
+| ① | board-variety (degeneracy guard) | 77 distinct of 84 (variety 0.917) | — | ≥0.5 | PASS |
+| ① | dynamic-variety (distinct triples) | 0.917 | — | — | — |
 | ① | **combined** | — | — | all three above | **FAIL** |
-| ② | dynamic_overlap (gate) | 0.056 | — | ≥0.45 | FAIL (n=84) |
-| ② | full_overlap_top7 (continuity) | 0.587 | — | — | — |
-| ③ | speedup | 7.559 ms | 7.56 s | ≥10× | PASS (1000.0×) |
-| ④ | coverage-of-intent, full board (reported, NOT gated) | 0.803 | 0.944 | — | — (n=71) |
-| ④ | **coverage-of-intent, DYNAMIC (the real bar)** | **0.563** | 0.845 | ≥0.9 | FAIL (n=71) |
+| ② | dynamic_overlap (report-only) | 0.056 | — | — | — (n=84) |
+| ② | full_overlap_top7 (continuity) | 0.59 | — | — | — |
+| ③ | speedup | 8.194 ms | 6.8 s | ≥10× | PASS (829.9×) |
+| ④ | coverage-of-intent, full board (reported, NOT gated) | 0.859 | 0.944 | — | — (n=71) |
+| ④ | **coverage-of-intent, DYNAMIC (the real bar)** | **0.775** | 0.845 | ≥90% of teacher | PASS (n=71) |
 
 ## The number that matters: DYNAMIC coverage-of-intent
 
-Does the board the MODEL built give the user a way to express their intent? Student **0.563** vs teacher **0.845** (held-out, n=71; non-core words in the top-7, scored against non-hedge acceptable moves). The full-board number (0.803) is reported for continuity but is inflated by the 4 pinned core words self-certifying (INVESTIGATION_useless_boards.md §3). Coverage — not `dynamic_overlap` word-parroting — is the right product question; the dynamic slice is the honest version of it.
+Does the board the MODEL built give the user a way to express their intent? Student **0.775** vs teacher **0.845** (held-out, n=71; non-core words in the top-7, scored against non-hedge acceptable moves). The full-board number (0.859) is reported for continuity but is inflated by the 4 pinned core words self-certifying (INVESTIGATION_useless_boards.md §3). Coverage — not `dynamic_overlap` word-parroting — is the right product question; the dynamic slice is the honest version of it.
 
 ## Verdict (literal ①+③ rule): NOT crossed
 

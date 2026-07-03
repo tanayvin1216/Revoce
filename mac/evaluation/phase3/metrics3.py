@@ -88,17 +88,8 @@ def same_function_pair_rate(board: list[str], k: int = TOPK, board_vecs=None) ->
 # Used to drop hedge-labelled acceptable moves before the dynamic coverage gate:
 # a board should not get coverage credit for offering "I don't know" when the
 # scenario also had concrete answers available (answer-presence honesty).
-HEDGE_PHRASES = frozenset({
-    "i don't know", "i am not sure", "i'm not sure", "not sure", "no idea",
-    "i can't remember", "maybe", "i don't care", "i'm not sure yet",
-    "i need more time",
-})
-
-
-def is_hedge(text: str) -> bool:
-    """True if the phrase is a hedge/epistemic-stall (normalized lookup)."""
-    norm = (text or "").lower().strip().replace("’", "'").rstrip(".!?").strip()
-    return norm in HEDGE_PHRASES
+# Shared cluster (review S3/L1): one source of truth with infer.py's board cap.
+from evaluation.hedges import HEDGE_PHRASES, is_hedge  # noqa: F401
 
 
 def coverage_of_intent(

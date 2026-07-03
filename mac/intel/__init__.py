@@ -49,6 +49,9 @@ class OpenVinoStudent:
         self._compiled = ov.Core().compile_model(
             str(self.xml_path), "CPU", {"INFERENCE_PRECISION_HINT": "f32"})
         self._output = self._compiled.output(0)
+        # Output dim of the head == vocab size; used by the seam's stale-artifact
+        # guard (review S5).
+        self.vocab_size = int(self._output.get_partial_shape()[-1].get_length())
 
     def __call__(self, context_emb) -> np.ndarray:
         """(B, context_dim) -> (B, vocab_size) logits, as float32 ndarray."""

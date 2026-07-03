@@ -110,7 +110,31 @@ def dedup_vocab(ranked: list[str], tau: float) -> tuple[list[str], dict[str, str
 
     kept = [w for i, w in enumerate(ranked) if find(i) == i]
     canonical = {w: ranked[find(i)] for i, w in enumerate(ranked) if find(i) != i}
+
+    # Review S4: single-link chaining can transitively swallow distinct answers
+    # ("...nervous." -> "...anxious." is a real size-2 merge). Guard both ways:
+    # every non-hedge merge is logged for manual audit, and an oversized
+    # component (>4) fails loudly instead of silently eating vocabulary.
+    from evaluation.hedges import is_hedge
+    sizes: dict[str, int] = {}
+    for dropped, rep in canonical.items():
+        sizes[rep] = sizes.get(rep, 1) + 1
+        if not (is_hedge(dropped) and is_hedge(rep)):
+            print(f"[dedup_vocab] non-hedge merge: {dropped!r} -> {rep!r} (audit)")
+    oversized = {rep: n for rep, n in sizes.items()
+                 if n > 4 and not is_hedge(rep)}
+    if oversized:
+        raise ValueError(
+            f"dedup_vocab: non-hedge component(s) exceed size 4: {oversized} — "
+            f"lower tau or whitelist before retraining")
     return kept, canonical
+
+
+def vocab_sha(vocab: list[str]) -> str:
+    """Order-sensitive fingerprint of the vocab — stamped into the checkpoint
+    and IR sidecars so a stale/reordered artifact fails loudly at load instead
+    of silently serving wrong words (review S5)."""
+    return hashlib.sha256("\n".join(vocab).encode()).hexdigest()[:16]
 
 
 def save_vocab(vocab: list[str], path: Path = VOCAB_PATH) -> None:
