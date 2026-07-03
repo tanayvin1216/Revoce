@@ -3,6 +3,7 @@ Ranker backend configuration — one line selects the runtime.
 
 Override any value with environment variables:
   VOICELINK_BOARD_STRATEGY "diverse" | "topk"
+  VOICELINK_STUDENT_BACKEND "torch" | "openvino"
   VOICELINK_RANKER         "local-llm" | "heuristic"
   VOICELINK_LLM_MODEL      HuggingFace repo id (must already be cached)
   VOICELINK_LLM_MAX_TOKENS maximum tokens to generate
@@ -19,6 +20,12 @@ import os
 # This flips only the server default. rank_vocabulary()'s own signature default
 # stays "topk", so the eval baseline (evaluation/harness.py) is untouched.
 BOARD_STRATEGY: str = os.environ.get("VOICELINK_BOARD_STRATEGY", "diverse")
+
+# Backend the seam loads for strategy="student":
+#   "torch"    — student.pt via PyTorch (default)
+#   "openvino" — student_int8.xml (fallback student_fp32.xml) via the OpenVINO
+#                CPU plugin; same logits, swapped runtime (the Intel path)
+STUDENT_BACKEND: str = os.environ.get("VOICELINK_STUDENT_BACKEND", "torch")
 
 RANKER: str = os.environ.get("VOICELINK_RANKER", "local-llm")
 LLM_MODEL: str = os.environ.get(

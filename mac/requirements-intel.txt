@@ -1,0 +1,10 @@
+# Intel/OpenVINO lifecycle deps (Phase 5, Track 3). Installed alongside
+# requirements.txt — the OpenVINO ARM CPU plugin runs on Apple Silicon for the
+# dev loop; the same IRs deploy unchanged on Intel hardware.
+openvino>=2025.2
+nncf>=2.14
+optimum[openvino]>=1.24
+
+# Whisper IR inference (openvino_genai.WhisperPipeline). NOTE: pass
+# INFERENCE_PRECISION_HINT="f32" on ARM — the f16 default breaks decoding.
+openvino-genai>=2025.2
