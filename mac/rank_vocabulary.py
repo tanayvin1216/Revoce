@@ -605,6 +605,16 @@ def _function_coverage_order(functions: list[str], k: int) -> list[int]:
 _student_singleton = None
 
 
+def _assert_vocab_matches(n_vocab: int, n_model: int, artifact: str) -> None:
+    """Review S5: a model artifact whose output dim disagrees with vocab.json
+    would either IndexError (swallowed silently) or serve WRONG words to a
+    nonverbal user. Fail loudly at load time instead."""
+    if n_vocab != n_model:
+        raise RuntimeError(
+            f"vocab.json has {n_vocab} words but {artifact} outputs {n_model} — "
+            f"stale artifact; re-run train.py / intel/convert.py + quantize.py")
+
+
 def _load_student_torch(base) -> tuple:
     import json
 
@@ -616,6 +626,12 @@ def _load_student_torch(base) -> tuple:
     model.load_state_dict(ck["state_dict"])
     model.eval()
     vocab = json.loads((base / "vocab.json").read_text())
+    _assert_vocab_matches(len(vocab), ck["vocab_size"], "student.pt")
+    from evaluation.phase4.data import vocab_sha
+    if ck.get("vocab_sha") and ck["vocab_sha"] != vocab_sha(vocab):
+        raise RuntimeError(
+            "vocab.json content drifted since student.pt was trained — retrain "
+            "before serving (stale checkpoint would map indices to wrong words)")
     return (model, vocab, ck["guaranteed_core"], ck["k_dyn"])
 
 
@@ -630,6 +646,7 @@ def _load_student_openvino(base) -> tuple:
     from intel import OpenVinoStudent, student_ir_path
     model = OpenVinoStudent(student_ir_path())
     vocab = json.loads((base / "vocab.json").read_text())
+    _assert_vocab_matches(len(vocab), model.vocab_size, model.xml_path.name)
     k_dyn = int(yaml.safe_load((base / "config.yaml").read_text())["board"]["k_dyn"])
     return (model, vocab, list(GUARANTEED_CORE), k_dyn)
 
@@ -652,14 +669,14 @@ def _student_board(scene, transcript, context, k) -> list[RankedWord]:
     """One board from the distilled student (no LLM). Returns [] on any failure
     so the caller can fall back to the diverse path and never strand the user."""
     try:
-        import torch
-        from evaluation.phase4 import data as d
+        # Review-opus C1: the device MUST run the same MMR + answer-aware
+        # selection the eval harness measures — raw board_indices() topk here
+        # was serving hedge walls the metrics never saw.
+        from evaluation.phase4.infer import student_board
         model, vocab, core, k_dyn = _load_student()
         is_q = _is_question(transcript, context)
-        feat = torch.from_numpy(
-            d.row_features(scene or "", transcript or "", is_q)).unsqueeze(0)
-        idxs = model.board_indices(feat, k_dyn)
-        words = d.assemble_board(core, [vocab[i] for i in idxs], k)
+        words = student_board(model, vocab, scene or "", transcript or "",
+                              is_q, k, k_dyn, core)
         return _to_ranked([{"word": w, "symbol_keyword": w.lower()} for w in words])
     except Exception:
         return []

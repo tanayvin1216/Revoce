@@ -103,9 +103,13 @@ def main() -> int:
     note = accuracy_note(calib, load_k_dyn())
     ACCURACY_JSON.write_text(json.dumps(note, indent=2))
     print(json.dumps(note, indent=2))
-    ok = note["mean_topk_overlap"] >= 0.8
+    # Review S6: the mean alone averages away a single scenario silently losing
+    # a third of its board to quantization noise — gate the worst case too.
+    ok = (note["mean_topk_overlap"] >= 0.8
+          and note["min_topk_overlap"] >= 0.5)
     print(f">>> INT8 accuracy: {'PASS' if ok else 'FAIL'} "
-          f"(mean top-{note['k_dyn']} overlap {note['mean_topk_overlap']:.3f}) <<<")
+          f"(mean top-{note['k_dyn']} overlap {note['mean_topk_overlap']:.3f}, "
+          f"min {note['min_topk_overlap']:.3f}; need mean>=0.8 AND min>=0.5) <<<")
     return 0 if ok else 1
 
 

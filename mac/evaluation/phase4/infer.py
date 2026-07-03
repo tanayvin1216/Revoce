@@ -37,26 +37,13 @@ HERE = Path(__file__).resolve().parent
 # faithful mirror of "surface the most situation-relevant answers FIRST" is
 # relevance order with a near-duplicate guard.
 ANSWER_DUP_GUARD = 0.85
-FILL_LAM = 0.6  # selection.DEFAULT_LAMBDA — same spread the teacher fill uses
+FILL_LAM = 0.6  # sweep: 0.5 was worse on every axis (sfp .191, cov .761); 0.6 is the operating point
 ANSWER_SLOTS = 2
 HEDGE_CAP = 1
 
-# The known hedge cluster (RC-2): normalized members of the "i don't know"
-# family. After vocab dedup only one survives as a column, but extracted
-# candidates and legacy vocabs may still carry variants — cap them all.
-_HEDGE_PHRASES = frozenset({
-    "i don't know", "i dont know", "i don't know yet", "i dont know yet",
-    "i am not sure", "i'm not sure", "im not sure", "not sure",
-    "i am not sure yet", "i'm not sure yet", "unsure",
-})
-
-
-def _normalize(word: str) -> str:
-    return word.strip().lower().replace("’", "'").rstrip(".!?,")
-
-
-def is_hedge(word: str) -> bool:
-    return _normalize(word) in _HEDGE_PHRASES
+# The hedge cluster lives in ONE shared module (review S3/L1) so the board cap
+# and the same-function metric can never disagree about what a hedge is.
+from evaluation.hedges import is_hedge, normalize as _normalize  # noqa: E402
 
 
 @lru_cache(maxsize=1)
@@ -114,22 +101,34 @@ def _context_candidates(scene: str | None, transcript: str | None) -> list[str]:
 
 # --- selection -----------------------------------------------------------------
 
+# Review-opus fix 2: the single-token context union injected question-echo nouns
+# ("budget", "doorway") whose cosine-to-query is inflated by lexical self-overlap,
+# and they displaced real vocab answers (ablation: disabling the union recovered
+# dynamic coverage 0.563 -> 0.803). Off until a multi-word answer extractor exists.
+CONTEXT_UNION = False
+
+
 def _candidate_pool(model, vocab: list[str], scene: str, transcript: str,
                     is_question: bool, k_dyn: int) -> list[str]:
-    """Vocab top-N by sigmoid score, unioned with context-extracted terms."""
+    """Vocab top-N by sigmoid score (+ context terms when CONTEXT_UNION)."""
     from evaluation.phase4 import data as d
     feats = torch.from_numpy(
         d.row_features(scene, transcript, is_question)).unsqueeze(0)
     with torch.no_grad():
         logits = model(feats)[0]
+    # Backend-agnostic: the torch path yields a Tensor, OpenVinoStudent yields a
+    # float32 ndarray — normalise to numpy before ranking.
+    logits = logits.detach().cpu().numpy() if hasattr(logits, "detach") \
+        else np.asarray(logits, dtype=np.float32)
     pool_n = min(len(vocab), _pool_mult() * k_dyn)
-    top = torch.topk(torch.sigmoid(logits), pool_n).indices.tolist()
+    top = np.argsort(-logits)[:pool_n].tolist()  # sigmoid is monotone; rank logits
     pool = [vocab[i] for i in top]
-    seen = {_normalize(w) for w in pool}
-    for term in _context_candidates(scene, transcript):
-        if term not in seen and term not in d.CORE_SET:
-            seen.add(term)
-            pool.append(term)
+    if CONTEXT_UNION:
+        seen = {_normalize(w) for w in pool}
+        for term in _context_candidates(scene, transcript):
+            if term not in seen and term not in d.CORE_SET:
+                seen.add(term)
+                pool.append(term)
     return pool
 
 
@@ -168,7 +167,13 @@ def student_dynamic_words(model, vocab: list[str], scene: str, transcript: str,
     chosen = _reserve_answers(cand_vecs, query, hedge_flags, k_dyn) \
         if is_question else []
     n_hedges = sum(1 for i in chosen if hedge_flags[i])
-    order = mmr_select(cand_vecs, query, len(candidates), FILL_LAM)
+    # Function-aware fill (review round 3): the teacher passes per-candidate
+    # communication-function tags to mmr_select so the board SPANS functions
+    # (rank_vocabulary.py:540); omitting them here left the all-vocab pool
+    # stacking same-function filler (sfp 0.197 vs teacher 0.168).
+    from evaluation.phase3 import taxonomy
+    _, functions = taxonomy.classify_functions(cand_vecs)
+    order = mmr_select(cand_vecs, query, len(candidates), FILL_LAM, functions)
     for i in order:
         if len(chosen) >= k_dyn:
             break
