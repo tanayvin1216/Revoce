@@ -47,6 +47,42 @@ def test_multihot_excludes_core_marks_dynamic():
     assert y.sum() == 1.0              # only water; yes is core, unknown dropped
 
 
+HEDGE_VARIANTS = ["i don't know", "i am not sure", "i'm not sure", "i'm not sure.",
+                  "i am not sure.", "not sure", "i don't know."]
+
+
+def test_dedup_vocab_collapses_hedges_to_one():
+    """The 7 known hedge paraphrases (RC-2) collapse to exactly 1 representative;
+    every dropped variant maps to that representative in the canonical map."""
+    ranked = HEDGE_VARIANTS + ["water", "carbon dioxide", "my aunt"]
+    kept, canonical = d.dedup_vocab(ranked, tau=0.80)
+    kept_hedges = [w for w in kept if w in HEDGE_VARIANTS]
+    assert kept_hedges == ["i don't know"]     # highest-ranked member represents
+    for w in HEDGE_VARIANTS[1:]:
+        assert canonical[w] == "i don't know"
+    assert "water" in kept and "carbon dioxide" in kept and "my aunt" in kept
+    assert "water" not in canonical            # kept words never appear as sources
+
+
+def test_dedup_vocab_preserves_rank_order():
+    """The kept list stays in frequency-rank order; the duplicate ("i don't
+    know." ~ "i don't know" = 0.926) drops and maps to the earlier-ranked word."""
+    kept, canonical = d.dedup_vocab(["i don't know", "water", "i don't know."], tau=0.80)
+    assert kept == ["i don't know", "water"]
+    assert canonical == {"i don't know.": "i don't know"}
+
+
+def test_multihot_canonical_redirects_label_mass():
+    """A dropped variant on a teacher board marks its kept representative's bit
+    instead of silently losing the label."""
+    w2i = {"i don't know": 0, "water": 1}
+    canonical = {"i am not sure": "i don't know"}
+    y = d.multihot(["I am not sure", "water"], w2i, canonical)
+    assert y[0] == 1.0                         # redirected label mass
+    assert y[1] == 1.0
+    assert y.sum() == 2.0
+
+
 def test_assemble_board_pins_core_exactly_k_disjoint():
     """Core is pinned first in order; result is exactly k; dynamic section has no core."""
     core = ["yes", "no", "I need help", "wait"]
@@ -97,6 +133,73 @@ def test_student_board_indices_topk():
     assert len(idxs) == 7 and len(set(idxs)) == 7
 
 
+# --- inference (infer.py — MMR + answer reservation + hedge cap) --------------
+
+def _bias_model(vocab_size: int, bias: list[float]) -> StudentRanker:
+    """A deterministic student whose logits are a fixed bias regardless of input
+    (final Linear weight zeroed) — lets tests script exactly which vocab items
+    the raw model would rank on top."""
+    m = StudentRanker(context_dim=769, hidden_dim=8, vocab_size=vocab_size, dropout=0.0)
+    with torch.no_grad():
+        m.net[-1].weight.zero_()
+        m.net[-1].bias.copy_(torch.tensor(bias, dtype=torch.float32))
+    m.eval()
+    return m
+
+
+HEDGY_VOCAB = ["i don't know", "i am not sure", "not sure", "i'm not sure",
+               "window seat", "aisle seat", "my aunt", "my friend",
+               "over there", "in the front"]
+# Hedges get the top logits — the exact RC-1 failure shape (raw topk would
+# return 4 hedges); infer.py must not.
+HEDGY_BIAS = [5.0, 4.5, 4.0, 3.5, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5]
+
+
+def test_infer_caps_hedges_at_one():
+    from evaluation.phase4 import infer
+    m = _bias_model(len(HEDGY_VOCAB), HEDGY_BIAS)
+    words = infer.student_dynamic_words(
+        m, HEDGY_VOCAB, scene="A bus with open seats.",
+        transcript="Where would you like to sit today?", is_question=False, k_dyn=6)
+    assert len(words) == 6
+    assert sum(1 for w in words if infer.is_hedge(w)) <= 1
+
+
+def test_infer_question_reserves_answer_slots():
+    from evaluation.phase4 import infer
+    m = _bias_model(len(HEDGY_VOCAB), HEDGY_BIAS)
+    words = infer.student_dynamic_words(
+        m, HEDGY_VOCAB, scene="A bus with open seats.",
+        transcript="Where would you like to sit today?", is_question=True, k_dyn=6)
+    assert not infer.is_hedge(words[0])        # >=2 answer slots come first
+    assert not infer.is_hedge(words[1])
+    assert sum(1 for w in words if infer.is_hedge(w)) <= 1
+
+
+def test_infer_unions_transcript_candidates():
+    """A concrete answer literally present in the transcript reaches the board
+    even when it is absent from the trained vocab (RC-3-lite)."""
+    from evaluation.phase4 import infer
+    vocab = ["i don't know", "i am not sure", "my aunt", "my friend"]
+    m = _bias_model(len(vocab), [5.0, 4.5, 1.0, 0.9])
+    words = infer.student_dynamic_words(
+        m, vocab, scene="A train carriage with empty seats.",
+        transcript="Do you want the window seat or the aisle seat?",
+        is_question=True, k_dyn=6)
+    assert any(w in {"window", "aisle", "seat", "train", "carriage"} for w in words)
+
+
+def test_infer_student_board_pins_core_first():
+    from evaluation.phase4 import infer
+    core = ["yes", "no", "I need help", "wait"]
+    m = _bias_model(len(HEDGY_VOCAB), HEDGY_BIAS)
+    board = infer.student_board(
+        m, HEDGY_VOCAB, scene="A bus.", transcript="Where do you want to sit?",
+        is_question=True, k=10, k_dyn=6, core_words=core)
+    assert board[:4] == core
+    assert len(board) == 10
+
+
 # --- ONNX export round-trip (the export-first guarantee) ----------------------
 
 def test_onnx_export_roundtrip(tmp_path):
@@ -106,3 +209,39 @@ def test_onnx_export_roundtrip(tmp_path):
     export_student(m, path)
     assert path.exists()
     assert verify_onnx(m, path) < 1e-4           # onnxruntime matches eager
+
+
+# --- seating probes on the REAL retrained checkpoint ---------------------------
+# The two investigation scenarios that produced hedge walls (v2-32, v2-85).
+# Skipped when the (gitignored) artifacts are absent; green after train.py runs.
+
+import pytest  # noqa: E402
+
+CKPT = MAC / "evaluation" / "phase4" / "student.pt"
+_needs_ckpt = pytest.mark.skipif(
+    not CKPT.exists(), reason="student.pt not trained in this checkout")
+
+SEATING_PROBES = [
+    ("The teacher gestures around a room with several open desks as the user comes in.",
+     "Where would you like to sit today?",
+     ("sit", "seat", "desk", "here", "there", "room", "front", "back")),
+    ("Crowded holiday dinner table, aunt pulling out an empty chair between two relatives.",
+     "Who do you want to sit next to?",
+     ("aunt", "friend", "sibling", "neighbor", "grandparent", "mom", "dad",
+      "chair", "table", "next")),
+]
+
+
+@_needs_ckpt
+@pytest.mark.parametrize("scene,transcript,concrete_stems", SEATING_PROBES)
+def test_seating_probe_has_concrete_answer(scene, transcript, concrete_stems):
+    """Top-7 must offer >=1 concrete answer (seat/person word), not a hedge wall."""
+    from evaluation.phase4 import infer
+    from evaluation.phase4.evaluate import load_student
+    model, vocab, core_words, k_dyn = load_student()
+    board = infer.student_board(model, vocab, scene, transcript,
+                                is_question=True, k=10, k_dyn=k_dyn,
+                                core_words=core_words)
+    top7 = [w.lower() for w in board[:7]]
+    assert sum(1 for w in top7 if infer.is_hedge(w)) <= 1
+    assert any(stem in w for w in top7 for stem in concrete_stems), top7
