@@ -6,5 +6,6 @@ student.onnx.data
 *.onnx
 *.onnx.data
 vocab.json
+canonical.json
 splits.json
 phase4_results.json
