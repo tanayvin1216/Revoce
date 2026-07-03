@@ -176,10 +176,26 @@ def test_infer_question_reserves_answer_slots():
     assert sum(1 for w in words if infer.is_hedge(w)) <= 1
 
 
-def test_infer_unions_transcript_candidates():
-    """A concrete answer literally present in the transcript reaches the board
-    even when it is absent from the trained vocab (RC-3-lite)."""
+def test_context_union_disabled_by_default():
+    """Review-opus fix 2: the single-token union injected question-echo nouns
+    that displaced real answers (ablation: 0.563 -> 0.803 coverage without it).
+    It stays OFF until a multi-word answer extractor exists."""
     from evaluation.phase4 import infer
+    assert infer.CONTEXT_UNION is False
+    vocab = ["i don't know", "i am not sure", "my aunt", "my friend"]
+    m = _bias_model(len(vocab), [5.0, 4.5, 1.0, 0.9])
+    words = infer.student_dynamic_words(
+        m, vocab, scene="A train carriage with empty seats.",
+        transcript="Do you want the window seat or the aisle seat?",
+        is_question=True, k_dyn=6)
+    assert all(w in vocab for w in words)  # nothing outside the trained vocab
+
+
+def test_context_union_still_works_when_enabled(monkeypatch):
+    """The RC-3-lite machinery is kept behind the flag for the future
+    multi-word extractor — verify it still functions when switched on."""
+    from evaluation.phase4 import infer
+    monkeypatch.setattr(infer, "CONTEXT_UNION", True)
     vocab = ["i don't know", "i am not sure", "my aunt", "my friend"]
     m = _bias_model(len(vocab), [5.0, 4.5, 1.0, 0.9])
     words = infer.student_dynamic_words(
@@ -221,14 +237,34 @@ CKPT = MAC / "evaluation" / "phase4" / "student.pt"
 _needs_ckpt = pytest.mark.skipif(
     not CKPT.exists(), reason="student.pt not trained in this checkout")
 
+# Review S2: the old stems accepted generic scene nouns ("room", "table"), so
+# the test passed on boards whose real answer sat outside top-7. Probes now
+# demand the ACTUAL answer tokens. The two out-of-vocab probes are xfail: with
+# the context union disabled (review fix 2) an answer the teacher never emitted
+# above the frequency floor is unrepresentable — that is RC-3, owned by
+# teacher-side answer coverage (PLAN.md item 4), and the xfail marks it honestly.
 SEATING_PROBES = [
-    ("The teacher gestures around a room with several open desks as the user comes in.",
-     "Where would you like to sit today?",
-     ("sit", "seat", "desk", "here", "there", "room", "front", "back")),
-    ("Crowded holiday dinner table, aunt pulling out an empty chair between two relatives.",
-     "Who do you want to sit next to?",
-     ("aunt", "friend", "sibling", "neighbor", "grandparent", "mom", "dad",
-      "chair", "table", "next")),
+    pytest.param(
+        "A train carriage with pairs of seats, some by the window and some by the aisle.",
+        "Do you want the window seat or the aisle seat?",
+        ("window seat", "aisle seat"),
+        id="in-vocab-window-aisle"),
+    pytest.param(
+        "The teacher gestures around a room with several open desks as the user comes in.",
+        "Where would you like to sit today?",
+        ("sit", "seat", "desk", "front", "back"),
+        marks=pytest.mark.xfail(
+            reason="RC-3: no seat/desk answer cleared the teacher-data frequency "
+                   "floor for this scene family; needs teacher answer-coverage"),
+        id="oov-classroom"),
+    pytest.param(
+        "Crowded holiday dinner table, aunt pulling out an empty chair between two relatives.",
+        "Who do you want to sit next to?",
+        ("aunt", "friend", "sibling", "grandparent", "mom", "dad"),
+        marks=pytest.mark.xfail(
+            reason="RC-3: person-word answers are below the teacher-data "
+                   "frequency floor; needs teacher answer-coverage"),
+        id="oov-dinner-person"),
 ]
 
 
@@ -245,3 +281,5 @@ def test_seating_probe_has_concrete_answer(scene, transcript, concrete_stems):
     top7 = [w.lower() for w in board[:7]]
     assert sum(1 for w in top7 if infer.is_hedge(w)) <= 1
     assert any(stem in w for w in top7 for stem in concrete_stems), top7
+    # a hedge-free board of generic filler is not a pass — demand the answer
+    # tokens above, not merely "no hedge wall"
