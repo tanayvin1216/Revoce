@@ -25,7 +25,6 @@ from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
-import torch
 
 HERE = Path(__file__).resolve().parent
 
@@ -112,14 +111,17 @@ def _candidate_pool(model, vocab: list[str], scene: str, transcript: str,
                     is_question: bool, k_dyn: int) -> list[str]:
     """Vocab top-N by sigmoid score (+ context terms when CONTEXT_UNION)."""
     from evaluation.phase4 import data as d
-    feats = torch.from_numpy(
-        d.row_features(scene, transcript, is_question)).unsqueeze(0)
-    with torch.no_grad():
-        logits = model(feats)[0]
-    # Backend-agnostic: the torch path yields a Tensor, OpenVinoStudent yields a
-    # float32 ndarray — normalise to numpy before ranking.
-    logits = logits.detach().cpu().numpy() if hasattr(logits, "detach") \
-        else np.asarray(logits, dtype=np.float32)
+    feats = d.row_features(scene, transcript, is_question)[None, :]
+    # Codex P1: torch is imported ONLY for the torch student, so a runtime-only
+    # OpenVINO install (no torch) can still serve boards instead of silently
+    # falling back to the LLM path when this module fails to import.
+    if hasattr(model, "state_dict"):  # torch StudentRanker
+        import torch
+        with torch.no_grad():
+            out = model(torch.from_numpy(feats))[0]
+        logits = out.detach().cpu().numpy()
+    else:  # OpenVinoStudent (numpy in, numpy out)
+        logits = np.asarray(model(feats), dtype=np.float32)[0]
     pool_n = min(len(vocab), _pool_mult() * k_dyn)
     top = np.argsort(-logits)[:pool_n].tolist()  # sigmoid is monotone; rank logits
     pool = [vocab[i] for i in top]

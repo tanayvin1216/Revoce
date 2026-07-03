@@ -72,6 +72,8 @@ def quantize_student(calib: np.ndarray, fp32_xml: Path = STUDENT_FP32_XML,
     quantized = nncf.quantize(model, dataset, subset_size=len(calib),
                               ignored_scope=nncf.IgnoredScope(names=[head]))
     ov.save_model(quantized, str(int8_xml), compress_to_fp16=False)
+    from intel.convert import _write_vocab_sidecar
+    _write_vocab_sidecar(int8_xml)
     return int8_xml
 
 
