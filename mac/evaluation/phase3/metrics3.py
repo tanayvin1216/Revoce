@@ -59,6 +59,48 @@ def near_dup_rate(board_vecs: np.ndarray) -> float:
     return float((triu >= DUP_TAU).mean())
 
 
+def same_function_pair_rate(board: list[str], k: int = TOPK, board_vecs=None) -> float:
+    """Fraction of top-k board item-PAIRS whose taxonomy function labels match.
+
+    Why alongside near_dup_rate: DUP_TAU=0.85 is too permissive to flag a board
+    that is 3-4 paraphrases of one move — "i don't know"~"i am not sure" sits at
+    cosine 0.784 and "i don't know"~"not sure" at 0.719, both invisible to
+    near_dup, yet all classify as the same communicative function. Measured on
+    the current student this is 0.169 vs the 0.020 near_dup reports
+    (INVESTIGATION_useless_boards.md §3). 0.0 for boards with <2 items."""
+    top = board[:k]
+    if len(top) < 2:
+        return 0.0
+    if board_vecs is not None:
+        vecs = board_vecs[:k]
+    else:
+        from evaluation.embed import embed  # lazy so tests can monkeypatch it
+        vecs = embed(top)
+    _, labels = taxonomy.classify_functions(vecs)
+    n = len(labels)
+    same = sum(1 for i in range(n) for j in range(i + 1, n)
+               if labels[i] == labels[j])
+    return same / (n * (n - 1) / 2)
+
+
+# The known hedge cluster — the 7 vocab variants from the investigation plus the
+# adjacent epistemic stalls the taxonomy's I-dont-know prototype anchors on.
+# Used to drop hedge-labelled acceptable moves before the dynamic coverage gate:
+# a board should not get coverage credit for offering "I don't know" when the
+# scenario also had concrete answers available (answer-presence honesty).
+HEDGE_PHRASES = frozenset({
+    "i don't know", "i am not sure", "i'm not sure", "not sure", "no idea",
+    "i can't remember", "maybe", "i don't care", "i'm not sure yet",
+    "i need more time",
+})
+
+
+def is_hedge(text: str) -> bool:
+    """True if the phrase is a hedge/epistemic-stall (normalized lookup)."""
+    norm = (text or "").lower().strip().replace("’", "'").rstrip(".!?").strip()
+    return norm in HEDGE_PHRASES
+
+
 def coverage_of_intent(
     board: list[str],
     acceptable_moves: list[str],
