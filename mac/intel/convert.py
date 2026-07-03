@@ -29,6 +29,16 @@ STUDENT_ONNX = MAC / "evaluation" / "phase4" / "student.onnx"
 MINILM_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
+def _write_vocab_sidecar(xml_path: Path) -> None:
+    """Codex P2: stamp the vocab fingerprint next to the IR so a same-sized but
+    reordered vocab.json fails loudly at load instead of serving wrong words."""
+    import json as _json
+    from evaluation.phase4.data import vocab_sha
+    phase4 = Path(__file__).resolve().parent.parent / "evaluation" / "phase4"
+    vocab = _json.loads((phase4 / "vocab.json").read_text())
+    xml_path.with_suffix(".vocab.sha").write_text(vocab_sha(vocab))
+
+
 def convert_student(onnx_path: Path = STUDENT_ONNX,
                     xml_path: Path = STUDENT_FP32_XML) -> Path:
     """student.onnx -> FP32 OpenVINO IR (.xml + .bin)."""
@@ -36,6 +46,7 @@ def convert_student(onnx_path: Path = STUDENT_ONNX,
     xml_path.parent.mkdir(parents=True, exist_ok=True)
     ov_model = ov.convert_model(str(onnx_path))
     ov.save_model(ov_model, str(xml_path), compress_to_fp16=False)
+    _write_vocab_sidecar(xml_path)
     return xml_path
 
 

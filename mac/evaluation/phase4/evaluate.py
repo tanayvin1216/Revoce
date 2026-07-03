@@ -270,11 +270,10 @@ def speedup(model, vocab, k, k_dyn, core_words, teacher_samples: int) -> dict:
     s_times = []
     for sc in scenarios[:50]:
         t0 = time.time()
-        emb = torch.from_numpy(d.row_features(
-            sc.get("scene", ""), sc.get("transcript", ""), sc.get("is_question", False))
-        ).unsqueeze(0)
-        idxs = model.board_indices(emb, k_dyn)
-        d.assemble_board(core_words, [vocab[i] for i in idxs], k)
+        # Codex P3: time the SAME MMR/answer-aware path production serves —
+        # raw board_indices() timing certified a path the device no longer runs.
+        student_board(model, vocab, sc.get("scene", ""), sc.get("transcript", ""),
+                      sc.get("is_question", False), k, k_dyn, core_words)
         s_times.append(time.time() - t0)
     student_ms = float(np.median(s_times)) * 1000
 
