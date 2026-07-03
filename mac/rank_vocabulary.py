@@ -647,6 +647,13 @@ def _load_student_openvino(base) -> tuple:
     model = OpenVinoStudent(student_ir_path())
     vocab = json.loads((base / "vocab.json").read_text())
     _assert_vocab_matches(len(vocab), model.vocab_size, model.xml_path.name)
+    # Codex P2: size alone misses a same-sized reorder — compare the stamped sha.
+    from evaluation.phase4.data import vocab_sha
+    sidecar = model.xml_path.with_suffix(".vocab.sha")
+    if not sidecar.exists() or sidecar.read_text().strip() != vocab_sha(vocab):
+        raise RuntimeError(
+            f"{model.xml_path.name} was built against a different vocab.json "
+            f"(missing/stale {sidecar.name}) — re-run intel/convert.py + quantize.py")
     k_dyn = int(yaml.safe_load((base / "config.yaml").read_text())["board"]["k_dyn"])
     return (model, vocab, list(GUARANTEED_CORE), k_dyn)
 
