@@ -26,6 +26,14 @@ build/
 
 # eval prediction caches (regenerable artifacts)
 mac/evaluation/preds-*.jsonl
+
+# OpenVINO artifacts — large/regenerable (minilm, whisper, accuracy json) ignored;
+# only the small student IRs are committed (negations below beat the *.bin rule above)
+mac/intel/artifacts/*
+!mac/intel/artifacts/student_fp32.xml
+!mac/intel/artifacts/student_fp32.bin
+!mac/intel/artifacts/student_int8.xml
+!mac/intel/artifacts/student_int8.bin
 .codex/
 phase_status.json
 AGENTS.md

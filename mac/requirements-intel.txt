@@ -1,0 +1,9 @@
+# Intel/OpenVINO lifecycle deps (Phase 5, Track 3). Installed alongside
+# requirements.txt — the OpenVINO ARM CPU plugin runs on Apple Silicon for the
+# dev loop; the same IRs deploy unchanged on Intel hardware.
+openvino>=2025.2
+nncf>=2.14
+optimum[openvino]>=1.24
+
+# openvino-genai is only needed for the Whisper-pipeline stretch goal; installed
+# explicitly when that step is reached (see mac/intel/README.md).
