@@ -328,9 +328,15 @@ def test_dedup_vocab_oversized_non_hedge_component_raises(monkeypatch):
 # 9. OpenVINO path (pytest.importorskip skips cleanly when unavailable)
 # ---------------------------------------------------------------------------
 
-pytest.importorskip("openvino")
+# Codex P1: importorskip at module level skipped ALL 33 tests (hedge, dedup,
+# fallback, guards) on machines without openvino. Import lazily per-test.
 
-from intel import OpenVinoStudent  # noqa: E402
+
+def _openvino_student_cls():
+    pytest.importorskip("openvino")
+    from intel import OpenVinoStudent
+    return OpenVinoStudent
+
 
 ARTIFACTS = MAC / "intel" / "artifacts"
 FP32_XML = ARTIFACTS / "student_fp32.xml"
@@ -341,7 +347,7 @@ _needs_fp32_ir = pytest.mark.skipif(
 
 @_needs_fp32_ir
 def test_openvino_student_zeros_embedding_returns_well_formed_logits():
-    student = OpenVinoStudent(FP32_XML)
+    student = _openvino_student_cls()(FP32_XML)
     logits = student(np.zeros(769, dtype=np.float32))
     assert logits.shape == (1, student.vocab_size)
     assert np.all(np.isfinite(logits))
@@ -351,9 +357,78 @@ def test_openvino_student_zeros_embedding_returns_well_formed_logits():
 def test_openvino_student_wrong_dtype_float64_input_still_returns_logits():
     """The runtime must coerce dtype rather than raising or silently corrupting
     output — OpenVinoStudent.__call__ casts via np.asarray(..., dtype=float32)."""
-    student = OpenVinoStudent(FP32_XML)
+    student = _openvino_student_cls()(FP32_XML)
     batch = np.zeros((3, 769), dtype=np.float64)
     logits = student(batch)
     assert logits.shape == (3, student.vocab_size)
     assert logits.dtype == np.float32
     assert np.all(np.isfinite(logits))
+
+
+# ---------------------------------------------------------------------------
+# 10. Review-round additions (Codex P2 + Sonnet cross-review, EDGE_CASES.md)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.skipif(not CKPT.exists(), reason="student.pt not trained here")
+def test_seam_student_strategy_does_not_use_diverse_fallback(monkeypatch):
+    """Codex P2 / Sonnet #15: the contract test could pass via the diverse
+    fallback while the student path was broken. Prove the student built the
+    board by making the fallback path raise if touched."""
+    import rank_vocabulary as rv
+
+    def _boom(*a, **k):  # pragma: no cover - failure mode
+        raise AssertionError("diverse fallback was used - student path broken")
+
+    monkeypatch.setattr(rv, "generate_pool", _boom)
+    monkeypatch.setattr(rv, "select_board", _boom)
+    monkeypatch.setattr(rv, "_student_singleton", None)
+    board = rv.rank_vocabulary(scene="A kitchen at snack time.",
+                               transcript="Do you want apple or crackers?",
+                               context={}, strategy="student")
+    assert len(board) == 10
+    assert [w["word"] for w in board[:4]] == rv.GUARANTEED_CORE
+
+
+def test_openvino_loader_rejects_missing_or_stale_sidecar(tmp_path, monkeypatch):
+    """Sonnet missing-case #3: _load_student_openvino's vocab.sha sidecar guard
+    (the same-size-reorder defense) had zero coverage."""
+    pytest.importorskip("openvino")
+    import shutil
+    import rank_vocabulary as rv
+    if not FP32_XML.exists():
+        pytest.skip("student FP32 IR missing")
+    for ext in (".xml", ".bin"):
+        shutil.copy(FP32_XML.with_suffix(ext), tmp_path / ("student_fp32" + ext))
+    # copy WITHOUT the .vocab.sha sidecar -> loader must refuse to serve
+    import intel
+    monkeypatch.setattr(intel, "student_ir_path",
+                        lambda: tmp_path / "student_fp32.xml")
+    monkeypatch.setattr(rv, "_student_singleton", None)
+    with pytest.raises(RuntimeError, match="different vocab.json"):
+        rv._load_student_openvino(
+            Path(rv.__file__).resolve().parent / "evaluation" / "phase4")
+    # stale sidecar (wrong sha) must also be rejected
+    (tmp_path / "student_fp32.vocab.sha").write_text("deadbeefdeadbeef")
+    with pytest.raises(RuntimeError, match="different vocab.json"):
+        rv._load_student_openvino(
+            Path(rv.__file__).resolve().parent / "evaluation" / "phase4")
+
+
+@pytest.mark.skipif(not CKPT.exists(), reason="student.pt not trained here")
+def test_infer_student_board_end_to_end_with_openvino_model():
+    """Sonnet missing-case #4: prove infer.py's numpy branch drives the full
+    MMR selection with an OpenVinoStudent, not just raw __call__."""
+    pytest.importorskip("openvino")
+    if not FP32_XML.exists():
+        pytest.skip("student FP32 IR missing")
+    import json
+    from evaluation.phase4 import infer
+    student = _openvino_student_cls()(FP32_XML)
+    vocab = json.loads((MAC / "evaluation" / "phase4" / "vocab.json").read_text())
+    board = infer.student_board(student, vocab, "A kitchen at snack time.",
+                                "Do you want apple or crackers?",
+                                is_question=True, k=10, k_dyn=6,
+                                core_words=["yes", "no", "I need help", "wait"])
+    assert len(board) == 10
+    assert board[:4] == ["yes", "no", "I need help", "wait"]
+    assert all(w in vocab or w in board[:4] for w in board)
