@@ -141,3 +141,46 @@ board: ['yes', 'no', 'I need help', 'wait', "i don't know", 'i am not sure',
 (The hedge-heavy dynamic words are the known RC-2 problem Track 1 is fixing — the
 OpenVINO backend faithfully reproduces the current student, which is the point.)
 
+## Whisper stretch (step 5 — reached after 1-6 green)
+
+- `pip install openvino-genai` -> 2026.2.1.0.
+- Export: `optimum-cli export openvino --model openai/whisper-base.en --task
+  automatic-speech-recognition-with-past --weight-format int8` -> 79 MB in
+  `artifacts/whisper-base.en-ov-int8/` (gitignored). int8_asym per-channel, 62/62 layers.
+- No audio exists in the repo, so the smoke clip is a locally synthesized 6.5 s
+  16 kHz mono wav (macOS `say` + `afconvert`) — no downloads, no third-party audio.
+- **Same ARM f16 pitfall, second hit:** with default plugin config the OV pipeline
+  produced a degenerate transcript ("Good morning.!!!!!!…") in 2.81 s. With
+  `WhisperPipeline(dir, "CPU", INFERENCE_PRECISION_HINT="f32")`:
+
+```
+OV int8 + f32 hint: 0.35s   text: Good morning. Are you all ready to start our
+                            day? Please hang up your backpack and take a seat
+                            by the window.
+faster-whisper base.en int8: 0.42s  (identical transcript)
+```
+
+  OpenVINO-genai int8 whisper-base.en is FASTER than the current faster-whisper
+  backend on the same clip, same machine, with a correct transcript. Recorded in
+  mac/intel/README.md; swapping the perception backend stays out of Track-3 scope.
+- Qwen2.5-VL export NOT attempted, per plan.
+
+## Env restore + final verification
+
+- `pip install transformers==5.12.0` restores the perception stack
+  (`mlx_vlm import OK`). optimum-cli export won't run again until transformers is
+  temporarily downgraded — documented in mac/intel/README.md; the OpenVINO runtime
+  path never imports transformers, so serving is unaffected.
+- Post-restore, real output:
+```
+tests/ — 59 passed, 5 warnings in 6.06s
+post-restore seam check: OpenVinoStudent 10 words
+```
+
+## Status: TRACK 3 COMPLETE (READY_FOR_TEST)
+
+All acceptance criteria met with real measured output: parity 1.43e-06, INT8 top-6
+overlap 0.954, backend flag round-trips, BENCHMARKS.md written, openvino backend
+serves boards through the seam, whisper stretch benchmarked. Post-merge the
+orchestrator re-runs convert.py + quantize.py against the regenerated student.onnx.
+
