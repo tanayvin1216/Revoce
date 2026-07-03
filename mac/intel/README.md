@@ -33,6 +33,20 @@ OpenVINO **runtime** never imports transformers. Workflow: downgrade transformer
 for the one-off export, then restore (`pip install "transformers>=5.12"`); or run
 exports in a scratch venv.
 
+## Whisper (stretch, done)
+
+```bash
+python3 -m optimum.commands.optimum_cli export openvino --model openai/whisper-base.en \
+    --task automatic-speech-recognition-with-past --weight-format int8 \
+    intel/artifacts/whisper-base.en-ov-int8
+```
+
+Smoke test on one 6.5 s clip (same audio, both int8, Apple Silicon):
+`openvino_genai.WhisperPipeline` 0.35 s vs faster-whisper 0.42 s, identical
+transcripts. **ARM pitfall (hit twice in this track):** the CPU plugin defaults to
+f16 inference — the Whisper decoder degenerates into repeated `!` tokens and runs
+8x slower. Always pass `INFERENCE_PRECISION_HINT="f32"` on ARM.
+
 ## Honesty labels
 
 - All numbers in `BENCHMARKS.md` were measured on Apple Silicon through OpenVINO's
