@@ -21,6 +21,7 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 VOCAB_PATH = HERE / "vocab.json"
 SPLITS_PATH = HERE / "splits.json"
+CANONICAL_PATH = HERE / "canonical.json"
 
 # Import here so CORE_SET is available at module level without loading heavy models.
 from rank_vocabulary import GUARANTEED_CORE  # noqa: E402 (after stdlib)
@@ -76,8 +77,54 @@ def build_vocab(rows: list[dict], min_freq: int,
     return vocab, word2idx
 
 
+def dedup_vocab(ranked: list[str], tau: float) -> tuple[list[str], dict[str, str]]:
+    """Semantic dedup of a frequency-ranked vocab (RC-2 fix).
+
+    Single-link connected components of the cosine>=tau graph — NOT greedy
+    against-kept-only, because the 7 hedge paraphrases only unite transitively
+    ("i don't know"~"i am not sure" = 0.784 < 0.80, but both link through
+    "i'm not sure" at 0.841/0.943; see impl-track1.md). Each component keeps its
+    highest-frequency (first-ranked) member; the canonical map sends every
+    dropped member to its component representative so multihot can redirect the
+    label mass instead of losing it.
+    """
+    from evaluation.embed import embed  # lazy: do not load MiniLM at import time
+    if len(ranked) <= 1:
+        return list(ranked), {}
+    vecs = embed(ranked)
+    linked = (vecs @ vecs.T) >= tau            # (N, N) adjacency, includes self
+    component = list(range(len(ranked)))       # root = lowest rank in component
+
+    def find(i: int) -> int:
+        while component[i] != i:
+            component[i] = component[component[i]]
+            i = component[i]
+        return i
+
+    for i in range(len(ranked)):
+        for j in range(i + 1, len(ranked)):
+            if linked[i, j]:
+                ri, rj = find(i), find(j)
+                if ri != rj:
+                    component[max(ri, rj)] = min(ri, rj)
+
+    kept = [w for i, w in enumerate(ranked) if find(i) == i]
+    canonical = {w: ranked[find(i)] for i, w in enumerate(ranked) if find(i) != i}
+    return kept, canonical
+
+
 def save_vocab(vocab: list[str], path: Path = VOCAB_PATH) -> None:
     path.write_text(json.dumps(vocab, indent=2))
+
+
+def save_canonical(canonical: dict[str, str], path: Path = CANONICAL_PATH) -> None:
+    path.write_text(json.dumps(canonical, indent=2, sort_keys=True))
+
+
+def load_canonical(path: Path = CANONICAL_PATH) -> dict[str, str]:
+    if not Path(path).exists():
+        return {}
+    return {k.lower(): v.lower() for k, v in json.loads(Path(path).read_text()).items()}
 
 
 def load_vocab(path: Path = VOCAB_PATH) -> tuple[list[str], dict[str, int]]:
@@ -85,13 +132,20 @@ def load_vocab(path: Path = VOCAB_PATH) -> tuple[list[str], dict[str, int]]:
     return vocab, {w.lower(): i for i, w in enumerate(vocab)}
 
 
-def multihot(board: list[str], word2idx: dict[str, int]) -> np.ndarray:
-    """Multi-hot over the DYNAMIC vocab only; core words are skipped."""
+def multihot(board: list[str], word2idx: dict[str, int],
+             canonical: dict[str, str] | None = None) -> np.ndarray:
+    """Multi-hot over the DYNAMIC vocab only; core words are skipped.
+
+    canonical redirects dedup-dropped variants ("i am not sure") to their kept
+    representative ("i don't know") so the label mass survives the vocab dedup.
+    """
     y = np.zeros(len(word2idx), dtype=np.float32)
     for w in board:
         key = w.strip().lower()
         if key in CORE_SET:
             continue  # core is pinned at inference — not a learning target
+        if canonical:
+            key = canonical.get(key, key)
         idx = word2idx.get(key)
         if idx is not None:
             y[idx] = 1.0
@@ -185,9 +239,10 @@ def context_features(rows: list[dict]) -> np.ndarray:
     return np.concatenate([scenes, trans, flags], axis=1).astype(np.float32)
 
 
-def make_xy(rows: list[dict], word2idx: dict[str, int]) -> tuple[np.ndarray, np.ndarray]:
+def make_xy(rows: list[dict], word2idx: dict[str, int],
+            canonical: dict[str, str] | None = None) -> tuple[np.ndarray, np.ndarray]:
     X = context_features(rows)
-    Y = np.stack([multihot(r["board"], word2idx) for r in rows]) if rows \
+    Y = np.stack([multihot(r["board"], word2idx, canonical) for r in rows]) if rows \
         else np.zeros((0, len(word2idx)), np.float32)
     return X, Y
 
