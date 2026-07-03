@@ -126,8 +126,19 @@ def train() -> dict:
         raise SystemExit(f"only {len(rows)} teacher rows — generate more first")
     vocab, word2idx = d.build_vocab(rows, cfg["vocab"]["min_freq"],
                                     cfg["vocab"]["max_size"])
+    # RC-2: collapse near-synonym clusters (the 7-hedge wall) to one column each;
+    # dropped variants keep contributing label mass via the canonical map.
+    canonical: dict[str, str] = {}
+    dedup_tau = cfg["vocab"].get("dedup_tau")
+    if dedup_tau:
+        n_before = len(vocab)
+        vocab, canonical = d.dedup_vocab(vocab, dedup_tau)
+        word2idx = {w: i for i, w in enumerate(vocab)}
+        print(f"vocab dedup tau={dedup_tau}: {n_before} -> {len(vocab)} "
+              f"({len(canonical)} variants remapped)", flush=True)
     d.save_vocab(vocab)
-    X, Y = d.make_xy(rows, word2idx)
+    d.save_canonical(canonical)
+    X, Y = d.make_xy(rows, word2idx, canonical)
     splits = d.split_indices(len(rows), cfg["train"]["val_frac"],
                              cfg["train"]["test_frac"], cfg["seed"])
     splits["fingerprint"] = d.rows_fingerprint(rows)
