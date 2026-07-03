@@ -605,22 +605,46 @@ def _function_coverage_order(functions: list[str], k: int) -> list[int]:
 _student_singleton = None
 
 
+def _load_student_torch(base) -> tuple:
+    import json
+
+    import torch
+    ck = torch.load(base / "student.pt", map_location="cpu", weights_only=False)
+    from evaluation.phase4.student import StudentRanker
+    model = StudentRanker(ck["context_dim"], ck["hidden_dim"],
+                          ck["vocab_size"], ck["dropout"])
+    model.load_state_dict(ck["state_dict"])
+    model.eval()
+    vocab = json.loads((base / "vocab.json").read_text())
+    return (model, vocab, ck["guaranteed_core"], ck["k_dyn"])
+
+
+def _load_student_openvino(base) -> tuple:
+    """Same logits interface, OpenVINO runtime (torch-free): student_int8.xml,
+    falling back to student_fp32.xml. core/k_dyn mirror the torch checkpoint's
+    values from their canonical sources (GUARANTEED_CORE, config.yaml)."""
+    import json
+
+    import yaml
+
+    from intel import OpenVinoStudent, student_ir_path
+    model = OpenVinoStudent(student_ir_path())
+    vocab = json.loads((base / "vocab.json").read_text())
+    k_dyn = int(yaml.safe_load((base / "config.yaml").read_text())["board"]["k_dyn"])
+    return (model, vocab, list(GUARANTEED_CORE), k_dyn)
+
+
 def _load_student():
     global _student_singleton
     if _student_singleton is None:
-        import json
         from pathlib import Path
 
-        import torch
+        import ranker_config
         base = Path(__file__).resolve().parent / "evaluation" / "phase4"
-        ck = torch.load(base / "student.pt", map_location="cpu", weights_only=False)
-        from evaluation.phase4.student import StudentRanker
-        model = StudentRanker(ck["context_dim"], ck["hidden_dim"],
-                              ck["vocab_size"], ck["dropout"])
-        model.load_state_dict(ck["state_dict"])
-        model.eval()
-        vocab = json.loads((base / "vocab.json").read_text())
-        _student_singleton = (model, vocab, ck["guaranteed_core"], ck["k_dyn"])
+        if getattr(ranker_config, "STUDENT_BACKEND", "torch") == "openvino":
+            _student_singleton = _load_student_openvino(base)
+        else:
+            _student_singleton = _load_student_torch(base)
     return _student_singleton
 
 
