@@ -12,10 +12,14 @@ model:
   dropout: 0.3
 
 # Vocabulary — the DYNAMIC candidate set (core excluded). An item must appear
-# at least min_freq times in teacher boards to be kept.
+# at least min_freq times in teacher boards to be kept. dedup_tau: after
+# frequency ranking, single-link clusters at MiniLM cosine >= tau collapse to
+# their highest-frequency member (RC-2 hedge-wall fix); dropped variants map to
+# the kept representative in canonical.json.
 vocab:
   min_freq: 3
   max_size: 200
+  dedup_tau: 0.80
 
 # Training
 train:
@@ -32,3 +36,4 @@ board:
   k: 10                   # full board the device shows (4 core + k_dyn dynamic)
   k_dyn: 6               # dynamic slots the student fills
   metric_k: 7             # the window the Phase-3 metrics judge
+  pool_mult: 3            # infer.py MMR pool size = pool_mult * k_dyn
