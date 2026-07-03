@@ -5,5 +5,6 @@ openvino>=2025.2
 nncf>=2.14
 optimum[openvino]>=1.24
 
-# openvino-genai is only needed for the Whisper-pipeline stretch goal; installed
-# explicitly when that step is reached (see mac/intel/README.md).
+# Whisper IR inference (openvino_genai.WhisperPipeline). NOTE: pass
+# INFERENCE_PRECISION_HINT="f32" on ARM — the f16 default breaks decoding.
+openvino-genai>=2025.2
