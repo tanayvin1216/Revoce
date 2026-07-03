@@ -3,8 +3,9 @@
 Three numbers, three bars — the "wrapper critique is dead" definition:
 
   (1) DIVERSITY RETENTION (make-or-break): student distinct-functions@7 >= 90% of
-      the teacher's AND student near-duplicate rate <= 8% AND board-variety >= 50%.
-      Measured on the HELD-OUT test split with the SAME metrics3 functions.
+      the teacher's AND student near-duplicate rate <= 8% AND same-function-pair
+      rate <= 10% AND board-variety >= 50%. Measured on the HELD-OUT test split
+      with the SAME metrics3 functions.
   (2) TEACHER-STUDENT AGREEMENT (supporting, v2): dynamic_overlap = fraction of
       teacher's non-core top-7 words the student's dynamic predictions include.
       GATE >= 0.45. Also reports full_overlap_top7 for continuity.
@@ -42,6 +43,12 @@ REPORT = HERE / "PHASE4_REPORT.md"
 METRIC_K = metrics3.TOPK  # 7
 BOARD_VARIETY_FLOOR = 0.5
 DYNAMIC_OVERLAP_GATE = 0.45
+# Honest gates (INVESTIGATION_useless_boards.md §3): coverage is gated on the
+# DYNAMIC words inside the top-7 (the pinned core self-certified 15.5% of the
+# old passes), and redundancy on same-function pairs (near_dup's 0.85 threshold
+# averaged the hedge wall away).
+DYNAMIC_COVERAGE_GATE = 0.90
+SFP_GATE = 0.10
 
 
 def load_student() -> tuple[StudentRanker, list[str], list[str], int]:
@@ -57,23 +64,41 @@ def load_student() -> tuple[StudentRanker, list[str], list[str], int]:
     return model, vocab, core_words, k_dyn
 
 
-def student_board(model, vocab, scene, transcript, is_question, k, k_dyn, core_words) -> list[str]:
-    """Assemble full board: core pinned first, student dynamic top-k_dyn after.
+try:
+    # Track-1's MMR + answer-aware inference; the one board builder post-merge.
+    from evaluation.phase4.infer import student_board  # noqa: E402
+except ImportError:
+    def student_board(model, vocab, scene, transcript, is_question, k, k_dyn,
+                      core_words) -> list[str]:
+        """Fallback (raw-topk) board assembly while infer.py does not exist:
+        core pinned first, student dynamic top-k_dyn after.
 
-    Uses the v2.2 richer 769-d feature (separate scene/transcript embeds + is_question),
-    the SAME builder training used, so train and inference see identical inputs."""
-    emb = torch.from_numpy(d.row_features(scene, transcript, is_question)).unsqueeze(0)
-    idxs = model.board_indices(emb, k_dyn)
-    dynamic_words = [vocab[i] for i in idxs]
-    return d.assemble_board(core_words, dynamic_words, k)
+        Uses the v2.2 richer 769-d feature (separate scene/transcript embeds +
+        is_question), the SAME builder training used, so train and inference see
+        identical inputs."""
+        emb = torch.from_numpy(
+            d.row_features(scene, transcript, is_question)).unsqueeze(0)
+        idxs = model.board_indices(emb, k_dyn)
+        dynamic = [vocab[i] for i in idxs]
+        return d.assemble_board(core_words, dynamic, k)
 
 
-def _df_and_dup(board: list[str]) -> tuple[int, float]:
+def dynamic_words(board: list[str], core_words: list[str],
+                  k: int = METRIC_K) -> list[str]:
+    """The non-core words inside the top-k window — what the model actually
+    contributed to the visible board. The honest coverage gate scores THESE."""
+    core_lower = {w.lower() for w in core_words}
+    return [w for w in board[:k] if w.lower() not in core_lower]
+
+
+def _df_dup_sfp(board: list[str]) -> tuple[int, float, float]:
+    """distinct-functions@7, near-dup rate, same-function-pair rate — one embed."""
     from evaluation.embed import embed
     top = board[:METRIC_K]
     vecs = embed(top) if top else embed([])
-    return metrics3.distinct_functions_at(board, METRIC_K, board_vecs=vecs), \
-        metrics3.near_dup_rate(vecs)
+    return (metrics3.distinct_functions_at(board, METRIC_K, board_vecs=vecs),
+            metrics3.near_dup_rate(vecs),
+            metrics3.same_function_pair_rate(board, METRIC_K, board_vecs=vecs))
 
 
 def _held_out_rows() -> list[dict]:
@@ -113,10 +138,13 @@ def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
     held = _held_out_rows()
     moves_by_ctx = _acceptable_moves_lookup()
     s_df, s_dup, t_df, t_dup = [], [], [], []
+    s_sfp, t_sfp = [], []
     full_overlaps: list[float] = []
     dynamic_overlaps: list[float] = []
     s_cov: list[float] = []
     t_cov: list[float] = []
+    s_cov_dyn: list[float] = []
+    t_cov_dyn: list[float] = []
     distinct_boards: set[tuple] = set()
     dynamic_triples: set[frozenset] = set()
 
@@ -127,16 +155,25 @@ def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
         if moves:
             s_cov.append(1.0 if metrics3.coverage_of_intent(sb, moves, METRIC_K) else 0.0)
             t_cov.append(1.0 if metrics3.coverage_of_intent(r["board"], moves, METRIC_K) else 0.0)
+            # The HONEST coverage: only the model's own words inside the top-7
+            # window, scored against non-hedge moves (a hedge is never the
+            # intent the gate should certify).
+            honest_moves = [m for m in moves if not metrics3.is_hedge(m)]
+            if honest_moves:
+                s_cov_dyn.append(1.0 if metrics3.coverage_of_intent(
+                    dynamic_words(sb, core_words), honest_moves, METRIC_K) else 0.0)
+                t_cov_dyn.append(1.0 if metrics3.coverage_of_intent(
+                    dynamic_words(r["board"], core_words), honest_moves, METRIC_K) else 0.0)
         distinct_boards.add(tuple(sorted(w.lower() for w in sb[:METRIC_K])))
 
         sb_dynamic = [w for w in sb if w.lower() not in core_lower]
         if len(sb_dynamic) >= 3:
             dynamic_triples.add(frozenset(w.lower() for w in sb_dynamic[:3]))
 
-        sdf, sdup = _df_and_dup(sb)
-        tdf, tdup = _df_and_dup(r["board"])
-        s_df.append(sdf); s_dup.append(sdup)
-        t_df.append(tdf); t_dup.append(tdup)
+        sdf, sdup, ssfp = _df_dup_sfp(sb)
+        tdf, tdup, tsfp = _df_dup_sfp(r["board"])
+        s_df.append(sdf); s_dup.append(sdup); s_sfp.append(ssfp)
+        t_df.append(tdf); t_dup.append(tdup); t_sfp.append(tsfp)
 
         sset = {w.lower() for w in sb[:METRIC_K]}
         tset = {w.lower() for w in r["board"][:METRIC_K]}
@@ -153,13 +190,16 @@ def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
     sd = float(np.mean(s_df)) if s_df else 0.0
     td = float(np.mean(t_df)) if t_df else float("nan")
     sdup_mean = float(np.mean(s_dup)) if s_dup else 0.0
+    ssfp_mean = float(np.mean(s_sfp)) if s_sfp else 0.0
     retention = sd / td if td else float("nan")
     variety = len(distinct_boards) / n if n else 0.0
     dyn_variety = len(dynamic_triples) / n if n else 0.0
     full_overlap = float(np.mean(full_overlaps)) if full_overlaps else 0.0
     dyn_overlap = float(np.mean(dynamic_overlaps)) if dynamic_overlaps else 0.0
+    cov_dyn = float(np.mean(s_cov_dyn)) if s_cov_dyn else 0.0
 
     diversity_pass = bool(retention >= 0.90 and sdup_mean <= 0.08
+                          and ssfp_mean <= SFP_GATE
                           and variety >= BOARD_VARIETY_FLOOR)
     return {
         "diversity_retention": {
@@ -169,11 +209,14 @@ def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
             "retention_ratio": round(retention, 3),
             "student_near_dup": round(sdup_mean, 4),
             "teacher_near_dup": round(float(np.mean(t_dup)), 4) if t_dup else None,
+            "student_same_function_pair": round(ssfp_mean, 4),
+            "teacher_same_function_pair": round(float(np.mean(t_sfp)), 4) if t_sfp else None,
             "distinct_student_boards": len(distinct_boards),
             "board_variety": round(variety, 3),
             "dynamic_variety": round(dyn_variety, 3),
             "pass": diversity_pass,
             "need": (f"HELD-OUT: distinct-fn >= 90% of teacher AND near-dup <= 0.08 "
+                     f"AND same-function-pair <= {SFP_GATE} "
                      f"AND board-variety >= {BOARD_VARIETY_FLOOR}"),
         },
         "agreement": {
@@ -187,8 +230,15 @@ def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
             "student": round(float(np.mean(s_cov)), 3) if s_cov else None,
             "teacher": round(float(np.mean(t_cov)), 3) if t_cov else None,
             "n_scored": len(s_cov),
-            "pass": bool(s_cov and float(np.mean(s_cov)) >= 0.90),
-            "need": "HELD-OUT: student board covers >=1 acceptable move in >=90% of scenarios",
+            # The gated number: dynamic-within-top-7 words vs non-hedge moves.
+            # The full-board number above is reported but NOT gated — 15.5% of
+            # its passes came from the pinned core matching a move (§3).
+            "student_dynamic": round(cov_dyn, 3) if s_cov_dyn else None,
+            "teacher_dynamic": round(float(np.mean(t_cov_dyn)), 3) if t_cov_dyn else None,
+            "n_scored_dynamic": len(s_cov_dyn),
+            "pass": bool(s_cov_dyn and cov_dyn >= DYNAMIC_COVERAGE_GATE),
+            "need": (f"HELD-OUT: student DYNAMIC top-7 words cover >=1 non-hedge "
+                     f"acceptable move in >={DYNAMIC_COVERAGE_GATE:.0%} of scenarios"),
         },
     }
 
@@ -262,6 +312,9 @@ def write_report(res: dict) -> None:
         f"| ① | near-duplicate rate (held-out) | {g1['student_near_dup']} | "
         f"{g1['teacher_near_dup']} | ≤0.08 | "
         f"{'PASS' if g1['student_near_dup'] <= 0.08 else 'FAIL'} |",
+        f"| ① | same-function-pair rate (held-out) | {g1['student_same_function_pair']} | "
+        f"{g1['teacher_same_function_pair']} | ≤{SFP_GATE} | "
+        f"{'PASS' if g1['student_same_function_pair'] <= SFP_GATE else 'FAIL'} |",
         f"| ① | board-variety (degeneracy guard) | "
         f"{g1.get('distinct_student_boards')} distinct of {g1['n_heldout']} "
         f"(variety {g1.get('board_variety')}) | — | ≥{BOARD_VARIETY_FLOOR} | "
@@ -276,17 +329,22 @@ def write_report(res: dict) -> None:
         f"| ③ | speedup | {g3['student_latency_ms']} ms | "
         f"{g3['teacher_latency_s']} s | ≥10× | "
         f"{'PASS' if g3['pass'] else 'FAIL'} ({g3['speedup_x']}×) |",
-        f"| ④ | **coverage-of-intent** (the real bar) | **{g4.get('student')}** | "
-        f"{g4.get('teacher')} | ≥0.90 | "
-        f"{'PASS' if g4.get('pass') else 'NEAR'} (n={g4.get('n_scored')}) |",
+        f"| ④ | coverage-of-intent, full board (reported, NOT gated) | {g4.get('student')} | "
+        f"{g4.get('teacher')} | — | — (n={g4.get('n_scored')}) |",
+        f"| ④ | **coverage-of-intent, DYNAMIC (the real bar)** | **{g4.get('student_dynamic')}** | "
+        f"{g4.get('teacher_dynamic')} | ≥{DYNAMIC_COVERAGE_GATE} | "
+        f"{'PASS' if g4.get('pass') else 'FAIL'} (n={g4.get('n_scored_dynamic')}) |",
         "",
-        "## The number that matters: coverage-of-intent",
+        "## The number that matters: DYNAMIC coverage-of-intent",
         "",
-        f"Does the board give the user a way to express their intent? Student "
-        f"**{g4.get('student')}** vs teacher **{g4.get('teacher')}** (held-out, n={g4.get('n_scored')}). "
-        "This is the right product question — NOT whether the student parrots the teacher's exact "
-        "words (`dynamic_overlap`), which is low because the teacher's board is one diverse sample "
-        "among many valid ones. On THIS metric the student nearly matches the teacher at ~800× speed.",
+        f"Does the board the MODEL built give the user a way to express their intent? "
+        f"Student **{g4.get('student_dynamic')}** vs teacher **{g4.get('teacher_dynamic')}** "
+        f"(held-out, n={g4.get('n_scored_dynamic')}; non-core words in the top-7, scored "
+        "against non-hedge acceptable moves). The full-board number "
+        f"({g4.get('student')}) is reported for continuity but is inflated by the 4 "
+        "pinned core words self-certifying (INVESTIGATION_useless_boards.md §3). "
+        "Coverage — not `dynamic_overlap` word-parroting — is the right product "
+        "question; the dynamic slice is the honest version of it.",
         "",
         f"## Verdict (literal ①+③ rule): {'PASS' if wrapper_dead else 'NOT crossed'}",
         "",
