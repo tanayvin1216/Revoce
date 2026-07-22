@@ -44,3 +44,6 @@ AGENTS.md
 # Bi-encoder quantization sweep outputs (regenerable by intel/biencoder_pareto.py;
 # PARETO.md is copied into the docs when it is worth keeping)
 mac/intel/artifacts/biencoder/
+
+# Isolated export toolchain (optimum-intel pins transformers<5.1; see mac/intel/README.md)
+.venv-export/

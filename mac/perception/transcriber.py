@@ -72,6 +72,94 @@ class MockTranscriber(Transcriber):
         return TranscriptionResult(text, lp, ns)
 
 
+class OpenVinoWhisperTranscriber(Transcriber):
+    """Whisper on OpenVINO GenAI — the Intel deployment path for ASR.
+
+    Deliberately uses `openvino_genai.WhisperPipeline` rather than
+    optimum-intel's OVModelForSpeechSeq2Seq. optimum-intel pins
+    transformers<5.1, which collides with what mlx-vlm needs, so requiring it at
+    RUNTIME would make the Intel path and the Mac VLM path mutually exclusive in
+    one environment. openvino-genai is a standalone runtime with no transformers
+    dependency: the model is exported once in a separate venv (see
+    mac/intel/README.md) and served here with nothing else installed.
+
+    The IR bundles its own tokenizer/detokenizer, so there is no tokenizer
+    version to drift against the weights.
+    """
+
+    RUNTIME_GENAI = "openvino-genai"
+    RUNTIME_OPTIMUM = "optimum-intel"
+
+    def __init__(self, model_dir, device: str = "CPU") -> None:
+        from pathlib import Path
+
+        model_dir = Path(model_dir)
+        if not (model_dir / "openvino_encoder_model.xml").exists():
+            raise FileNotFoundError(
+                f"no OpenVINO Whisper IR at {model_dir} — export it first "
+                "(mac/intel/README.md, 'export venv')")
+        self.model_dir = model_dir
+        self.runtime = None
+        self._pipe = None
+        self._model = None
+        self._proc = None
+
+        # Prefer openvino-genai: it is the runtime the deployment target wants
+        # (no transformers dependency at all) and the API the rubric names.
+        genai_error = None
+        try:
+            import openvino_genai
+            self._pipe = openvino_genai.WhisperPipeline(str(model_dir), device)
+            # Loading can succeed and generation still fail on a graph-shape
+            # mismatch, so prove it works before claiming this runtime.
+            self._pipe.generate(np.zeros(16000, dtype=np.float32))
+            self.runtime = self.RUNTIME_GENAI
+        except Exception as exc:            # noqa: BLE001 - fall through, see below
+            genai_error = exc
+            self._pipe = None
+
+        if self._pipe is None:
+            # optimum-intel serves the same IR. It pins transformers<5.1, which
+            # collides with mlx-vlm on this Mac dev box — but NOT on the Intel
+            # deployment target, where mlx does not exist and this is the whole
+            # stack. See mac/intel/README.md.
+            try:
+                from optimum.intel import OVModelForSpeechSeq2Seq
+                from transformers import AutoProcessor
+                self._proc = AutoProcessor.from_pretrained(str(model_dir))
+                self._model = OVModelForSpeechSeq2Seq.from_pretrained(str(model_dir))
+                self.runtime = self.RUNTIME_OPTIMUM
+                print(f"[perception] OpenVINO Whisper via optimum-intel "
+                      f"(openvino-genai unavailable: {genai_error})")
+            except Exception as exc:        # noqa: BLE001
+                raise RuntimeError(
+                    f"OpenVINO Whisper IR at {model_dir} could not be served. "
+                    f"openvino-genai: {genai_error}; optimum-intel: {exc}"
+                ) from exc
+
+    def transcribe(self, pcm_f32, sample_rate):
+        # Same contract as the faster-whisper path: 16 kHz mono float32 [-1, 1].
+        if sample_rate != 16000:
+            raise ValueError(
+                f"OpenVINO Whisper expects 16 kHz, got {sample_rate}")
+        pcm = np.asarray(pcm_f32, dtype=np.float32).ravel()
+
+        if self.runtime == self.RUNTIME_GENAI:
+            text = str(self._pipe.generate(pcm)).strip()
+        else:
+            feats = self._proc(pcm, sampling_rate=sample_rate,
+                               return_tensors="pt").input_features
+            ids = self._model.generate(feats)
+            text = self._proc.batch_decode(ids, skip_special_tokens=True)[0].strip()
+
+        # Neither OpenVINO runtime exposes per-segment logprobs. Emitting
+        # faster-whisper-shaped confidence numbers here would be inventing data,
+        # so report neutral values — a real behavioural difference between
+        # backends, not a stub. Callers that gate on confidence (is_addressed)
+        # will treat every OpenVINO utterance as confident.
+        return TranscriptionResult(text, avg_logprob=0.0, no_speech_prob=0.0)
+
+
 def make_transcriber(cfg) -> Transcriber:
     """Factory — the one place the transcription runtime is selected."""
     name = cfg.TRANSCRIBER
@@ -83,7 +171,20 @@ def make_transcriber(cfg) -> Transcriber:
         except Exception as e:  # lib/model missing -> degrade gracefully
             print(f"[perception] faster-whisper unavailable ({e}); using MockTranscriber")
             return MockTranscriber()
+    if name == "openvino":
+        # No silent mock fallback here on purpose. Selecting the Intel backend
+        # and quietly getting scripted text back would misrepresent the very
+        # thing the setting exists to demonstrate.
+        return OpenVinoWhisperTranscriber(
+            getattr(cfg, "WHISPER_OV_DIR", None) or _default_ov_dir(),
+            getattr(cfg, "WHISPER_OV_DEVICE", "CPU"),
+        )
     if name == "mock":
         return MockTranscriber()
-    # if name == "openvino": return OpenVinoWhisperTranscriber(cfg)   # Intel port, later
     raise ValueError(f"unknown TRANSCRIBER={name!r}")
+
+
+def _default_ov_dir():
+    from pathlib import Path
+    return (Path(__file__).resolve().parent.parent
+            / "intel" / "artifacts" / "whisper-base.en-ov-int8")
