@@ -176,3 +176,41 @@ def test_board_never_stacks_hedges(model, bank):
 
     dynamic = board[4:]
     assert sum(1 for w in dynamic if is_hedge(w)) <= ib.HEDGE_CAP
+
+
+# --- serving v3 through the seam -------------------------------------------
+
+def test_seam_serves_v3_when_selected(monkeypatch, tmp_path):
+    """VOICELINK_STUDENT_VERSION=v3 must route through infer_biencoder, and the
+    safety contract must survive the swap."""
+    from pathlib import Path
+
+    import ranker_config
+    import rank_vocabulary as rv
+
+    ckpt = (Path(rv.__file__).resolve().parent
+            / "evaluation" / "phase4" / "student_biencoder.pt")
+    if not ckpt.exists():
+        pytest.skip("v3 checkpoint not trained in this checkout")
+
+    monkeypatch.setattr(ranker_config, "STUDENT_VERSION", "v3")
+    monkeypatch.setattr(rv, "_student_singleton", None)
+
+    board = rv.rank_vocabulary("a lunch room", "who do you want to sit with?",
+                               {}, strategy="student", k=10)
+    words = [b["word"].lower() for b in board]
+
+    assert len(board) == 10
+    for core in rv.GUARANTEED_CORE:
+        assert core.lower() in words, f"v3 seam path dropped {core!r}"
+
+
+def test_v3_is_not_the_default():
+    """v3 loses the coverage gate under cross-validation (margin -0.0397), so
+    it must stay opt-in. If this ever flips, it should be a deliberate decision
+    backed by a passing coverage gate, not a drifted default."""
+    import ranker_config
+    import importlib
+    importlib.reload(ranker_config)
+
+    assert ranker_config.STUDENT_VERSION == "v2"
