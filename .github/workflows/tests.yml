@@ -1,0 +1,39 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: mac/requirements-dev.txt
+
+      # The MiniLM weights are ~87 MB and every eval-gate test needs them.
+      # Cache them so we pull from HuggingFace once, not on every run.
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ runner.os }}-all-MiniLM-L6-v2
+
+      - name: Install
+        run: pip install -r mac/requirements-dev.txt
+
+      # VOICELINK_PERCEPTION=0 keeps the perception workers from starting; the
+      # suite covers the seam and the eval gates, not the camera/mic loop.
+      # mlx-lm and mlx-vlm are Darwin-only, so the LLM-backed paths self-skip
+      # here and the student tests skip until the phase-4 artifacts are rebuilt.
+      - name: Test
+        working-directory: mac
+        env:
+          VOICELINK_PERCEPTION: "0"
+        run: pytest tests/ -q
