@@ -20,6 +20,7 @@
     "board_variety": 0.988,
     "dynamic_variety": 0.988,
     "pass": true,
+    "verdict": "PASS",
     "distinct_functions_margin": {
       "margin": 0.8226,
       "ci": [
@@ -55,6 +56,7 @@
     "teacher_dynamic": 0.873,
     "n_scored_dynamic": 71,
     "pass": true,
+    "verdict": "INCONCLUSIVE",
     "margin": {
       "margin": 0.0028,
       "ci": [
