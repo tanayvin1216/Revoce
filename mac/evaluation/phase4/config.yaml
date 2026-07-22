@@ -63,3 +63,26 @@ board:
   k_dyn: 6               # dynamic slots the student fills
   metric_k: 7             # the window the Phase-3 metrics judge
   pool_mult: 3            # infer.py MMR pool size = pool_mult * k_dyn
+
+# v3 bi-encoder selection. Swept on the VALIDATION split only; the test split
+# was scored once, after these were fixed.
+#
+# The diagnostic that drove this: of 20 held-out coverage misses, 19 had a
+# satisfying phrase already inside the top-18 pool. So the model's ranking was
+# fine and MMR was discarding the right answer — because mmr_select scored
+# relevance as cosine-to-situation and ignored the bi-encoder's own scores
+# entirely once the pool was cut.
+#
+#   rel_source  lam  pool | cov_dyn  ratio    df     sfp   gates (val)
+#   cosine      0.6    3   |  0.750   0.871  4.405  0.1587  fail/fail
+#   model       0.6    6   |  0.736   0.855  4.690  0.1389  PASS/fail
+#   blend       0.6    6   |  0.792   0.920  4.655  0.1423  PASS/PASS
+#   blend       0.75   6   |  0.806   0.936  4.643  0.1440  fail/PASS
+#
+# model-only relevance gives the best diversity of anything measured but does
+# not recover coverage; cosine-only recovers neither. The blend is the only
+# setting that passes both gates.
+selection_v3:
+  lam: 0.6
+  pool_mult: 6
+  rel_source: blend       # cosine | model | blend

@@ -107,6 +107,62 @@ def test_board_is_exactly_k_with_core_pinned_first(model, bank):
     assert len(board) == len(set(w.lower() for w in board)), "duplicate on board"
 
 
+def test_mmr_rel_override_does_not_change_v2_behaviour():
+    """selection.mmr_select gained a `rel` override for v3. v2 passes rel=None
+    and must be bit-identical to before, so this pins that path."""
+    from selection import mmr_select
+
+    rng = np.random.default_rng(3)
+    v = rng.standard_normal((12, 8)).astype(np.float32)
+    v /= np.linalg.norm(v, axis=1, keepdims=True)
+    q = v[0]
+
+    assert mmr_select(v, q, 5, 0.6) == mmr_select(v, q, 5, 0.6, None, None)
+
+
+def test_mmr_rel_override_actually_drives_selection():
+    """A relevance override must be able to change the pick, or it is a no-op
+    dressed up as a feature."""
+    from selection import mmr_select
+
+    rng = np.random.default_rng(5)
+    v = rng.standard_normal((10, 8)).astype(np.float32)
+    v /= np.linalg.norm(v, axis=1, keepdims=True)
+    q = v[0]
+
+    forced = np.zeros(10, dtype=np.float32)
+    forced[7] = 1.0                       # candidate 7 is maximally relevant
+
+    assert mmr_select(v, q, 3, 0.9, None, forced)[0] == 7
+
+
+def test_mmr_rel_override_rejects_a_wrong_length_array():
+    from selection import mmr_select
+
+    v = np.eye(4, 8, dtype=np.float32)
+    with pytest.raises(ValueError, match="expected 4"):
+        mmr_select(v, v[0], 2, 0.6, None, np.zeros(3, dtype=np.float32))
+
+
+def test_selection_defaults_come_from_config():
+    """The tuned operating point must be config-driven, not hardcoded — and it
+    must be the setting the validation sweep actually chose."""
+    sel = ib.Selection()
+
+    assert sel.rel_source in ("cosine", "model", "blend")
+    assert sel.pool_mult >= 1
+    assert 0.0 <= sel.lam <= 1.0
+    # explicit args still win over config
+    override = ib.Selection(lam=0.9, pool_mult=2, rel_source="model")
+    assert (override.lam, override.pool_mult, override.rel_source) == (0.9, 2, "model")
+
+
+def test_unknown_rel_source_fails_loudly(model, bank):
+    with pytest.raises(ValueError, match="unknown rel_source"):
+        ib.student_dynamic_words(model, bank, "a room", "hello?", True, 6,
+                                 sel=ib.Selection(rel_source="nonsense"))
+
+
 def test_board_never_stacks_hedges(model, bank):
     """RC-2: the hedge cap must survive the move to an open bank."""
     from evaluation.hedges import is_hedge
