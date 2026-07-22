@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "model": "v3-biencoder",
+    "bank_size": 1959,
+    "bank_sha": "1709d272c4962877",
+    "config_sha": "d6ce2e56d50b",
+    "val_loss": 0.01725,
+    "personal_context": false
+  },
+  "diversity_retention": {
+    "n_heldout": 84,
+    "student_distinct_functions": 4.357,
+    "teacher_distinct_functions": 4.298,
+    "retention_ratio": 1.014,
+    "student_near_dup": 0.0,
+    "teacher_near_dup": 0.0006,
+    "student_same_function_pair": 0.1621,
+    "teacher_same_function_pair": 0.1735,
+    "distinct_student_boards": 84,
+    "board_variety": 1.0,
+    "dynamic_variety": 1.0,
+    "pass": true,
+    "need": "HELD-OUT: distinct-fn >= 90% of teacher AND near-dup <= 0.08 AND same-function-pair <= teacher's (0.1735) AND board-variety >= 0.5"
+  },
+  "agreement": {
+    "full_overlap_top7": 0.59,
+    "dynamic_overlap": 0.091,
+    "n_heldout": 84,
+    "pass": null,
+    "need": "report-only (coverage-of-intent is the gated bar)"
+  },
+  "coverage_of_intent": {
+    "student": 0.887,
+    "teacher": 0.944,
+    "n_scored": 71,
+    "student_dynamic": 0.718,
+    "teacher_dynamic": 0.873,
+    "n_scored_dynamic": 71,
+    "pass": false,
+    "need": "HELD-OUT: student DYNAMIC top-7 non-hedge coverage >= 90% of the teacher's"
+  }
+}
