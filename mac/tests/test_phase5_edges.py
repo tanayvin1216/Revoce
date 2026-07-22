@@ -397,6 +397,14 @@ def test_openvino_loader_rejects_missing_or_stale_sidecar(tmp_path, monkeypatch)
     import rank_vocabulary as rv
     if not FP32_XML.exists():
         pytest.skip("student FP32 IR missing")
+    # The loader reads vocab.json BEFORE it reaches the sidecar check, so
+    # without it this raises FileNotFoundError and never exercises the guard
+    # under test. Its sibling artifact tests already skip on this; this one
+    # only checked the IR, which is why it went red the moment openvino was
+    # installed in a checkout with no phase-4 artifacts.
+    if not (Path(rv.__file__).resolve().parent
+            / "evaluation" / "phase4" / "vocab.json").exists():
+        pytest.skip("vocab.json not built in this checkout")
     for ext in (".xml", ".bin"):
         shutil.copy(FP32_XML.with_suffix(ext), tmp_path / ("student_fp32" + ext))
     # copy WITHOUT the .vocab.sha sidecar -> loader must refuse to serve
