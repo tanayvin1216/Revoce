@@ -65,6 +65,10 @@ TAP_LOG_PATH = Path(__file__).parent / "taps.jsonl"
 PHASE_STATUS_PATH = Path(__file__).parent.parent / "phase_status.json"
 MAX_REMEMBERED_BOARDS = 200
 
+# Core taps that ask to HOLD the conversation rather than answer it. Tapping
+# these must not clear the active question -- see _record_tap.
+_QUESTION_HOLDING_TAPS = {"wait", "i need help"}
+
 # Trigger-driven push: fire on (scene_changed OR addressed), debounced.
 TRIGGER_POLL_S = 0.5        # how often we check for a trigger condition
 TRIGGER_DEBOUNCE_S = 2.0    # minimum gap between consecutive pushes
@@ -311,12 +315,23 @@ def _record_tap(app: web.Application, msg: dict, peer: str) -> None:
         "board_items": board_record.get("items"),
         "peer": peer,
     }
-    with TAP_LOG_PATH.open("a") as f:
-        f.write(json.dumps(entry) + "\n")
+    try:
+        with TAP_LOG_PATH.open("a") as f:
+            f.write(json.dumps(entry) + "\n")
+    except OSError as exc:
+        # The word was already spoken client-side, so losing the log row is the
+        # graceful outcome. Letting this escape would tear down the WebSocket on
+        # every tap and churn the connection instead.
+        print(f"[tap] WARNING could not write tap log: {exc}")
 
-    # The user just answered, so drop the held question and let the board move on.
+    # Most taps answer the held question, so the board should move on. But two
+    # of the core words are not answers: "wait" means "give me time" and
+    # "I need help" is a call for support. An AAC user taps those precisely
+    # BECAUSE they need the moment held — clearing the question on them drops
+    # the answer vocabulary they were composing with and regenerates the board
+    # from ambient chatter. The tap meant to hold the moment destroyed it.
     ctx = app["state"].get("context")
-    if ctx is not None:
+    if ctx is not None and str(word or "").strip().lower() not in _QUESTION_HOLDING_TAPS:
         ctx.clear_active_question()
 
 
