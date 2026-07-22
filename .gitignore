@@ -40,3 +40,7 @@ mac/intel/artifacts/*
 !mac/intel/artifacts/*.vocab.sha
 .codex/
 AGENTS.md
+
+# Bi-encoder quantization sweep outputs (regenerable by intel/biencoder_pareto.py;
+# PARETO.md is copied into the docs when it is worth keeping)
+mac/intel/artifacts/biencoder/
