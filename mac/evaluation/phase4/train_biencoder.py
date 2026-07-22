@@ -88,14 +88,16 @@ def train(min_freq: int = 1) -> dict:
 
     # --- the bank: no frequency floor -------------------------------------
     tau = float(cfg["vocab"].get("bank_dedup_tau", cfg["vocab"]["dedup_tau"]))
+    linkage = str(cfg["vocab"].get("bank_linkage", "complete"))
     phrases, canonical = bank_mod.build_phrase_bank(
-        rows, dedup_tau=tau, min_freq=min_freq)
+        rows, dedup_tau=tau, min_freq=min_freq, linkage=linkage)
     phrase2idx = {p: i for i, p in enumerate(phrases)}
     bank_mod.save_bank(phrases, canonical)
 
     # How much the old frequency floor would have thrown away, measured.
     floored, _ = bank_mod.build_phrase_bank(
-        rows, dedup_tau=tau, min_freq=int(cfg["vocab"]["min_freq"]))
+        rows, dedup_tau=tau, min_freq=int(cfg["vocab"]["min_freq"]),
+        linkage=linkage)
     print(f"[bank] {len(phrases)} phrases (no floor) vs {len(floored)} at "
           f"min_freq={cfg['vocab']['min_freq']} — the floor would discard "
           f"{100 * (1 - len(floored) / max(1, len(phrases))):.1f}%", flush=True)

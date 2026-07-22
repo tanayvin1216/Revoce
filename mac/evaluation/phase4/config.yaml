@@ -24,15 +24,23 @@ vocab:
   min_freq: 3
   max_size: 200
   dedup_tau: 0.80
-  # v3 bi-encoder only. The bank has no frequency floor, so it is ~10x the size
-  # of the v2 vocab, and single-link clustering chains much more readily at a
-  # given tau: 0.80 pulled a 5-member non-hedge component ("i need to check my
-  # bag.") and correctly tripped the component guard. Swept 0.80-0.95 on the
-  # teacher corpus; 0.85 is the LOWEST tau that satisfies the guard while still
-  # collapsing the hedge cluster as hard as any larger tau (6 variants -> 2).
-  # By 0.95 the hedges stop merging at all (6 -> 5), which is the failure the
-  # dedup exists to prevent.
+  # v3 bi-encoder only. The bank has no frequency floor, so it is ~1350 phrases
+  # against the v2 vocab's 116 — and at that size SINGLE-link clustering (what
+  # dedup_vocab uses) chains badly. Swept linkage x tau on the real corpus
+  # (341 rows, 1358 distinct phrases, 14 hedge variants):
+  #
+  #   linkage    0.80   0.85   0.88   0.90
+  #   single     FAIL   FAIL   FAIL   FAIL      (13 / 6 / 3 / 2 oversized)
+  #   average    FAIL   FAIL   FAIL   ok
+  #   complete   FAIL   ok     ok     ok
+  #
+  # Single-link fails at EVERY tau, so raising tau is a treadmill, not a fix.
+  # Complete linkage requires every member of a cluster to be mutually similar,
+  # so chaining cannot happen by construction and the setting stays valid as the
+  # bank grows. 0.85 is the lowest tau it passes at, and it collapses the hedge
+  # cluster hardest there (14 variants -> 7, vs 8 for average@0.90).
   bank_dedup_tau: 0.85
+  bank_linkage: complete
 
 # Training
 train:
