@@ -76,6 +76,64 @@ def _targets(pos_lists: list[list[int]], cands: list[int]) -> torch.Tensor:
     return torch.from_numpy(Y)
 
 
+def fit(cfg: dict, Xt, Pt, pos: list[list[int]], n_phrases: int,
+        tr: list[int], va: list[int], seed: int = 0, quiet: bool = False):
+    """Train one bi-encoder on the given row indices. Returns (model, val_loss).
+
+    Split out of train() so cross_validate.py can fit a model per fold with the
+    IDENTICAL procedure and hyperparameters — a CV number produced by a
+    different training loop would not be comparable to the headline one.
+    """
+    rng = np.random.default_rng(seed)
+    model = BiEncoderRanker(
+        context_dim=int(cfg["model"]["context_dim"]),
+        phrase_dim=int(Pt.shape[1]),
+        hidden_dim=int(cfg["model"].get("hidden_dim", 256)),
+        proj_dim=int(cfg["model"].get("proj_dim", 128)),
+        dropout=float(cfg["model"]["dropout"]),
+    )
+    opt = torch.optim.AdamW(model.parameters(), lr=float(cfg["train"]["lr"]),
+                            weight_decay=float(cfg["train"]["weight_decay"]))
+    lossf = nn.BCEWithLogitsLoss()
+    n_random = int(cfg["train"].get("n_random_negatives", 128))
+
+    best, best_state, bad = float("inf"), None, 0
+    for epoch in range(int(cfg["train"]["epochs"])):
+        model.train()
+        for b in _batches(len(tr), int(cfg["train"]["batch_size"]), rng):
+            ridx = [tr[i] for i in b]
+            pl = [pos[i] for i in ridx]
+            if not any(pl):
+                continue
+            cands = _candidate_set(pl, n_phrases, n_random, rng)
+            if not cands:
+                continue
+            loss = lossf(model(Xt[ridx], Pt[cands]), _targets(pl, cands))
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+
+        model.eval()
+        with torch.no_grad():
+            vloss = float(lossf(model(Xt[va], Pt),
+                                _targets([pos[i] for i in va],
+                                         list(range(n_phrases)))))
+        if vloss < best - 1e-5:
+            best, bad = vloss, 0
+            best_state = {k: v.clone() for k, v in model.state_dict().items()}
+        else:
+            bad += 1
+        if bad >= int(cfg["train"]["patience"]):
+            if not quiet:
+                print(f"  early stop at epoch {epoch}", flush=True)
+            break
+
+    if best_state is not None:
+        model.load_state_dict(best_state)
+    model.eval()
+    return model, best
+
+
 def train(min_freq: int = 1) -> dict:
     cfg, cfg_hash = load_config()
     seed = int(cfg.get("seed", 0))
