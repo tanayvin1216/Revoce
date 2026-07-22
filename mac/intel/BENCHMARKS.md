@@ -45,3 +45,47 @@ OpenVINO 2026.2.1-21919-ede283a88e3-releases/2026/2 | batch=1, input (1, 769) fl
 [ INFO ]    Max:           0.50 ms
 [ INFO ] Throughput:   36968.87 FPS
 ```
+
+## Whisper base.en — faster-whisper vs OpenVINO INT8
+
+Exported with `optimum-cli export openvino --weight-format int8` in a dedicated
+export venv (see README.md). Measured on Apple M4 Pro via the OpenVINO **ARM CPU
+plugin** — these are NOT Intel-hardware numbers. One 6.254 s clip of synthesized
+speech, median of 5 runs after a warm-up, same machine, same process.
+
+| backend | median | × realtime | on disk |
+|---|---|---|---|
+| **OpenVINO INT8** (optimum-intel runtime) | **0.205 s** | 30.5× | **81 MB** |
+| faster-whisper base.en int8 | 0.324 s | 19.3× | 141 MB |
+
+**1.58× faster and 1.74× smaller**, transcript identical apart from a trailing
+period. Both are far inside the latency budget; the size difference is the more
+meaningful one for an edge deployment.
+
+n=1 clip. This is a smoke measurement, not a WER study — no accuracy claim is
+made beyond "the transcript matched on this clip".
+
+### Known gap: openvino-genai cannot serve this IR
+
+`openvino_genai.WhisperPipeline` is the runtime we want (no transformers
+dependency, and the GenAI API the 2026 rubric names). It currently fails on our
+export with:
+
+```
+Port for tensor name cache_position was not found.
+```
+
+Tried and still failing: genai 2025.3 and 2025.2, against exports from
+transformers 4.55.4 and 4.48.3 (optimum-intel 1.26.1). The exported decoder
+exposes `beam_idx / encoder_hidden_states / input_ids`; genai expects a
+`cache_position` port that this optimum-intel does not emit. No newer
+openvino-genai exists than 2025.3.0.0.
+
+So the serving path is optimum-intel for now. `OpenVinoWhisperTranscriber` tries
+openvino-genai first, *proves* it can generate before accepting it, and falls
+back to optimum-intel otherwise — so this fixes itself when the versions line up.
+
+Worth being precise about the transformers pin this implies: optimum-intel wants
+`transformers<5.1` and mlx-vlm wants `>=5.5`, so they cannot share one venv. That
+is a **Mac dev-box** problem, not a deployment problem — the Intel target does not
+have mlx on it at all, and there optimum-intel + OpenVINO is the entire stack.
