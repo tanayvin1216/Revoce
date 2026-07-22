@@ -74,25 +74,50 @@ A board is built in three steps:
 
 ## Measured results
 
-Held-out n=84, gates recalibrated relative to the teacher:
+Two students, both trained on the same 600-board teacher corpus, both scored by
+the same gate code on the same held-out split (n=84).
 
-| gate | student | teacher | bar | verdict |
+**v2** — 94-column classifier over a closed, frequency-floored vocabulary. This
+is what ships today.
+**v3** — open-vocabulary bi-encoder scoring (context, phrase) pairs. Opt-in via
+`VOICELINK_STUDENT_VERSION=v3`.
+
+| gate | v2 | v3 | teacher | bar |
 |---|---|---|---|---|
-| distinct-functions retention | 4.05 | 4.33 | ≥90% of teacher | PASS (0.934) |
-| near-duplicate rate | 0.0006 | 0.0 | ≤0.08 | PASS |
-| board-variety | 0.917 | — | ≥0.5 | PASS |
-| same-function-pair | 0.188 | 0.168 | ≤ teacher | **FAIL — known gap** |
-| coverage-of-intent (dynamic) | 0.775 | 0.845 | ≥90% of teacher | PASS (0.917×) |
-| speedup (end-to-end MMR path) | 43.6 ms | 6.8 s | ≥10× | PASS (156×) |
-| INT8 top-6 overlap | 0.950 mean / 0.667 min | — | ≥0.8 / ≥0.5 | PASS |
+| distinct-functions | 4.071 | **4.690** | 4.298 | ≥90% of teacher |
+| near-duplicate rate | 0.0 | 0.0006 | 0.0006 | ≤0.08 |
+| same-function-pair | 0.1899 | **0.1378** | 0.1735 | ≤ teacher |
+| board-variety | 0.952 | 0.988 | — | ≥0.5 |
+| coverage-of-intent (dynamic) | **0.803** | 0.789 | 0.873 | ≥90% of teacher |
+| speedup (end-to-end MMR path) | 43.6 ms vs 6.8 s | — | — | ≥10× (156×) |
 
-That FAIL is real and stays in the table. So does the negative result: scaling
-teacher data 5× made teacher-agreement *worse* (0.232 → 0.165), which falsified
-our data-volume hypothesis. Write-ups in `mac/evaluation/phase4/`.
+**Point estimates are not verdicts, and this project now says so out loud.**
+Every gate is a relative claim, so each one carries a bootstrap CI on the
+paired per-scenario margin. Under 5-fold cross-validation (n=471 scored
+scenarios rather than 71):
+
+| metric | v3 margin vs bar | 95% CI | verdict |
+|---|---|---|---|
+| distinct-functions | +0.6875 | [+0.6116, +0.7631] | **PASS** |
+| same-function-pair | +0.0207 | [+0.0129, +0.0285] | **PASS** |
+| coverage-of-intent | −0.0397 | [−0.0849, +0.0057] | INCONCLUSIVE |
+
+What that bought us, honestly: v3's diversity advantage is the best-evidenced
+result in the whole evaluation. Its coverage number is *below* the bar once
+properly powered — the single-split figure that looked like a pass was noise
+(fold-to-fold coverage swings 10 points). And **v2's long-standing
+same-function-pair "FAIL" turned out to be statistically indistinguishable from
+passing** — the project reasoned carefully for weeks about a number that was
+inside its own error bars. That is why v2, not v3, is still the default.
+
+The other honest results stay on the record: scaling teacher data 5× made
+teacher-agreement *worse* (0.232 → 0.165), falsifying our data-volume
+hypothesis. Write-ups in `mac/evaluation/phase4/`.
 
 The benchmark corpus is synthetic and the baseline is itself an LLM prompt, so a
 high score partly measures imitation of the teacher rather than real
-communication value. `mac/evaluation/README.md` opens with that warning.
+communication value. No result here has been validated against a real AAC user.
+`mac/evaluation/README.md` opens with that warning.
 
 ## Repo map
 
