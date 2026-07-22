@@ -123,9 +123,45 @@ project spent real effort reasoning about a number that was noise. That is worth
 recording precisely because the reporting around it was scrupulous; being honest
 about a point estimate is not the same as the point estimate meaning something.
 
-**What may be claimed:** v3 beats v2 robustly on board diversity, and reaches
-parity with the teacher on coverage. **What may not:** that v3 "passes the
-coverage gate", or that v2 "fails same-function-pair".
+### Cross-validation, because n=71 could not resolve anything
+
+A power analysis on the observed spread (per-scenario SD 0.448 of the paired
+margin) puts the **minimum detectable effect at n=71 at 0.149 coverage points**.
+The gate cannot see a difference smaller than 15 points. Resolving the +0.0028
+single-split margin would need n ≈ 200,000.
+
+The corpus was never the constraint: **471 of 559 rows carry authored
+`acceptable_moves` and we were scoring 71 of them**, because coverage was only
+evaluated on the 15% test split while the other 328 scorable rows sat in train.
+5-fold cross-validation uses all of them without leaking — fit 5 models, each
+scoring only the fold it never saw, pool the per-scenario margins. The
+bi-encoder trains in ~2s, so this costs seconds.
+
+| metric | v3 | teacher | margin | 95% CI | verdict |
+|---|---|---|---|---|---|
+| coverage-of-intent | 0.7304 | 0.8556 | **−0.0397** | [−0.0849, +0.0057] | INCONCLUSIVE |
+| distinct-functions | 4.7013 | 4.4597 | +0.6875 | [+0.6116, +0.7631] | **PASS** |
+| same-function-pair | 0.1406 | 0.1613 | +0.0207 | [+0.0129, +0.0285] | **PASS** |
+
+**The coverage margin changed sign.** +0.0028 on the single split, −0.0397 with
+6.6× the observations. Fold-to-fold coverage ranges 0.677 to 0.779 — a 10-point
+swing — which is exactly how a single split produced a number that looked like a
+pass. The better-powered estimate says v3 sits *below* the coverage bar, and the
+interval now only barely includes zero (upper bound +0.0057). One more fold's
+worth of evidence would most likely resolve it as a FAIL.
+
+The diversity results survive and tighten: both intervals are far from zero at
+n=559.
+
+**What may be claimed:** v3 beats v2 robustly on board diversity, and its
+diversity advantage is the best-evidenced result in the entire phase-4
+evaluation. **What may not:** that v3 passes coverage — the best available
+estimate is that it does not. Also not: that v2 "fails same-function-pair".
+
+The single-split gates remain the headline for continuity with v2 and the
+phase-5 history. Cross-validation is the instrument that can actually resolve a
+difference, and where the two disagree, the cross-validated number is the one to
+believe.
 
 ### What actually fixed it
 
