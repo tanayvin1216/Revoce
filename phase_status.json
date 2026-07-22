@@ -1,0 +1,47 @@
+{
+  "updated_ts": "2026-07-22",
+  "phases": [
+    {
+      "id": 0,
+      "name": "Setup & guardrails",
+      "status": "pending",
+      "note": "Repo is runnable from a clean clone as of the README/requirements/CI work; consent + pseudonym handling still outstanding before any non-team testing."
+    },
+    {
+      "id": 1,
+      "name": "Diverse board + eval pipeline",
+      "status": "green",
+      "note": "120-turn scored run. Diverse boards span the space; see mac/evaluation/phase1/PHASE1_REPORT.md."
+    },
+    {
+      "id": 2,
+      "name": "Console + device simulator",
+      "status": "pending",
+      "note": "Console serves boards and runs the VLM on a dropped image. /api/console/transcribe exists; the record button is markup only — MediaRecorder not wired."
+    },
+    {
+      "id": 3,
+      "name": "Self-test harness + metric reframe",
+      "status": "green",
+      "note": "120 scenarios, one command, JSONL + plots. Caught a real taxonomy bug."
+    },
+    {
+      "id": 4,
+      "name": "Knowledge distillation",
+      "status": "red",
+      "note": "Gates were green on the prior artifact set, but teacher_data/vocab/student.pt were never committed and are lost. Needs regeneration before any phase-4 number can be reproduced."
+    },
+    {
+      "id": 5,
+      "name": "Intel / OpenVINO readiness",
+      "status": "red",
+      "note": "Full convert -> NNCF INT8 -> gate lifecycle exists and the IRs are committed, but they cannot load without vocab.json and the .vocab.sha sidecars. Blocked on phase 4 regeneration."
+    },
+    {
+      "id": 6,
+      "name": "Integration & demo",
+      "status": "pending",
+      "note": "No end-to-end test exists. Default board strategy is still the ~30s LLM path rather than the fast student."
+    }
+  ]
+}

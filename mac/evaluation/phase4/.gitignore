@@ -1,11 +1,16 @@
-# Generated artifacts — rebuilt by gen_teacher/train/evaluate; never committed.
-teacher_data.jsonl
-student.pt
-student.onnx
-student.onnx.data
+# What gets committed here is decided by cost to regenerate, not by whether it
+# is "generated". We lost the whole phase-4 artifact set once by ignoring all of
+# it — the IRs survived in git and were useless without their vocab.
+#
+# COMMITTED (see the negations below):
+#   teacher_data.jsonl  hours of local LLM generation. The expensive one.
+#   vocab.json          the student's output labels. The IRs cannot load without it.
+#   canonical.json      the dedup map that gives vocab.json its meaning.
+#   splits.json         the fingerprinted train/test partition. Reproducibility.
+#   student.pt          ~650 KB, same order as the IRs already in git.
+#
+# IGNORED: anything rebuildable in seconds from the above.
+
 *.onnx
 *.onnx.data
-vocab.json
-canonical.json
-splits.json
 phase4_results.json
