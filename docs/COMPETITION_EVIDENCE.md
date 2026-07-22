@@ -68,8 +68,12 @@ rule-based system enumerates real life.
 - Vision: Qwen2.5-VL-3B describes the scene from the wearable camera, locally.
 - Ranking: a two-stage architecture — an LLM teacher over-generates candidates and
   MMR-selects a communicatively diverse board (answer-quota reservation for
-  questions); a distilled 769-d MLP student reproduces that policy at ~7 ms
-  (~900× faster than the teacher pipeline), enabling real-time boards on edge CPUs.
+  questions); a distilled 769-d MLP student reproduces that policy end-to-end in
+  43.6 ms vs the teacher's 6.8 s (**156×**), enabling real-time boards on edge CPUs.
+  That figure times the full path the device actually serves — embedding, student
+  forward pass, and MMR selection. An earlier draft of this document claimed ~7 ms
+  / ~900×; that number timed only the forward pass, on a code path the device no
+  longer runs, and is withdrawn.
 - Sub-domains demonstrably in play: ASR (Whisper), CV/VLM (Qwen2.5-VL), NLP
   embeddings (MiniLM), knowledge distillation, diversity-aware ranking (MMR),
   post-training quantization (NNCF INT8).
@@ -115,6 +119,15 @@ rule-based system enumerates real life.
   ([W3C](https://www.w3.org/TR/WCAG22/)).
 - Bias: vocabulary evaluation includes per-scenario-category breakdowns; the
   personal-context store (names, routines) never leaves the device.
+
+### GenAI tools used during development
+Generative AI coding assistants were used throughout development: **Anthropic Claude**
+(architecture review, test generation, code review, research summarization) and
+**OpenAI Codex** (code review passes). Design decisions, the system architecture, the
+evaluation methodology, and the hardware build are the team's own; AI assistance was
+used to implement, review, and stress-test them. Multi-model adversarial review is part
+of our process on purpose — several findings recorded in
+`docs/claude/working-notes/` were caught by one model reviewing another's work.
 
 ### Readiness (honest tier)
 - Working end-to-end prototype: wearable (ESP32-S3 camera+mic) → Mac pipeline →
