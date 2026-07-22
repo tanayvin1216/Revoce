@@ -10,6 +10,10 @@ model:
   context_dim: 769        # v2.2 richer input: scene(384) + transcript(384) + is_question(1)
   hidden_dim: 192
   dropout: 0.3
+  # v3 bi-encoder only: the shared latent space both towers project into. The
+  # score is a dot product in this space, so proj_dim is the entire capacity of
+  # the context/phrase interaction.
+  proj_dim: 128
 
 # Vocabulary — the DYNAMIC candidate set (core excluded). An item must appear
 # at least min_freq times in teacher boards to be kept. dedup_tau: after
@@ -20,6 +24,15 @@ vocab:
   min_freq: 3
   max_size: 200
   dedup_tau: 0.80
+  # v3 bi-encoder only. The bank has no frequency floor, so it is ~10x the size
+  # of the v2 vocab, and single-link clustering chains much more readily at a
+  # given tau: 0.80 pulled a 5-member non-hedge component ("i need to check my
+  # bag.") and correctly tripped the component guard. Swept 0.80-0.95 on the
+  # teacher corpus; 0.85 is the LOWEST tau that satisfies the guard while still
+  # collapsing the hedge cluster as hard as any larger tau (6 variants -> 2).
+  # By 0.95 the hedges stop merging at all (6 -> 5), which is the failure the
+  # dedup exists to prevent.
+  bank_dedup_tau: 0.85
 
 # Training
 train:
@@ -30,6 +43,11 @@ train:
   val_frac: 0.15
   test_frac: 0.15
   patience: 15            # early-stop patience (epochs without val improvement)
+  # v3 bi-encoder only: random negatives added to each batch's candidate set on
+  # top of the in-batch positives. The in-batch half supplies the hard negatives
+  # (phrases the teacher really chose, for a different situation); these keep the
+  # model from only ever seeing plausible candidates.
+  n_random_negatives: 128
 
 # Board / metric window (mirrors Phase 3)
 board:
