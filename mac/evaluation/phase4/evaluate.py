@@ -128,6 +128,22 @@ def _margin_ci(student: list[float], teacher: list[float],
             "verdict": verdict}
 
 
+def _combine_verdict(margins: list[dict], absolutes_ok: bool) -> str:
+    """Overall verdict for a gate made of several paired comparisons.
+
+    A gate is only PASS when every paired margin is reliably on the right side
+    of zero AND the absolute sub-checks hold. One FAIL sinks it; otherwise a
+    single interval straddling zero makes the whole gate INCONCLUSIVE, because
+    we cannot honestly claim a gate we cannot resolve.
+    """
+    verdicts = [m.get("verdict") for m in margins]
+    if not absolutes_ok or "FAIL" in verdicts:
+        return "FAIL"
+    if "INCONCLUSIVE" in verdicts or "not-scored" in verdicts:
+        return "INCONCLUSIVE"
+    return "PASS"
+
+
 def _df_dup_sfp(board: list[str]) -> tuple[int, float, float]:
     """distinct-functions@7, near-dup rate, same-function-pair rate — one embed."""
     from evaluation.embed import embed
@@ -264,6 +280,16 @@ def held_out_eval(model, vocab, k, k_dyn, core_words,
     diversity_pass = bool(retention >= 0.90 and sdup_mean <= 0.08
                           and ssfp_mean <= sfp_bar
                           and variety >= BOARD_VARIETY_FLOOR)
+
+    df_margin = _margin_ci(s_df, t_df, factor=0.90)
+    sfp_margin = _margin_ci(s_sfp, t_sfp, higher_is_better=False)
+    cov_margin = _margin_ci(s_cov_dyn, t_cov_dyn, factor=DYNAMIC_COVERAGE_GATE)
+
+    # The absolute sub-checks (near-dup, board-variety) are not paired
+    # comparisons, so they have no interval; they can only veto.
+    absolutes_ok = bool(sdup_mean <= 0.08 and variety >= BOARD_VARIETY_FLOOR)
+    diversity_verdict = _combine_verdict([df_margin, sfp_margin], absolutes_ok)
+    coverage_verdict = _combine_verdict([cov_margin], True)
     return {
         "diversity_retention": {
             "n_heldout": n,
@@ -278,11 +304,12 @@ def held_out_eval(model, vocab, k, k_dyn, core_words,
             "board_variety": round(variety, 3),
             "dynamic_variety": round(dyn_variety, 3),
             "pass": diversity_pass,
-            # Point estimates above; these say whether the margin survives
-            # resampling. A "pass" with an INCONCLUSIVE interval is a coin flip.
-            "distinct_functions_margin": _margin_ci(s_df, t_df, factor=0.90),
-            "same_function_pair_margin": _margin_ci(s_sfp, t_sfp,
-                                                    higher_is_better=False),
+            # The authoritative verdict. "pass" is the legacy point-estimate
+            # boolean; "verdict" additionally requires the margin to survive
+            # resampling, so a gate we cannot resolve reads INCONCLUSIVE.
+            "verdict": diversity_verdict,
+            "distinct_functions_margin": df_margin,
+            "same_function_pair_margin": sfp_margin,
             "need": (f"HELD-OUT: distinct-fn >= 90% of teacher AND near-dup <= 0.08 "
                      f"AND same-function-pair <= teacher's ({round(sfp_bar, 4)}) "
                      f"AND board-variety >= {BOARD_VARIETY_FLOOR}"),
@@ -314,8 +341,8 @@ def held_out_eval(model, vocab, k, k_dyn, core_words,
             "pass": bool(s_cov_dyn and t_cov_dyn
                          and cov_dyn >= DYNAMIC_COVERAGE_GATE
                          * float(np.mean(t_cov_dyn))),
-            "margin": _margin_ci(s_cov_dyn, t_cov_dyn,
-                                 factor=DYNAMIC_COVERAGE_GATE),
+            "verdict": coverage_verdict,
+            "margin": cov_margin,
             "need": (f"HELD-OUT: student DYNAMIC top-7 non-hedge coverage >= "
                      f"{DYNAMIC_COVERAGE_GATE:.0%} of the teacher's"),
         },
