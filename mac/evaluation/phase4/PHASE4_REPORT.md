@@ -1,6 +1,6 @@
 # Phase-4 distillation v2 — evaluation report
 
-Generated: 2026-07-22 14:49:55  |  student rows=559 vocab=95 config_hash=d6ce2e56d50b
+Generated: 2026-07-22 15:24:52  |  student rows=559 vocab=95 config_hash=d6ce2e56d50b
 
 ## The three numbers (① and ② on the HELD-OUT split, n=84)
 
@@ -14,7 +14,7 @@ Generated: 2026-07-22 14:49:55  |  student rows=559 vocab=95 config_hash=d6ce2e5
 | ① | **combined** | — | — | all three above | **FAIL** |
 | ② | dynamic_overlap (report-only) | 0.067 | — | — | — (n=84) |
 | ② | full_overlap_top7 (continuity) | 0.594 | — | — | — |
-| ③ | speedup | 23.92 ms | None s | ≥10× | FAIL (None×) |
+| ③ | speedup | 25.968 ms | None s | ≥10× | FAIL (None×) |
 | ④ | coverage-of-intent, full board (reported, NOT gated) | 0.887 | 0.944 | — | — (n=71) |
 | ④ | **coverage-of-intent, DYNAMIC (the real bar)** | **0.803** | 0.873 | ≥90% of teacher | PASS (n=71) |
 
