@@ -694,7 +694,7 @@ def rank_vocabulary(
     transcript: Optional[str] = None,
     context: Optional[dict] = None,
     ranker=None,
-    strategy: str = "topk",
+    strategy: str = "diverse",
     k: int = BOARD_SIZE,
     lam: float = 0.6,
     topics: Optional[list[str]] = None,
@@ -708,10 +708,19 @@ def rank_vocabulary(
                     may also carry "personal_context" key injected by server
         ranker:     Ranker instance; if None, uses/builds the module singleton.
                     Pass explicitly to avoid re-loading the model per call.
+        strategy:   "diverse" (default, over-generate + MMR), "student" (the
+                    distilled MLP, falling back to diverse), or "topk".
+
+                    "topk" is the RESEARCH BASELINE, not a serving strategy: it
+                    asks the model for its top words and returns them as-is, so
+                    it does NOT pin GUARANTEED_CORE. Phase-1 measures diverse
+                    against it, which is the only reason it still exists. Do not
+                    serve it to a user — a board with no "yes"/"no"/"I need
+                    help"/"wait" is a board an AAC user cannot get out of.
 
     Returns:
-        list of RankedWord with 8-12 items; never raises; never returns <4 items
-        (falls back to _STUB_WORDS in the worst case).
+        Exactly k items for "diverse"/"student"; 8-12 for the topk baseline.
+        Never raises; never returns <4 items (falls back to _STUB_WORDS).
     """
     from personal_context_loader import slice_for_prompt
     from symbol_map import resolve_symbol, EMOJI_FALLBACK
@@ -732,6 +741,7 @@ def rank_vocabulary(
         pool = generate_pool(scene, transcript, ctx, ranker=ranker, topics=topics)
         return select_board(pool, scene, transcript, ctx, k=k, lam=lam)
 
+    # TOPK: the research baseline. No core pinning by design — see the docstring.
     profile = ctx.get("personal_context") or {}
     slice_data = slice_for_prompt(profile, scene, transcript, ctx)
 
