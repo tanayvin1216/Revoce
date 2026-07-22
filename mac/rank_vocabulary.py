@@ -672,6 +672,49 @@ def _load_student_openvino(base) -> tuple:
     return (model, vocab, list(GUARANTEED_CORE), k_dyn)
 
 
+def _load_student_v3(base):
+    """The open-vocabulary bi-encoder + its phrase bank, projections cached.
+
+    Returns (model, bank_index, core_words, k_dyn) — deliberately the same
+    4-tuple shape as the v2 loaders, with the bank standing in for the vocab,
+    so _student_board can dispatch on version without special-casing arity.
+    """
+    import yaml
+
+    import torch
+
+    from evaluation.phase4 import bank as bank_mod
+    from evaluation.phase4 import infer_biencoder as ib
+    from evaluation.phase4.student_biencoder import BiEncoderRanker
+
+    ckpt = base / "student_biencoder.pt"
+    if not ckpt.exists():
+        raise RuntimeError(
+            f"no v3 checkpoint at {ckpt} — run "
+            "evaluation/phase4/train_biencoder.py, or unset "
+            "VOICELINK_STUDENT_VERSION to serve v2")
+    ck = torch.load(ckpt, map_location="cpu", weights_only=False)
+    model = BiEncoderRanker(
+        context_dim=ck["context_dim"], phrase_dim=ck["phrase_dim"],
+        hidden_dim=ck["hidden_dim"], proj_dim=ck["proj_dim"],
+        dropout=ck["dropout"])
+    model.load_state_dict(ck["state_dict"])
+    model.eval()
+
+    phrases, _ = bank_mod.load_bank()
+    # Same staleness discipline as the v2 vocab-sha guard: a checkpoint trained
+    # against a different bank scores the wrong columns and must not serve.
+    stamped, actual = ck.get("bank_sha"), bank_mod.bank_sha(phrases)
+    if stamped and stamped != actual:
+        raise RuntimeError(
+            f"student_biencoder.pt was trained against bank {stamped} but "
+            f"phrase_bank.json is {actual} — retrain before serving")
+
+    k_dyn = int(yaml.safe_load((base / "config.yaml").read_text())["board"]["k_dyn"])
+    return (model, ib.build_bank_index(model, phrases),
+            list(GUARANTEED_CORE), k_dyn)
+
+
 def _load_student():
     global _student_singleton
     if _student_singleton is None:
@@ -679,7 +722,9 @@ def _load_student():
 
         import ranker_config
         base = Path(__file__).resolve().parent / "evaluation" / "phase4"
-        if getattr(ranker_config, "STUDENT_BACKEND", "torch") == "openvino":
+        if getattr(ranker_config, "STUDENT_VERSION", "v2") == "v3":
+            _student_singleton = _load_student_v3(base)
+        elif getattr(ranker_config, "STUDENT_BACKEND", "torch") == "openvino":
             _student_singleton = _load_student_openvino(base)
         else:
             _student_singleton = _load_student_torch(base)
@@ -700,14 +745,25 @@ def _student_board(scene, transcript, context, k) -> list[RankedWord]:
     """
     global _student_failure_reported
     try:
-        # Review-opus C1: the device MUST run the same MMR + answer-aware
-        # selection the eval harness measures — raw board_indices() topk here
-        # was serving hedge walls the metrics never saw.
-        from evaluation.phase4.infer import student_board
-        model, vocab, core, k_dyn = _load_student()
+        import ranker_config
+        model, vocab_or_bank, core, k_dyn = _load_student()
         is_q = _is_question(transcript, context)
-        words = student_board(model, vocab, scene or "", transcript or "",
-                              is_q, k, k_dyn, core)
+
+        if getattr(ranker_config, "STUDENT_VERSION", "v2") == "v3":
+            # v3 scores (context, phrase) pairs over the open bank, and can also
+            # see names/routines from the on-device profile the server injects.
+            from evaluation.phase4.infer_biencoder import student_board as v3_board
+            words = v3_board(model, vocab_or_bank, scene or "", transcript or "",
+                             is_q, k, k_dyn, core,
+                             personal_context=(context or {}).get("personal_context"))
+        else:
+            # Review-opus C1: the device MUST run the same MMR + answer-aware
+            # selection the eval harness measures — raw board_indices() topk here
+            # was serving hedge walls the metrics never saw.
+            from evaluation.phase4.infer import student_board
+            words = student_board(model, vocab_or_bank, scene or "",
+                                  transcript or "", is_q, k, k_dyn, core)
+
         return _to_ranked([{"word": w, "symbol_keyword": w.lower()} for w in words])
     except Exception as exc:
         if not _student_failure_reported:
