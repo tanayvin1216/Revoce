@@ -20,6 +20,24 @@
     "board_variety": 0.988,
     "dynamic_variety": 0.988,
     "pass": true,
+    "distinct_functions_margin": {
+      "margin": 0.8226,
+      "ci": [
+        0.6107,
+        1.0238
+      ],
+      "n": 84,
+      "verdict": "PASS"
+    },
+    "same_function_pair_margin": {
+      "margin": 0.0357,
+      "ci": [
+        0.0164,
+        0.0556
+      ],
+      "n": 84,
+      "verdict": "PASS"
+    },
     "need": "HELD-OUT: distinct-fn >= 90% of teacher AND near-dup <= 0.08 AND same-function-pair <= teacher's (0.1735) AND board-variety >= 0.5"
   },
   "agreement": {
@@ -37,6 +55,15 @@
     "teacher_dynamic": 0.873,
     "n_scored_dynamic": 71,
     "pass": true,
+    "margin": {
+      "margin": 0.0028,
+      "ci": [
+        -0.1042,
+        0.1042
+      ],
+      "n": 71,
+      "verdict": "INCONCLUSIVE"
+    },
     "need": "HELD-OUT: student DYNAMIC top-7 non-hedge coverage >= 90% of the teacher's"
   }
 }

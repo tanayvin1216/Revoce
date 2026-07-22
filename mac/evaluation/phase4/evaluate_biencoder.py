@@ -119,6 +119,19 @@ def main() -> int:
     print(f"diversity gate : {'PASS' if dr['pass'] else 'FAIL'}")
     print(f"coverage gate  : {'PASS' if cov['pass'] else 'FAIL'}")
     print(bar)
+    # Point estimates alone are how a gate gets called PASS on a margin of a
+    # quarter of one scenario. These are the paired margins with 95% CIs.
+    print("paired margin vs the bar (95% bootstrap CI over scenarios):")
+    for label, m in (("coverage-of-intent", cov.get("margin")),
+                     ("distinct-functions", dr.get("distinct_functions_margin")),
+                     ("same-function-pair", dr.get("same_function_pair_margin"))):
+        if not m or m.get("ci") is None:
+            print(f"  {label:<22} not scored")
+            continue
+        lo, hi = m["ci"]
+        print(f"  {label:<22} {m['margin']:+.4f}  CI [{lo:+.4f}, {hi:+.4f}]  "
+              f"n={m['n']}  -> {m['verdict']}")
+    print(bar)
     print(f"agreement (report-only): full={res['agreement']['full_overlap_top7']} "
           f"dynamic={res['agreement']['dynamic_overlap']}")
     print(bar)

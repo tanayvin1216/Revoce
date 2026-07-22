@@ -88,14 +88,44 @@ same-function-pair failure that stood through all of phase 5 as a known gap
 (0.1378 against the teacher's 0.1735), and scores 9% *higher* distinct-functions
 than the teacher itself. Word-level agreement doubled v2's (0.139 vs 0.067).
 
-### Read the coverage pass as thin, because it is
+### Which of these verdicts survive resampling
 
-`coverage-of-intent 0.789` clears a bar of `0.7857` — **by 0.0033, which is 0.23
-of one scenario.** 56.0 hits out of 71 where 55.8 were needed. One scenario
-flipping from hit to miss fails this gate. At n=71 that is inside noise, and no
-confidence interval is computed. **Do not quote this as a robust pass.** The
-defensible claim is "v3 reaches parity with the teacher on coverage while
-strictly beating v2 on every diversity axis", not "v3 passes coverage."
+Every phase-4 gate is a relative claim (`student >= 0.90 * teacher`, or
+`student <= teacher`). So the honest question is not the point estimate but
+whether the *paired per-scenario margin* is reliably on the right side of zero.
+95% bootstrap CI over scenarios, both models, same corpus, same gates:
+
+| paired margin vs bar | v2 | v3 |
+|---|---|---|
+| coverage-of-intent | +0.0169, CI [−0.1014, +0.1282] → **INCONCLUSIVE** | +0.0028, CI [−0.1042, +0.1042] → **INCONCLUSIVE** |
+| distinct-functions | +0.2036, CI [−0.0179, +0.4250] → **INCONCLUSIVE** | +0.8226, CI [+0.6107, +1.0238] → **PASS** |
+| same-function-pair | −0.0164, CI [−0.0414, +0.0091] → **INCONCLUSIVE** | +0.0357, CI [+0.0164, +0.0556] → **PASS** |
+
+Three things follow, and two of them are uncomfortable.
+
+**1. v3's diversity wins are real.** distinct-functions and same-function-pair
+both clear zero by a wide margin with intervals nowhere near it. These are the
+only robustly-supported model comparisons anywhere in the phase-4 evaluation.
+
+**2. Neither model's coverage verdict means anything at this n.** v3's margin is
++0.0028 with a CI of ±0.104 — the interval is **37× wider than the effect**.
+v2's is the same story. `coverage-of-intent` simply cannot resolve a difference
+between these models on 71 scenarios. v3's coverage gate is reported as PASS by
+the point estimate and INCONCLUSIVE by the interval; the interval is the honest
+answer. This is a property of the instrument, not of either model, and the fix
+is more scored scenarios, not a better student.
+
+**3. The phase-5 "known gap" was never a gap.** v2's same-function-pair FAIL —
+carried through FINAL_REVIEW as the one honest failure, with a paragraph
+explaining why it was not gamed away — has a CI of [−0.0414, +0.0091]. It
+straddles zero. It was not statistically distinguishable from passing, and the
+project spent real effort reasoning about a number that was noise. That is worth
+recording precisely because the reporting around it was scrupulous; being honest
+about a point estimate is not the same as the point estimate meaning something.
+
+**What may be claimed:** v3 beats v2 robustly on board diversity, and reaches
+parity with the teacher on coverage. **What may not:** that v3 "passes the
+coverage gate", or that v2 "fails same-function-pair".
 
 ### What actually fixed it
 
@@ -180,13 +210,15 @@ with the machine that made them.
 
 ## Open
 
-1. **Widen the coverage margin.** It passes by a quarter of one scenario. More
-   teacher data is the honest lever; an answer-mode relevance signal (a "who"
-   question should prefer people) is the targeted one. Re-tuning the selection
-   knobs against the test split is NOT a lever — that split has been scored.
-2. **Put confidence intervals on the phase-4 gates.** Phase 1 already has
-   `coverage_metrics.bootstrap_ci`; phase 4 gates on point estimates at n=71–84,
-   which is how a 0.23-scenario margin ends up reported as a pass.
+1. **Grow the coverage-scored set well past n=71.** This is now the single
+   highest-leverage evaluation task: at this n the metric cannot separate any
+   two models, so no amount of student work can be validated against it. It
+   needs more scenarios carrying authored `acceptable_moves`, not more teacher
+   boards. Re-tuning selection against the test split is NOT a lever — that
+   split has been scored.
+2. **Decide what the gates mean now that they have intervals.** A gate whose CI
+   straddles zero should probably report INCONCLUSIVE rather than PASS/FAIL in
+   the verdict line, instead of only in the margin block underneath it.
 3. **Serve v3 through the seam.** `rank_vocabulary` still loads v2; v3 has an
    inference path, gates and tests but is not wired to the device.
 4. Neither v2 nor v3 has been evaluated against a single real AAC user. Every
