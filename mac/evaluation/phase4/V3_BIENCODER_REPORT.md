@@ -64,15 +64,58 @@ no mechanism that could ever put it on a board. This is also why v2's
 pool past scored ones, and the ablation measured that costing 0.24 dynamic
 coverage. Here they compete on the same axis instead of queue-jumping.
 
+## Head-to-head against v2 on the gates
+
+v2 was **retrained from scratch on this same corpus** so the comparison is
+apples-to-apples: same 559 rows, same held-out n=84, same teacher boards, same
+gate code (`evaluate.held_out_eval`, with the board producer injected). The
+previously published v2 numbers came from a different corpus and are not used
+here.
+
+| gate | v2 | v3 | teacher | bar | winner |
+|---|---|---|---|---|---|
+| distinct-functions | 4.071 (0.947×) | **4.357 (1.014×)** | 4.298 | ≥90% of teacher | **v3** |
+| near-duplicate rate | 0.0 | 0.0 | 0.0006 | ≤0.08 | tie |
+| same-function-pair | 0.1899 **FAIL** | **0.1621 PASS** | 0.1735 | ≤ teacher | **v3** |
+| board-variety | 0.952 | **1.000** | — | ≥0.5 | **v3** |
+| coverage-of-intent (dynamic) | **0.803 PASS** (0.920×) | 0.718 **FAIL** (0.822×) | 0.873 | ≥90% of teacher | **v2** |
+| dynamic_overlap (report-only) | 0.067 | **0.091** | — | — | **v3** |
+| **diversity gate** | **FAIL** | **PASS** | | | **v3** |
+| **coverage gate** | **PASS** | **FAIL** | | | **v2** |
+
+**This is a trade, not a win.** Each model passes exactly one of the two gates.
+
+What v3 buys: it **fixes the same-function-pair failure that stood through all
+of phase 5** — the one gate v2 never passed, reported as a known gap in
+FINAL_REVIEW. v3 clears it (0.1621 vs the teacher's 0.1735) and simultaneously
+scores *higher* distinct-functions than the teacher itself (4.357 vs 4.298) with
+perfect board variety. Word-level agreement with the teacher also rises 36%
+(0.067 → 0.091), though it stays low by design.
+
+What v3 costs: dynamic coverage-of-intent drops 0.803 → 0.718, from a
+comfortable pass to a clear fail.
+
+The mechanism is the same in both directions, and it is the expected
+consequence of the architecture change. v3 ranks 1959 candidates where v2 ranked
+95. A wider pool spreads the board across more communicative functions (better
+diversity, better sfp, perfect variety) and makes it *less* likely that the 6
+chosen words land on the specific phrases the scenario author wrote down as
+`acceptable_moves`. Diversity and intent-precision are in tension, and v3
+currently sits too far toward diversity.
+
+That points at a concrete fix rather than a retreat: the coverage loss is a
+ranking-precision problem inside a candidate set that provably contains better
+answers, not a representability problem. More teacher data and an answer-mode
+relevance signal are the levers. **Until dynamic coverage clears 0.786 (90% of
+the teacher's 0.873), v3 is not a replacement for v2 and should not be described
+as one.**
+
 ### Honest caveat on board quality
 
-The *selection* is visibly imperfect — "mexican" and "i'd like to play video
-games" are poor answers to a seating question, and "i mean dinner" is close to a
-duplicate of "dinner". Representability is demonstrated; ranking quality on 559
-rows is not yet where v2's was on a 94-word space, which is unsurprising: v3 is
-ranking 1959 candidates instead of 94. The phase-3 gates have not been re-run
-against v3 and **no v3 number should be quoted as beating v2 until they are.**
-That is the next piece of work, not a claim being made here.
+Selection is visibly imperfect: "mexican" and "i'd like to play video games" are
+poor answers to a seating question, and "i mean dinner" nearly duplicates
+"dinner". The coverage failure above is the measured version of that
+observation.
 
 ## Quantization: sweep per tower, not per model
 
@@ -127,11 +170,14 @@ with the machine that made them.
 
 ## Open
 
-1. **Run the phase-3 gates against v3.** Until then v3 is unproven on
-   distinct-functions, same-function-pair and coverage-of-intent.
-2. **Ranking quality at 1959 candidates.** More teacher data, and probably a
-   relevance signal for answer-mode, since "who" questions should prefer people.
-3. **Serve it through the seam.** `rank_vocabulary` still loads the v2 student;
-   v3 has an inference path and tests but is not yet wired to the device.
+1. **Close the coverage gap (0.718 → 0.786).** The one thing standing between
+   v3 and replacing v2. The candidate set provably contains better answers —
+   this is ranking precision, not representability. Levers: more teacher data,
+   and an answer-mode relevance signal (a "who" question should prefer people).
+2. **Serve it through the seam.** `rank_vocabulary` still loads v2; v3 has an
+   inference path and tests but is not wired to the device.
+3. **v2 remains the model to ship** until item 1 lands. Its artifacts are now
+   regenerated and committed, so it is reproducible again.
 4. Neither v2 nor v3 has been evaluated against a single real AAC user. Every
-   number here is model-vs-model.
+   number here is model-vs-model, on a synthetic corpus, scored by instruments
+   built from the same embedder the models use.
