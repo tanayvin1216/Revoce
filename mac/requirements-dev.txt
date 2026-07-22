@@ -1,0 +1,12 @@
+# Everything in requirements.txt, plus the test / eval / export toolchain.
+-r requirements.txt
+
+pytest>=8.0
+
+# ONNX export path (evaluation/phase4/export_onnx.py and its round-trip test).
+onnx>=1.16
+onnxruntime>=1.18
+
+# Eval harness: figure generation and the HuggingFace corpus loader.
+matplotlib>=3.8
+datasets>=2.19

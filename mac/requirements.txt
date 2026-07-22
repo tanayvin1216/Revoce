@@ -6,6 +6,16 @@ numpy>=1.26
 opencv-python>=4.9
 pillow>=10
 
-# VLM runtime — Apple Silicon only. On Intel, use an OpenVINO backend instead
-# (swap SCENE_DESCRIBER in perception/config.py) rather than installing this.
+# Ranking + the distilled student. sentence-transformers backs the shared MiniLM
+# embedder in evaluation/embed.py, which both the MMR selector and the student
+# inference path go through — without it, selection silently degrades to plain
+# function-coverage ordering, so it is a hard runtime dep, not an eval extra.
+torch>=2.2
+sentence-transformers>=2.6
+pyyaml>=6.0
+
+# LLM + VLM runtimes — Apple Silicon only. On Intel, serve the student through
+# the OpenVINO backend (VOICELINK_STUDENT_BACKEND=openvino, see mac/intel/)
+# rather than installing these.
 mlx-vlm>=0.1 ; platform_system == "Darwin" and platform_machine == "arm64"
+mlx-lm>=0.16 ; platform_system == "Darwin" and platform_machine == "arm64"
