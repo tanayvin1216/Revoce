@@ -564,13 +564,19 @@ def _lan_ip() -> str:
 
 
 async def _warm_up_ranker(app: web.Application) -> None:
-    """Pay the model's one-time kernel-compile cost at STARTUP, not on the first
-    user click.
+    """Pay the serving path's one-time cost at STARTUP, not on the first click.
 
-    The first real diverse generation compiles MLX/Metal kernels for a full
-    ~520-token run (~110s cold). We force that here with a representative prompt
-    and discard the board, so the first board the user fires comes back at the
-    warm latency (~30s) instead of the cold one. Never blocks on failure — a
+    Warms whatever board_strategy actually serves, which matters because the
+    cost differs by three orders of magnitude:
+
+      "student" (default) — loads MiniLM + the checkpoint. A few seconds.
+      "diverse"           — compiles MLX/Metal kernels for a ~520-token
+                            generation. ~110s cold, and the board then costs
+                            ~30s every time.
+
+    This runs BEFORE the socket binds, so it is also how long the board page
+    shows "connecting". That was a two-minute wall when the LLM path was the
+    default; on the student path it is seconds. Never blocks on failure — a
     HeuristicRanker warm-up is instant and harmless.
     """
     warm_context = {
