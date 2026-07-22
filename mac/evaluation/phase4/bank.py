@@ -35,8 +35,83 @@ from evaluation.phase4.data import CORE_SET, dedup_vocab
 BANK_PATH = Path(__file__).resolve().parent / "phrase_bank.json"
 
 
+def dedup_bank(ranked: list[str], tau: float,
+               linkage: str = "complete") -> tuple[list[str], dict[str, str]]:
+    """Semantic dedup for the OPEN bank. Same contract as data.dedup_vocab.
+
+    Why this exists rather than reusing dedup_vocab: that function uses
+    SINGLE-link connected components, and it says why — the hedge paraphrases
+    only unite transitively ("i don't know" ~ "i am not sure" is 0.784, below
+    any workable tau, but they link through "i'm not sure"). That is the right
+    call for a 116-word closed vocabulary.
+
+    It does not survive an open bank. Single-link chaining grows with the number
+    of phrases: A~B~C merges A and C however dissimilar they are, and the more
+    phrases there are the more chains there are. Swept on the real corpus
+    (1358 distinct phrases), single-link tripped the oversize guard at EVERY tau
+    from 0.80 to 0.90 — 13, 6, 3 and 2 oversized components respectively. So
+    raising tau is a treadmill, not a fix, and by 0.95 the hedges stop merging
+    at all, which is the failure dedup exists to prevent.
+
+    COMPLETE linkage (the default) ends the treadmill by construction: a phrase
+    joins a cluster only if it clears tau against EVERY member, so a chain can
+    never drag in something the far end of the cluster disagrees with. It is the
+    only linkage that passed at 0.85, and it collapsed the hedge cluster hardest
+    there (14 variants -> 7, against 8 for average at 0.90). Because the
+    constraint is on every pair rather than on the graph's connectivity, the
+    setting stays valid as the bank grows instead of needing a re-sweep.
+
+    "average" (mean similarity to the cluster) is kept as the intermediate
+    option; on this corpus it needed tau=0.90 to pass.
+    """
+    from evaluation.embed import embed
+
+    if len(ranked) <= 1:
+        return list(ranked), {}
+
+    vecs = np.asarray(embed(ranked), dtype=np.float32)
+    # Greedy agglomeration in frequency order: the first-ranked member of a
+    # cluster is its representative, matching dedup_vocab's rule.
+    clusters: list[list[int]] = []
+    for i in range(len(ranked)):
+        placed = False
+        for c in clusters:
+            sims = vecs[c] @ vecs[i]
+            agg = float(sims.mean()) if linkage == "average" else float(sims.min())
+            if agg >= tau:
+                c.append(i)
+                placed = True
+                break
+        if not placed:
+            clusters.append([i])
+
+    kept = [ranked[c[0]] for c in clusters]
+    canonical = {ranked[j]: ranked[c[0]] for c in clusters for j in c[1:]}
+
+    _audit(canonical)
+    return kept, canonical
+
+
+def _audit(canonical: dict[str, str]) -> None:
+    """Same loud guard as dedup_vocab: log non-hedge merges, fail on oversize."""
+    from evaluation.hedges import is_hedge
+
+    sizes: dict[str, int] = {}
+    for dropped, rep in canonical.items():
+        sizes[rep] = sizes.get(rep, 1) + 1
+        if not (is_hedge(dropped) and is_hedge(rep)):
+            print(f"[dedup_bank] non-hedge merge: {dropped!r} -> {rep!r} (audit)")
+    oversized = {rep: n for rep, n in sizes.items()
+                 if n > 4 and not is_hedge(rep)}
+    if oversized:
+        raise ValueError(
+            f"dedup_bank: non-hedge component(s) exceed size 4: {oversized} — "
+            f"raise bank_dedup_tau or switch linkage before retraining")
+
+
 def build_phrase_bank(rows: list[dict], dedup_tau: float,
-                      min_freq: int = 1) -> tuple[list[str], dict[str, str]]:
+                      min_freq: int = 1,
+                      linkage: str = "complete") -> tuple[list[str], dict[str, str]]:
     """Every dynamic phrase in the teacher corpus, hedge-deduped.
 
     min_freq defaults to 1 — i.e. no floor. It stays a parameter only so an
@@ -51,8 +126,7 @@ def build_phrase_bank(rows: list[dict], dedup_tau: float,
 
     ranked = sorted((w for w in freq if freq[w] >= min_freq),
                     key=lambda w: (-freq[w], w))
-    kept, canonical = dedup_vocab(ranked, dedup_tau)
-    return kept, canonical
+    return dedup_bank(ranked, dedup_tau, linkage)
 
 
 def bank_sha(bank: list[str]) -> str:
