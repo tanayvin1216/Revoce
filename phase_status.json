@@ -17,7 +17,7 @@
       "id": 2,
       "name": "Console + device simulator",
       "status": "pending",
-      "note": "Console serves boards and runs the VLM on a dropped image. /api/console/transcribe exists; the record button is markup only — MediaRecorder not wired."
+      "note": "Console serves boards and runs the VLM on a dropped image. /api/console/transcribe exists; the record button is markup only \u2014 MediaRecorder not wired."
     },
     {
       "id": 3,
@@ -28,20 +28,20 @@
     {
       "id": 4,
       "name": "Knowledge distillation",
-      "status": "pending",
-      "note": "Teacher corpus regenerated (600 boards) and committed. v3 open-vocabulary bi-encoder trained: 1959-phrase bank vs 103 under the old min_freq=3 floor. Representability demonstrated; the phase-3 gates have NOT been re-run against v3, so no v3 quality number is claimed yet. v2 artifacts remain lost."
+      "status": "green",
+      "note": "Corpus regenerated (600 boards) and committed. v2 retrained and reproducible. v3 open-vocabulary bi-encoder added: wins the diversity gates under 5-fold CV (distinct-functions +0.69 [+0.61,+0.76], same-function-pair +0.021 [+0.013,+0.029]) but its coverage margin is -0.0397, so v2 stays the default. Gates now carry bootstrap CIs and report INCONCLUSIVE where they cannot resolve."
     },
     {
       "id": 5,
       "name": "Intel / OpenVINO readiness",
-      "status": "pending",
-      "note": "v3 towers convert to OpenVINO IR and quantize cleanly; per-tower FP32/INT8/INT4 Pareto measured (int4/int4 = 197 KB, 5.5x smaller, 0.922 board overlap). The committed v2 IRs still cannot load — they need vocab.json, which was lost. Intel-hardware numbers still pending."
+      "status": "green",
+      "note": "OpenVINO IRs rebuilt against the retrained student with .vocab.sha sidecars committed; VOICELINK_STUDENT_BACKEND=openvino verified to load and serve a board end-to-end. Per-tower INT8/INT4 quantization Pareto measured (int4/int4 = 197 KB, 5.5x smaller, 0.922 board overlap; INT4 beats INT8 on size, accuracy AND latency). Intel-hardware numbers still pending \u2014 all measurements are Apple Silicon via the ARM CPU plugin."
     },
     {
       "id": 6,
       "name": "Integration & demo",
       "status": "pending",
-      "note": "No end-to-end test exists. Default board strategy is still the ~30s LLM path rather than the fast student."
+      "note": "No end-to-end test yet. Default board strategy is still the ~30s LLM path rather than the fast student; switching it is the main remaining demo-readiness item."
     }
   ]
 }
