@@ -94,3 +94,23 @@ def test_more_scenarios_narrow_the_interval():
 
     assert large < small, f"interval did not narrow: n=12 {small} vs n=200 {large}"
     assert large < small / 2, "should narrow roughly with sqrt(n)"
+
+
+# --- the combined gate verdict -------------------------------------------
+
+def test_a_gate_is_only_pass_when_every_margin_is_resolved():
+    from evaluation.phase4.evaluate import _combine_verdict
+
+    ok = {"verdict": "PASS"}
+    unsure = {"verdict": "INCONCLUSIVE"}
+    bad = {"verdict": "FAIL"}
+
+    assert _combine_verdict([ok, ok], True) == "PASS"
+    # one unresolved margin makes the whole gate unresolved
+    assert _combine_verdict([ok, unsure], True) == "INCONCLUSIVE"
+    # a real failure outranks an unresolved one
+    assert _combine_verdict([bad, unsure], True) == "FAIL"
+    # absolute sub-checks can only veto
+    assert _combine_verdict([ok, ok], False) == "FAIL"
+    # an unscored margin is not evidence of passing
+    assert _combine_verdict([{"verdict": "not-scored"}], True) == "INCONCLUSIVE"

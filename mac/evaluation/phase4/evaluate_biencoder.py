@@ -116,8 +116,13 @@ def main() -> int:
     for name, s, t, b, extra in rows:
         print(f"{name:<28}{str(s):>10}{str(t):>10}  {b:<20}{extra:>7}")
     print(bar)
-    print(f"diversity gate : {'PASS' if dr['pass'] else 'FAIL'}")
-    print(f"coverage gate  : {'PASS' if cov['pass'] else 'FAIL'}")
+    # The verdict is the interval-aware answer; "pass" is the old point-estimate
+    # boolean, kept visible so a divergence between them is obvious.
+    for label, g in (("diversity", dr), ("coverage", cov)):
+        v = g.get("verdict", "?")
+        pt = "pass" if g["pass"] else "fail"
+        note = "  <- point estimate says %s" % pt if (v == "INCONCLUSIVE") else ""
+        print(f"{label + ' gate':<16}: {v}{note}")
     print(bar)
     # Point estimates alone are how a gate gets called PASS on a margin of a
     # quarter of one scenario. These are the paired margins with 95% CIs.
@@ -135,7 +140,10 @@ def main() -> int:
     print(f"agreement (report-only): full={res['agreement']['full_overlap_top7']} "
           f"dynamic={res['agreement']['dynamic_overlap']}")
     print(bar)
-    return 0 if (dr["pass"] and cov["pass"]) else 1
+    # Exit non-zero unless BOTH gates are resolved passes. An inconclusive gate
+    # is not a green build — it is a measurement we cannot stand behind.
+    return 0 if (dr.get("verdict") == "PASS"
+                 and cov.get("verdict") == "PASS") else 1
 
 
 if __name__ == "__main__":
