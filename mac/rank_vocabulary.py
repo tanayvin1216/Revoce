@@ -366,11 +366,25 @@ def generate_pool(
     max_tokens = 720 if answer_mode else 520
 
     r = ranker if ranker is not None else _default_ranker()
+    # Probe the signature once instead of using TypeError as the signal. A
+    # TypeError raised INSIDE a compatible ranker used to be misread as a
+    # signature mismatch, which re-ran a full generation; and if that retry
+    # raised, it escaped the handler and broke this function's never-raises
+    # contract, leaving the trigger loop with no board to push at all.
     try:
-        raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt, max_tokens=max_tokens)
-    except TypeError:
-        raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt)  # ranker w/o max_tokens
-    except Exception:
+        import inspect
+        takes_max_tokens = "max_tokens" in inspect.signature(r.rank).parameters
+    except (TypeError, ValueError):
+        takes_max_tokens = True  # builtins/C-callables: assume the real signature
+
+    try:
+        if takes_max_tokens:
+            raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt, max_tokens=max_tokens)
+        else:
+            raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt)
+    except Exception as exc:
+        print(f"[seam] WARNING pool generation failed ({type(exc).__name__}: {exc}); "
+              "board falls back to the core pool")
         raw = []
 
     pool: list[dict] = []
@@ -672,9 +686,19 @@ def _load_student():
     return _student_singleton
 
 
+_student_failure_reported = False
+
+
 def _student_board(scene, transcript, context, k) -> list[RankedWord]:
     """One board from the distilled student (no LLM). Returns [] on any failure
-    so the caller can fall back to the diverse path and never strand the user."""
+    so the caller can fall back to the diverse path and never strand the user.
+
+    The fallback is SILENT to the user by design, but must not be silent to the
+    operator: it swaps a ~44ms board for a ~30s one. The artifact guards in
+    _load_student_* raise deliberately loud RuntimeErrors ("fail at load time"),
+    and swallowing them here was undoing exactly that intent.
+    """
+    global _student_failure_reported
     try:
         # Review-opus C1: the device MUST run the same MMR + answer-aware
         # selection the eval harness measures — raw board_indices() topk here
@@ -685,7 +709,17 @@ def _student_board(scene, transcript, context, k) -> list[RankedWord]:
         words = student_board(model, vocab, scene or "", transcript or "",
                               is_q, k, k_dyn, core)
         return _to_ranked([{"word": w, "symbol_keyword": w.lower()} for w in words])
-    except Exception:
+    except Exception as exc:
+        if not _student_failure_reported:
+            _student_failure_reported = True
+            print(
+                f"[seam] WARNING student board unavailable "
+                f"({type(exc).__name__}: {exc}).\n"
+                f"[seam]         Serving the LLM diverse path instead — that is "
+                f"~30s per board, not ~44ms.\n"
+                f"[seam]         Rebuild the phase-4 artifacts "
+                f"(mac/evaluation/phase4/) to restore the fast path."
+            )
         return []
 
 
