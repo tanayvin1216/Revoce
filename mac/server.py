@@ -191,6 +191,16 @@ async def _get_scene_describer(state: dict):
     return state["scene_describer"]
 
 
+async def _get_transcriber(state: dict):
+    """Lazily build ONE real transcriber for the console audio route (mirrors
+    _get_scene_describer's lazy-VLM pattern) so text-only console runs never
+    pay for the whisper model load."""
+    if state.get("transcriber") is None:
+        from perception.transcriber import make_transcriber
+        state["transcriber"] = await asyncio.to_thread(make_transcriber, perception_config)
+    return state["transcriber"]
+
+
 async def _run_console_payload(state: dict, payload: dict, image_bytes: bytes | None = None) -> dict:
     transcript = str(payload.get("transcript") or "").strip() or None
 
@@ -395,6 +405,39 @@ async def console_run_handler(request: web.Request) -> web.Response:
     return web.json_response(result)
 
 
+async def console_transcribe_handler(request: web.Request) -> web.Response:
+    """Console mic-recording route: browser audio (any container av can read,
+    e.g. webm/opus) in -> real whisper transcript out. Independent of the
+    live wearable audio path; lets you test whisper from the console alone."""
+    reader = await request.multipart()
+    audio_bytes: bytes | None = None
+    async for part in reader:
+        if part.name == "audio":
+            audio_bytes = await part.read(decode=False)
+    if not audio_bytes:
+        return web.json_response({"error": "missing 'audio' field"}, status=400)
+
+    import io
+    from faster_whisper.audio import decode_audio
+    try:
+        pcm = await asyncio.to_thread(
+            decode_audio, io.BytesIO(audio_bytes), perception_config.SAMPLE_RATE
+        )
+    except Exception as exc:
+        return web.json_response({"error": f"could not decode audio: {exc}"}, status=400)
+
+    transcriber = await _get_transcriber(request.app["state"])
+    start = time.perf_counter()
+    result = await asyncio.to_thread(transcriber.transcribe, pcm, perception_config.SAMPLE_RATE)
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    return web.json_response({
+        "text": result.text,
+        "avg_logprob": round(result.avg_logprob, 3),
+        "no_speech_prob": round(result.no_speech_prob, 3),
+        "latency_ms": round(elapsed_ms, 1),
+    })
+
+
 async def _produce_and_broadcast(app: web.Application) -> None:
     board, produced_from = await _make_board(app)
 
@@ -581,6 +624,7 @@ def make_app() -> web.Application:
         "ranker": None,
         "board_strategy": "diverse",  # set from ranker_config in on_startup
         "scene_describer": None,      # lazy VLM for the console image route
+        "transcriber": None,          # lazy whisper for the console audio route
         "last_trigger_sig": None,
         "last_push_ts": 0.0,
         "trigger_task": None,
@@ -595,6 +639,7 @@ def make_app() -> web.Application:
         web.get("/api/console/scenarios", console_scenarios_handler),
         web.get("/api/console/profiles", console_profiles_handler),
         web.post("/api/console/run", console_run_handler),
+        web.post("/api/console/transcribe", console_transcribe_handler),
     ])
     # Static route for locally-cached ARASAAC pictograms — same origin, no internet
     app.router.add_static("/symbols/", path=SYMBOLS_DIR, show_index=False)
