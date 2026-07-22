@@ -101,10 +101,10 @@ def _df_dup_sfp(board: list[str]) -> tuple[int, float, float]:
             metrics3.same_function_pair_rate(board, METRIC_K, board_vecs=vecs))
 
 
-def _held_out_rows() -> list[dict]:
+def _held_out_rows(splits_path: Path | None = None) -> list[dict]:
     """Test-split rows with fingerprint guard against stale partitions."""
     rows = train_mod.gather_rows()
-    splits = json.loads(d.SPLITS_PATH.read_text())
+    splits = json.loads(Path(splits_path or d.SPLITS_PATH).read_text())
     fp = splits.get("fingerprint")
     if fp and fp != d.rows_fingerprint(rows):
         raise SystemExit(
@@ -132,11 +132,23 @@ def _acceptable_moves_lookup() -> dict[tuple, list[str]]:
     return lookup
 
 
-def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
-    """(1) diversity retention + (2) agreement + (4) coverage-of-intent, held-out."""
+def held_out_eval(model, vocab, k, k_dyn, core_words,
+                  board_fn=None, splits_path: Path | None = None) -> dict:
+    """(1) diversity retention + (2) agreement + (4) coverage-of-intent, held-out.
+
+    board_fn lets a DIFFERENT student be scored by exactly this gate code —
+    it takes (scene, transcript, is_question) and returns a board. The v3
+    bi-encoder uses it (see evaluate_biencoder.py). Reusing this function
+    rather than reimplementing the metrics is the whole point: if v3 is
+    compared to v2, it has to be the same ruler.
+    """
     core_lower = {w.lower() for w in core_words}
-    held = _held_out_rows()
+    held = _held_out_rows(splits_path)
     moves_by_ctx = _acceptable_moves_lookup()
+    if board_fn is None:
+        def board_fn(scene, transcript, is_q):
+            return student_board(model, vocab, scene, transcript, is_q,
+                                 k, k_dyn, core_words)
     s_df, s_dup, t_df, t_dup = [], [], [], []
     s_sfp, t_sfp = [], []
     full_overlaps: list[float] = []
@@ -149,8 +161,7 @@ def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
     dynamic_triples: set[frozenset] = set()
 
     for r in held:
-        sb = student_board(model, vocab, r["scene"], r["transcript"],
-                           r.get("is_question", False), k, k_dyn, core_words)
+        sb = board_fn(r["scene"], r["transcript"], r.get("is_question", False))
         moves = moves_by_ctx.get((r.get("scene", "").strip(), r.get("transcript", "").strip()))
         if moves:
             s_cov.append(1.0 if metrics3.coverage_of_intent(sb, moves, METRIC_K) else 0.0)
