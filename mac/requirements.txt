@@ -3,8 +3,17 @@ aiohttp>=3.13,<4
 # Perception (Task 4). faster-whisper takes float32 PCM directly (no ffmpeg).
 faster-whisper>=1.0
 numpy>=1.26
-opencv-python>=4.9
 pillow>=10
+
+# OpenCV: HEADLESS on Linux. perception/vision_worker.py imports cv2 at module
+# scope, and the GUI build needs libGL.so.1, which is not present on a stock
+# Linux runner or on a headless mini-PC — so `import cv2` dies at import time
+# and takes the whole server (and the whole test run) with it. We use only
+# imdecode/imencode/resize/putText; there is not one GUI call in the codebase,
+# so the headless build is strictly correct here — and Linux is the deployment
+# target, not just CI.
+opencv-python-headless>=4.9 ; platform_system == "Linux"
+opencv-python>=4.9 ; platform_system != "Linux"
 
 # Ranking + the distilled student. sentence-transformers backs the shared MiniLM
 # embedder in evaluation/embed.py, which both the MMR selector and the student
