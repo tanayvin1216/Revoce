@@ -1,0 +1,83 @@
+{
+  "k_folds": 5,
+  "seed": 0,
+  "n_rows": 559,
+  "n_scored_coverage": 471,
+  "bank_size": 1959,
+  "per_fold": [
+    {
+      "fold": 0,
+      "n_held": 112,
+      "n_scored": 96,
+      "coverage": 0.6771,
+      "val_loss": 0.01769
+    },
+    {
+      "fold": 1,
+      "n_held": 112,
+      "n_scored": 97,
+      "coverage": 0.7732,
+      "val_loss": 0.01771
+    },
+    {
+      "fold": 2,
+      "n_held": 112,
+      "n_scored": 89,
+      "coverage": 0.7191,
+      "val_loss": 0.01699
+    },
+    {
+      "fold": 3,
+      "n_held": 112,
+      "n_scored": 94,
+      "coverage": 0.7021,
+      "val_loss": 0.01692
+    },
+    {
+      "fold": 4,
+      "n_held": 111,
+      "n_scored": 95,
+      "coverage": 0.7789,
+      "val_loss": 0.01692
+    }
+  ],
+  "coverage": {
+    "student": 0.7304,
+    "teacher": 0.8556,
+    "margin": {
+      "margin": -0.0397,
+      "ci": [
+        -0.0849,
+        0.0057
+      ],
+      "n": 471,
+      "verdict": "INCONCLUSIVE"
+    }
+  },
+  "distinct_functions": {
+    "student": 4.7013,
+    "teacher": 4.4597,
+    "margin": {
+      "margin": 0.6875,
+      "ci": [
+        0.6116,
+        0.7631
+      ],
+      "n": 559,
+      "verdict": "PASS"
+    }
+  },
+  "same_function_pair": {
+    "student": 0.1406,
+    "teacher": 0.1613,
+    "margin": {
+      "margin": 0.0207,
+      "ci": [
+        0.0129,
+        0.0285
+      ],
+      "n": 559,
+      "verdict": "PASS"
+    }
+  }
+}

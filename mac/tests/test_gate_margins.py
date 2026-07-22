@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import pytest
 
+import numpy as np
+
 from evaluation.phase4.evaluate import _margin_ci
 
 
@@ -114,3 +116,29 @@ def test_a_gate_is_only_pass_when_every_margin_is_resolved():
     assert _combine_verdict([ok, ok], False) == "FAIL"
     # an unscored margin is not evidence of passing
     assert _combine_verdict([{"verdict": "not-scored"}], True) == "INCONCLUSIVE"
+
+
+# --- cross-validation folds ------------------------------------------------
+
+def test_folds_partition_every_row_exactly_once():
+    """A row scored twice, or not at all, silently corrupts the pooled n."""
+    from evaluation.phase4.cross_validate import _folds
+
+    n, k = 559, 5
+    folds = _folds(n, k, seed=0)
+
+    assert len(folds) == k
+    allocated = np.concatenate(folds)
+    assert sorted(allocated.tolist()) == list(range(n)), "not a clean partition"
+    assert max(len(f) for f in folds) - min(len(f) for f in folds) <= 1
+
+
+def test_folds_are_deterministic_for_a_seed():
+    from evaluation.phase4.cross_validate import _folds
+
+    a = _folds(100, 5, seed=7)
+    b = _folds(100, 5, seed=7)
+    c = _folds(100, 5, seed=8)
+
+    assert all((x == y).all() for x, y in zip(a, b))
+    assert not all((x == y).all() for x, y in zip(a, c))
