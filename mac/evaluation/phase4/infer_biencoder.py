@@ -119,13 +119,59 @@ def _personal_terms(profile: dict | None) -> list[str]:
     return out
 
 
+@dataclass
+class Selection:
+    """v3 selection knobs. Defaults come from config.yaml:selection_v3.
+
+    rel_source decides what MMR treats as relevance:
+      "cosine" — cosine to the situation vector (what v2 does; the model's
+                 scores are used only for the pool cut and then discarded)
+      "model"  — the bi-encoder's own scores, min-max scaled
+      "blend"  — mean of the two
+
+    See config.yaml for the validation sweep behind the defaults.
+    """
+
+    lam: float | None = None
+    pool_mult: int | None = None
+    rel_source: str | None = None
+
+    def __post_init__(self) -> None:
+        cfg = _selection_cfg()
+        if self.lam is None:
+            self.lam = float(cfg.get("lam", FILL_LAM))
+        if self.pool_mult is None:
+            self.pool_mult = int(cfg.get("pool_mult", _pool_mult()))
+        if self.rel_source is None:
+            self.rel_source = str(cfg.get("rel_source", "cosine"))
+
+    def pool_size(self, k_dyn: int, n: int) -> int:
+        return min(n, self.pool_mult * k_dyn)
+
+
+def _selection_cfg() -> dict:
+    import yaml
+    from pathlib import Path
+    cfg = yaml.safe_load(
+        (Path(__file__).resolve().parent / "config.yaml").read_text())
+    return cfg.get("selection_v3") or {}
+
+
+def _scale01(x: np.ndarray) -> np.ndarray:
+    lo, hi = float(x.min()), float(x.max())
+    return np.zeros_like(x) if hi - lo < 1e-9 else (x - lo) / (hi - lo)
+
+
 def student_dynamic_words(model, bank: BankIndex, scene: str, transcript: str,
                           is_question: bool, k_dyn: int,
-                          personal_context: dict | None = None) -> list[str]:
+                          personal_context: dict | None = None,
+                          sel: "Selection | None" = None) -> list[str]:
     """The k_dyn dynamic words: scored pool (bank + live), MMR, hedge-capped."""
     from evaluation.embed import embed
     from evaluation.phase4 import data as d
     from selection import build_query_vector, mmr_select
+
+    sel = sel or Selection()
 
     ctx_vec = _project_context(
         model, d.row_features(scene, transcript, is_question)[None, :])[0]
@@ -146,7 +192,7 @@ def student_dynamic_words(model, bank: BankIndex, scene: str, transcript: str,
         return []
 
     scores = proj @ ctx_vec
-    pool_n = min(len(phrases), _pool_mult() * k_dyn)
+    pool_n = sel.pool_size(k_dyn, len(phrases))
     top = np.argsort(-scores)[:pool_n].tolist()
     candidates = [phrases[i] for i in top]
 
@@ -158,9 +204,23 @@ def student_dynamic_words(model, bank: BankIndex, scene: str, transcript: str,
         if is_question else []
     n_hedges = sum(1 for i in chosen if hedge_flags[i])
 
+    # The model ranked 1959 candidates down to this pool; throwing that ranking
+    # away and re-scoring on raw cosine is what the coverage diagnostic caught
+    # (19 of 20 misses had a satisfying phrase already IN the pool).
+    rel = None
+    if sel.rel_source != "cosine":
+        model_rel = _scale01(scores[top])
+        if sel.rel_source == "model":
+            rel = model_rel
+        elif sel.rel_source == "blend":
+            rel = 0.5 * model_rel + 0.5 * _scale01(cand_vecs @ query)
+        else:
+            raise ValueError(f"unknown rel_source {sel.rel_source!r}")
+
     from evaluation.phase3 import taxonomy
     _, functions = taxonomy.classify_functions(cand_vecs)
-    order = mmr_select(cand_vecs, query, len(candidates), FILL_LAM, functions)
+    order = mmr_select(cand_vecs, query, len(candidates), sel.lam, functions,
+                       rel=rel)
 
     for i in order:
         if len(chosen) >= k_dyn:
@@ -184,9 +244,10 @@ def student_dynamic_words(model, bank: BankIndex, scene: str, transcript: str,
 def student_board(model, bank: BankIndex, scene: str, transcript: str,
                   is_question: bool, k: int, k_dyn: int,
                   core_words: list[str],
-                  personal_context: dict | None = None) -> list[str]:
+                  personal_context: dict | None = None,
+                  sel: "Selection | None" = None) -> list[str]:
     """Full board: core safety words pinned first, selected dynamic after."""
     from evaluation.phase4 import data as d
     dynamic = student_dynamic_words(model, bank, scene, transcript,
-                                    is_question, k_dyn, personal_context)
+                                    is_question, k_dyn, personal_context, sel)
     return d.assemble_board(core_words, dynamic, k)

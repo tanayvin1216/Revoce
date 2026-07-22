@@ -101,8 +101,14 @@ def _df_dup_sfp(board: list[str]) -> tuple[int, float, float]:
             metrics3.same_function_pair_rate(board, METRIC_K, board_vecs=vecs))
 
 
-def _held_out_rows(splits_path: Path | None = None) -> list[dict]:
-    """Test-split rows with fingerprint guard against stale partitions."""
+def _held_out_rows(splits_path: Path | None = None,
+                   split_key: str = "test") -> list[dict]:
+    """Held-out rows with fingerprint guard against stale partitions.
+
+    split_key exists so hyperparameters can be tuned on "val" and the final
+    number reported once on "test". Sweeping on the test split would make the
+    reported gate a training number.
+    """
     rows = train_mod.gather_rows()
     splits = json.loads(Path(splits_path or d.SPLITS_PATH).read_text())
     fp = splits.get("fingerprint")
@@ -110,7 +116,7 @@ def _held_out_rows(splits_path: Path | None = None) -> list[dict]:
         raise SystemExit(
             "splits.json fingerprint mismatch — teacher data changed since training; "
             "retrain before evaluating (otherwise the held-out split is not held-out).")
-    return [rows[i] for i in splits.get("test", []) if i < len(rows)]
+    return [rows[i] for i in splits.get(split_key, []) if i < len(rows)]
 
 
 def _acceptable_moves_lookup() -> dict[tuple, list[str]]:
@@ -133,7 +139,8 @@ def _acceptable_moves_lookup() -> dict[tuple, list[str]]:
 
 
 def held_out_eval(model, vocab, k, k_dyn, core_words,
-                  board_fn=None, splits_path: Path | None = None) -> dict:
+                  board_fn=None, splits_path: Path | None = None,
+                  split_key: str = "test") -> dict:
     """(1) diversity retention + (2) agreement + (4) coverage-of-intent, held-out.
 
     board_fn lets a DIFFERENT student be scored by exactly this gate code —
@@ -143,7 +150,7 @@ def held_out_eval(model, vocab, k, k_dyn, core_words,
     compared to v2, it has to be the same ruler.
     """
     core_lower = {w.lower() for w in core_words}
-    held = _held_out_rows(splits_path)
+    held = _held_out_rows(splits_path, split_key)
     moves_by_ctx = _acceptable_moves_lookup()
     if board_fn is None:
         def board_fn(scene, transcript, is_q):

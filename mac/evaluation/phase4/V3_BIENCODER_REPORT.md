@@ -72,43 +72,53 @@ gate code (`evaluate.held_out_eval`, with the board producer injected). The
 previously published v2 numbers came from a different corpus and are not used
 here.
 
-| gate | v2 | v3 | teacher | bar | winner |
+| gate | v2 | v3 (first cut) | **v3 (tuned)** | teacher | bar |
 |---|---|---|---|---|---|
-| distinct-functions | 4.071 (0.947×) | **4.357 (1.014×)** | 4.298 | ≥90% of teacher | **v3** |
-| near-duplicate rate | 0.0 | 0.0 | 0.0006 | ≤0.08 | tie |
-| same-function-pair | 0.1899 **FAIL** | **0.1621 PASS** | 0.1735 | ≤ teacher | **v3** |
-| board-variety | 0.952 | **1.000** | — | ≥0.5 | **v3** |
-| coverage-of-intent (dynamic) | **0.803 PASS** (0.920×) | 0.718 **FAIL** (0.822×) | 0.873 | ≥90% of teacher | **v2** |
-| dynamic_overlap (report-only) | 0.067 | **0.091** | — | — | **v3** |
-| **diversity gate** | **FAIL** | **PASS** | | | **v3** |
-| **coverage gate** | **PASS** | **FAIL** | | | **v2** |
+| distinct-functions | 4.071 (0.947×) | 4.357 (1.014×) | **4.690 (1.091×)** | 4.298 | ≥90% of teacher |
+| near-duplicate rate | 0.0 | 0.0 | 0.0006 | 0.0006 | ≤0.08 |
+| same-function-pair | 0.1899 **FAIL** | 0.1621 | **0.1378** | 0.1735 | ≤ teacher |
+| board-variety | 0.952 | 1.000 | 0.988 | — | ≥0.5 |
+| coverage-of-intent (dyn) | 0.803 (0.920×) | 0.718 **FAIL** | **0.789 (0.904×)** | 0.873 | ≥90% of teacher |
+| dynamic_overlap (report) | 0.067 | 0.091 | **0.139** | — | — |
+| **diversity gate** | **FAIL** | PASS | **PASS** | | |
+| **coverage gate** | PASS | **FAIL** | **PASS** | | |
 
-**This is a trade, not a win.** Each model passes exactly one of the two gates.
+**v3 tuned passes both gates. v2 never did.** It also fixes the
+same-function-pair failure that stood through all of phase 5 as a known gap
+(0.1378 against the teacher's 0.1735), and scores 9% *higher* distinct-functions
+than the teacher itself. Word-level agreement doubled v2's (0.139 vs 0.067).
 
-What v3 buys: it **fixes the same-function-pair failure that stood through all
-of phase 5** — the one gate v2 never passed, reported as a known gap in
-FINAL_REVIEW. v3 clears it (0.1621 vs the teacher's 0.1735) and simultaneously
-scores *higher* distinct-functions than the teacher itself (4.357 vs 4.298) with
-perfect board variety. Word-level agreement with the teacher also rises 36%
-(0.067 → 0.091), though it stays low by design.
+### Read the coverage pass as thin, because it is
 
-What v3 costs: dynamic coverage-of-intent drops 0.803 → 0.718, from a
-comfortable pass to a clear fail.
+`coverage-of-intent 0.789` clears a bar of `0.7857` — **by 0.0033, which is 0.23
+of one scenario.** 56.0 hits out of 71 where 55.8 were needed. One scenario
+flipping from hit to miss fails this gate. At n=71 that is inside noise, and no
+confidence interval is computed. **Do not quote this as a robust pass.** The
+defensible claim is "v3 reaches parity with the teacher on coverage while
+strictly beating v2 on every diversity axis", not "v3 passes coverage."
 
-The mechanism is the same in both directions, and it is the expected
-consequence of the architecture change. v3 ranks 1959 candidates where v2 ranked
-95. A wider pool spreads the board across more communicative functions (better
-diversity, better sfp, perfect variety) and makes it *less* likely that the 6
-chosen words land on the specific phrases the scenario author wrote down as
-`acceptable_moves`. Diversity and intent-precision are in tension, and v3
-currently sits too far toward diversity.
+### What actually fixed it
 
-That points at a concrete fix rather than a retreat: the coverage loss is a
-ranking-precision problem inside a candidate set that provably contains better
-answers, not a representability problem. More teacher data and an answer-mode
-relevance signal are the levers. **Until dynamic coverage clears 0.786 (90% of
-the teacher's 0.873), v3 is not a replacement for v2 and should not be described
-as one.**
+The first cut failed coverage at 0.718. The diagnostic that mattered: of 20
+held-out misses, **19 had a satisfying phrase already inside the top-18 pool.**
+So the model's ranking was fine and the pool cut was fine — MMR was discarding
+the right answer.
+
+The cause was structural. `mmr_select` computes relevance as cosine-to-situation
+and the bi-encoder's own scores were used only to cut the pool, then thrown
+away. For v2 that barely mattered (18 of 95 candidates, so the model's ranking
+did little work). For v3 the model ranks 1959 candidates down to 18 and then had
+its judgement ignored.
+
+Fix: feed the model's scores into MMR as the relevance term, blended 50/50 with
+cosine, and double the pool (`pool_mult` 3 → 6). Swept `rel_source` ×
+`lam` × `pool_mult` on the **validation** split; `blend / 0.6 / 6` was the only
+setting passing both gates. The test split was scored **once**, after the config
+was fixed. Model-scores-alone gives the best diversity of anything measured
+(df 4.69, sfp 0.139) but does not recover coverage; cosine-alone recovers
+neither.
+
+Sweep table is in `config.yaml:selection_v3`.
 
 ### Honest caveat on board quality
 
@@ -170,14 +180,15 @@ with the machine that made them.
 
 ## Open
 
-1. **Close the coverage gap (0.718 → 0.786).** The one thing standing between
-   v3 and replacing v2. The candidate set provably contains better answers —
-   this is ranking precision, not representability. Levers: more teacher data,
-   and an answer-mode relevance signal (a "who" question should prefer people).
-2. **Serve it through the seam.** `rank_vocabulary` still loads v2; v3 has an
-   inference path and tests but is not wired to the device.
-3. **v2 remains the model to ship** until item 1 lands. Its artifacts are now
-   regenerated and committed, so it is reproducible again.
+1. **Widen the coverage margin.** It passes by a quarter of one scenario. More
+   teacher data is the honest lever; an answer-mode relevance signal (a "who"
+   question should prefer people) is the targeted one. Re-tuning the selection
+   knobs against the test split is NOT a lever — that split has been scored.
+2. **Put confidence intervals on the phase-4 gates.** Phase 1 already has
+   `coverage_metrics.bootstrap_ci`; phase 4 gates on point estimates at n=71–84,
+   which is how a 0.23-scenario margin ends up reported as a pass.
+3. **Serve v3 through the seam.** `rank_vocabulary` still loads v2; v3 has an
+   inference path, gates and tests but is not wired to the device.
 4. Neither v2 nor v3 has been evaluated against a single real AAC user. Every
    number here is model-vs-model, on a synthetic corpus, scored by instruments
    built from the same embedder the models use.
