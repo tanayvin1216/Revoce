@@ -28,14 +28,14 @@
     {
       "id": 4,
       "name": "Knowledge distillation",
-      "status": "red",
-      "note": "Gates were green on the prior artifact set, but teacher_data/vocab/student.pt were never committed and are lost. Needs regeneration before any phase-4 number can be reproduced."
+      "status": "pending",
+      "note": "Teacher corpus regenerated (600 boards) and committed. v3 open-vocabulary bi-encoder trained: 1959-phrase bank vs 103 under the old min_freq=3 floor. Representability demonstrated; the phase-3 gates have NOT been re-run against v3, so no v3 quality number is claimed yet. v2 artifacts remain lost."
     },
     {
       "id": 5,
       "name": "Intel / OpenVINO readiness",
-      "status": "red",
-      "note": "Full convert -> NNCF INT8 -> gate lifecycle exists and the IRs are committed, but they cannot load without vocab.json and the .vocab.sha sidecars. Blocked on phase 4 regeneration."
+      "status": "pending",
+      "note": "v3 towers convert to OpenVINO IR and quantize cleanly; per-tower FP32/INT8/INT4 Pareto measured (int4/int4 = 197 KB, 5.5x smaller, 0.922 board overlap). The committed v2 IRs still cannot load — they need vocab.json, which was lost. Intel-hardware numbers still pending."
     },
     {
       "id": 6,
