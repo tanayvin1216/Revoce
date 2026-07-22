@@ -28,13 +28,15 @@ build/
 mac/evaluation/preds-*.jsonl
 
 # OpenVINO artifacts — large/regenerable (minilm, whisper, accuracy json) ignored;
-# only the small student IRs are committed (negations below beat the *.bin rule above)
+# only the small student IRs are committed (negations below beat the *.bin rule
+# above). The .vocab.sha sidecars MUST ship with the IRs — the loader refuses to
+# serve an IR whose vocab it cannot verify, so an IR without its sidecar is dead
+# weight in git.
 mac/intel/artifacts/*
 !mac/intel/artifacts/student_fp32.xml
 !mac/intel/artifacts/student_fp32.bin
 !mac/intel/artifacts/student_int8.xml
 !mac/intel/artifacts/student_int8.bin
+!mac/intel/artifacts/*.vocab.sha
 .codex/
-phase_status.json
 AGENTS.md
-PLAN.md
