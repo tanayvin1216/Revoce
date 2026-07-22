@@ -41,7 +41,7 @@
       "id": 6,
       "name": "Integration & demo",
       "status": "pending",
-      "note": "No end-to-end test yet. Default board strategy is still the ~30s LLM path rather than the fast student; switching it is the main remaining demo-readiness item."
+      "note": "End-to-end test added (real aiohttp server + WebSocket client + tap -> taps.jsonl); the server/transport layer had no coverage before. Default board strategy switched from the ~30s LLM path to the student (measured 18ms), so the board now keeps up with a conversation. Remaining: a real run against the ESP32 wearable, and the console record button is still markup-only."
     }
   ]
 }
