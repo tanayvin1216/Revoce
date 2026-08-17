@@ -425,10 +425,15 @@ def test_infer_student_board_end_to_end_with_openvino_model():
     from evaluation.phase4 import infer
     student = _openvino_student_cls()(FP32_XML)
     vocab = json.loads((MAC / "evaluation" / "phase4" / "vocab.json").read_text())
-    board = infer.student_board(student, vocab, "A kitchen at snack time.",
-                                "Do you want apple or crackers?",
+    scene, transcript = "A kitchen at snack time.", "Do you want apple or crackers?"
+    board = infer.student_board(student, vocab, scene, transcript,
                                 is_question=True, k=10, k_dyn=6,
                                 core_words=["yes", "no", "I need help", "wait"])
     assert len(board) == 10
     assert board[:4] == ["yes", "no", "I need help", "wait"]
-    assert all(w in vocab or w in board[:4] for w in board)
+    # RC-3: a board word is core, trained vocab, or an answer span read out of
+    # the context (answers.py) — never an invented word.
+    context = f"{scene} {transcript}".lower()
+    for w in board:
+        assert (w in vocab or w in board[:4]
+                or all(tok in context for tok in w.lower().split())), w
