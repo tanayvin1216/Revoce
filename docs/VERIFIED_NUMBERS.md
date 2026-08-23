@@ -21,6 +21,25 @@ repo; what each one does is described inline so it can be reproduced in one line
 All measurements are on Apple ARM silicon (M-series). **Zero Intel-hardware numbers
 exist** as of today.
 
+
+---
+
+## 0. Re-measured later on 2026-08-23 (supersedes rows below where noted)
+
+After this inventory was built, the embedding memoisation landed (commit 55306d8) and
+`evaluate.py --teacher-samples N` was re-run three times on the same M4. Gates are
+unchanged to four decimals; only the latency rows moved.
+
+| Number | Value (current) | Source file | Command | Run date | Status |
+|---|---|---|---|---|---|
+| Student end-to-end board latency (embed + MLP + MMR), torch path | **12.3–14.8 ms** median across three runs (IQR ~9–18 ms); 47.081 ms row below is SUPERSEDED | `mac/evaluation/phase4/phase4_results.json` `speedup` | `python3 evaluation/phase4/evaluate.py --teacher-samples 12` (quiet machine) | 2026-08-23 | verified-today |
+| Student board, fully OpenVINO path (MiniLM IR + INT8 head), 84 held-out, context evicted per round | **15.3 ms p50 / 27.4 p90**; ov-head 15.7/19.9; torch 16.8/56.6; board Jaccard vs torch 0.914 | `mac/intel/artifacts/e2e_mac.json`, `mac/intel/BENCHMARKS.md` | `python3 intel/bench_e2e.py --n 84` | 2026-08-23 | verified-today |
+| Teacher pipeline latency | **10.64 s (IQR 10.2–11.1, n=8)** and **11.68 s (IQR 11.2–16.8, n=12)** today; 6.71 s on 2026-08-17. A fourth run that overlapped the test suite gave 15.7 s and is discarded. | same | same | 2026-08-23 | verified-today (run-to-run drift is real; quote a range) |
+| Speedup, student vs teacher | **841–864× today** (file: 841.3). Against the Aug-17 teacher figure it would be ~480×. Quote as "**>480×**" or "**~850× (same-day)**" — never 142.6× (superseded) and never 900×/7 ms (bare MLP). | same, `speedup_x` | same | 2026-08-23 | verified-today |
+| Whisper base.en: OpenVINO GenAI INT8 vs faster-whisper int8, ARM plugin | **1162 / 1157 ms vs 681 / 795 ms p50** on 2.1 s / 4.0 s synthesized clips, n=10, identical transcripts. The 0.35 vs 0.42 s row below is WITHDRAWN (did not reproduce). | `mac/intel/artifacts/whisper_bench_mac.json` | `python3 intel/bench_whisper.py` | 2026-08-23 | verified-today |
+| MiniLM over OpenVINO vs torch | cosine **1.000** on all probes; **5.6 ms vs 16.0 ms** per single text | `mac/tests/test_embed_backend.py` | `pytest tests/test_embed_backend.py` | 2026-08-23 | verified-today |
+| Deictic question set (n=60, authored): open-answer fire rate / answer-on-board student / closed-only | **0.883 / 0.817 / 0.050**; "how many" 0/6 by design | `mac/evaluation/phase4/deictic_results.json` | `python3 evaluation/phase4/eval_deictic.py` | 2026-08-23 | verified-today (authored set, not independent) |
+| Full test suite | **172 passed** | `mac/tests/` | `VOICELINK_PERCEPTION=0 python3 -m pytest -q` | 2026-08-23 | verified-today |
 ---
 
 ## 1. The table
