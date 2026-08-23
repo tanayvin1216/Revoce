@@ -6,6 +6,7 @@
 #   3. In PowerShell:   Set-ExecutionPolicy -Scope Process Bypass
 #                       .\mac\intel\run_on_intel.ps1
 #      Optional:        .\mac\intel\run_on_intel.ps1 -Device GPU   (or NPU on Core Ultra)
+#                       .\mac\intel\run_on_intel.ps1 -Train        (+ retrain student, generate teacher rows here)
 #
 # Produces mac\intel\artifacts\e2e_<hostname>.json and whisper_bench_<hostname>.json,
 # each stamped with the CPU brand string and the devices OpenVINO sees, and
@@ -13,7 +14,9 @@
 param(
   [string]$Device = "",          # "", CPU, GPU, NPU
   [int]$N = 84,
-  [switch]$SkipWhisper
+  [switch]$SkipWhisper,
+  [switch]$Train,                # also run the DATA + MODELLING stages here
+  [int]$TeacherRows = 10
 )
 $ErrorActionPreference = "Stop"
 $Mac = Resolve-Path (Join-Path $PSScriptRoot "..")
@@ -56,6 +59,17 @@ Write-Host "== 5. the seam still serves on this backend"
 $env:VOICELINK_STUDENT_BACKEND = "openvino"; $env:VOICELINK_EMBED_BACKEND = "openvino"
 python -m pytest -q tests\test_intel.py tests\test_embed_backend.py tests\test_e2e_smoke.py
 
+if ($Train) {
+  Write-Host "== 6. MODELLING stage on this CPU: retrain the student (IPEX if available), export ONNX, run the gates"
+  python -m pip install -q intel-extension-for-pytorch 2>$null
+  Copy-Item evaluation\phase4\student.pt intel\artifacts\student_mac_backup.pt -Force
+  python evaluation\phase4\train.py 2>&1 | Tee-Object -FilePath intel\artifacts\train_$env:COMPUTERNAME.log
+  python evaluation\phase4\evaluate.py --teacher-samples 0 2>&1 | Tee-Object -FilePath intel\artifacts\evaluate_$env:COMPUTERNAME.log
+  Copy-Item evaluation\phase4\phase4_results.json intel\artifacts\phase4_results_$env:COMPUTERNAME.json -Force
+  Write-Host "== 7. DATA stage on this CPU: $TeacherRows teacher boards with Qwen2.5-3B via transformers (~1-2 min/board on CPU, downloads ~6 GB once)"
+  python intel\teacher_slice.py --n $TeacherRows 2>&1 | Tee-Object -FilePath intel\artifacts\teacher_slice_$env:COMPUTERNAME.log
+}
+
 Write-Host ""
 Write-Host "Done. Commit mac\intel\artifacts\e2e_*.json, whisper_bench_*.json and mac\intel\BENCHMARKS.md."
-Get-ChildItem intel\artifacts\e2e_*.json, intel\artifacts\whisper_bench_*.json | Select-Object Name, Length
+Get-ChildItem intel\artifacts\*.json, intel\artifacts\*.jsonl, intel\artifacts\*.log -ErrorAction SilentlyContinue | Select-Object Name, Length

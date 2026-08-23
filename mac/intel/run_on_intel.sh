@@ -9,6 +9,7 @@
 #   mac/intel/artifacts/whisper_bench_<host>.json  whisper faster-whisper vs OpenVINO GenAI
 #   mac/intel/BENCHMARKS.md                        appended sections for the above
 # Optional: VOICELINK_OV_DEVICE=NPU (Core Ultra) or GPU (Arc) re-runs the head there.
+# Optional: VOICELINK_TRAIN=1 also retrains the student and generates teacher rows here.
 # Nothing here needs the wearable, a model API, or network beyond pip/HF downloads.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -49,6 +50,17 @@ echo "== 4. whisper"
 echo "== 5. the seam still serves on this backend"
 VOICELINK_STUDENT_BACKEND=openvino VOICELINK_EMBED_BACKEND=openvino \
   "$PY" -m pytest -q tests/test_intel.py tests/test_embed_backend.py tests/test_e2e_smoke.py
+
+if [ "${VOICELINK_TRAIN:-0}" = "1" ]; then
+  echo "== 6. MODELLING stage here: retrain student (IPEX if available), gates"
+  "$PY" -m pip install -q intel-extension-for-pytorch 2>/dev/null || true
+  cp evaluation/phase4/student.pt intel/artifacts/student_mac_backup.pt
+  "$PY" evaluation/phase4/train.py 2>&1 | tee "intel/artifacts/train_$(hostname -s).log"
+  "$PY" evaluation/phase4/evaluate.py --teacher-samples 0 2>&1 | tee "intel/artifacts/evaluate_$(hostname -s).log"
+  cp evaluation/phase4/phase4_results.json "intel/artifacts/phase4_results_$(hostname -s).json"
+  echo "== 7. DATA stage here: teacher boards via transformers"
+  "$PY" intel/teacher_slice.py --n "${TEACHER_ROWS:-10}" 2>&1 | tee "intel/artifacts/teacher_slice_$(hostname -s).log"
+fi
 
 echo
 echo "Done. Commit mac/intel/artifacts/e2e_*.json, whisper_bench_*.json and BENCHMARKS.md."

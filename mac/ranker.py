@@ -195,15 +195,17 @@ class HfRanker(Ranker):
             max_tokens: int | None = None) -> str:
         import torch
         msgs = [{"role": "system", "content": system}, {"role": "user", "content": user}]
-        ids = self._tok.apply_chat_template(msgs, add_generation_prompt=True,
-                                            return_tensors="pt").to(self.device)
+        # transformers 5 returns a BatchEncoding here (4.x returned a tensor);
+        # tokenize to a string first so both behave the same.
+        prompt = self._tok.apply_chat_template(msgs, add_generation_prompt=True, tokenize=False)
+        enc = self._tok(prompt, return_tensors="pt").to(self.device)
         t = self._temp if temp is None else temp
+        kw = {"do_sample": True, "temperature": t} if t > 0 else {"do_sample": False}
         with torch.no_grad():
-            out = self._model.generate(
-                ids, max_new_tokens=max_tokens or self._max_tokens,
-                do_sample=t > 0, temperature=t if t > 0 else None,
-                pad_token_id=self._tok.eos_token_id)
-        return self._tok.decode(out[0, ids.shape[1]:], skip_special_tokens=True)
+            out = self._model.generate(**enc, max_new_tokens=max_tokens or self._max_tokens,
+                                       pad_token_id=self._tok.eos_token_id, **kw)
+        n_in = enc["input_ids"].shape[1]
+        return self._tok.decode(out[0, n_in:], skip_special_tokens=True)
 
     def rank(self, system_prompt: str, user_prompt: str, max_tokens: int | None = None) -> list[dict]:
         return _parse_json_array(self.raw(system_prompt, user_prompt, None, max_tokens))

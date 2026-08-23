@@ -1,11 +1,6 @@
-# Generated artifacts — rebuilt by gen_teacher/train/evaluate; never committed.
-teacher_data.jsonl
-student.pt
-student.onnx
-student.onnx.data
-*.onnx
-*.onnx.data
-vocab.json
-canonical.json
-splits.json
-# phase4_results.json is versioned since 2026-08-23: it is the file every paper number cites
+# Since 2026-08-23 the Phase-4 corpus and student artifacts ARE versioned
+# (teacher_data.jsonl, vocab.json, canonical.json, splits.json, student.pt,
+# student.onnx + .data, phase4_results.json): <1 MB total, every paper number
+# cites them, and the Intel laptop run needs them to retrain and to benchmark
+# the torch baseline. Only scratch logs stay ignored.
+*.log
