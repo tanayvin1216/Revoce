@@ -23,7 +23,7 @@
 \title{VoiceLink: Context-Aware Vocabulary for Wearable AAC\\
 \large A technical overview of the hardware, software, evaluation and open problems}
 \author{Tanay Vinaykya\\ \small prepared for discussion with a research mentor}
-\date{23 August 2026 --- repository branch \code{phase4-distillation}}
+\date{23 August 2026 --- repository branch \code{main}}
 
 \begin{document}
 \maketitle
@@ -230,12 +230,12 @@ Source: \file{mac/evaluation/phase3/selftest\_results.json}; re-scorable with
 \begin{tabular}{@{}lrrl@{}}
 \toprule
 \textbf{Metric} & \textbf{student} & \textbf{teacher} & \textbf{verdict} \\ \midrule
-Distinct functions @7 & 4.083 & 4.333 & PASS (retention 0.942 $\ge$ 0.90) \\
+Distinct functions @7 & 4.095 & 4.298 & PASS (retention 0.953 $\ge$ 0.90) \\
 Near-duplicate rate & 0.0006 & 0.0 & PASS \\
-Same-function-pair rate & 0.1865 & 0.1684 & \textbf{FAIL} (bar: $\le$ teacher) \\
+Same-function-pair rate & 0.1893 & 0.1735 & \textbf{FAIL} (bar: $\le$ teacher) \\
 Board variety & 0.917 & --- & PASS \\
-Dynamic coverage-of-intent ($n=71$) & 0.761 & 0.845 & PASS (0.90$\times$) \\
-Dynamic word overlap with teacher & 0.056 & --- & reported only \\
+Dynamic coverage-of-intent & 0.789 & 0.873 & PASS (0.904$\times$) \\
+Dynamic word overlap with teacher & 0.067 & --- & reported only \\
 Board latency (embed + MLP + MMR) & 12--15\,ms & 6.7--11.7\,s & ${>}400\times$ \\
 \bottomrule
 \end{tabular}
@@ -255,7 +255,7 @@ An end-to-end benchmark through the seam (\file{mac/intel/bench\_e2e.py}, 84
 held-out rows, three runtime combinations, hardware fingerprint recorded)
 showed that 71 of 73\,ms per board was MiniLM re-embedding the static 94-word
 vocabulary on every call. Memoising embeddings per (backend, text) and batching
-scene+transcript into one encoder call brought a board to \textbf{15.3\,ms p50}
+scene+transcript into one encoder call brought a board to \textbf{5.5\,ms p50}
 on the fully-OpenVINO path (embed + head + selection; context texts evicted
 between rounds so every board still encodes a never-seen scene and
 transcript). The OpenVINO MiniLM export matches the PyTorch embeddings at cosine
