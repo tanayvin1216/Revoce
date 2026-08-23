@@ -27,10 +27,10 @@
       "ov_device": null,
       "n": 84,
       "repeats": 3,
-      "first_call_incl_load_s": 1.693,
-      "p50_ms": 16.772062503150664,
-      "p90_ms": 56.600383907789364,
-      "mean_ms": 25.032028770684043,
+      "first_call_incl_load_s": 1.45,
+      "p50_ms": 9.696833498310298,
+      "p90_ms": 26.763720510643914,
+      "mean_ms": 13.593761356859764,
       "board_jaccard_vs_torch": 1.0
     },
     {
@@ -44,11 +44,11 @@
       "ov_device": "CPU",
       "n": 84,
       "repeats": 3,
-      "first_call_incl_load_s": 1.479,
-      "p50_ms": 15.682583514717408,
-      "p90_ms": 19.949886918766424,
-      "mean_ms": 16.342405624787457,
-      "board_jaccard_vs_torch": 0.9141691641691642
+      "first_call_incl_load_s": 1.323,
+      "p50_ms": 9.650833497289568,
+      "p90_ms": 13.584204207290895,
+      "mean_ms": 10.393311977197069,
+      "board_jaccard_vs_torch": 0.9133049490192349
     },
     {
       "backend": "ov-full",
@@ -61,11 +61,11 @@
       "ov_device": "CPU",
       "n": 84,
       "repeats": 3,
-      "first_call_incl_load_s": 1.254,
-      "p50_ms": 15.340312500484288,
-      "p90_ms": 27.428991315537132,
-      "mean_ms": 17.755456037227145,
-      "board_jaccard_vs_torch": 0.9141691641691642
+      "first_call_incl_load_s": 0.847,
+      "p50_ms": 5.505082997842692,
+      "p90_ms": 9.122237472911365,
+      "mean_ms": 5.979989935844464,
+      "board_jaccard_vs_torch": 0.9133049490192349
     }
   ]
 }

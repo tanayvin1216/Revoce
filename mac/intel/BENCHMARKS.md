@@ -75,3 +75,13 @@ exports). That gap is version-bound and is gone: the export from
 transformers 5.12 / optimum-intel 2.0 serves through genai 2026.2.1 (the tables
 above). The transcriber still tries genai first, proves it can generate, and
 falls back to optimum-intel, so either runtime works.
+
+## End-to-end board latency — Apple M4
+
+`intel/bench_e2e.py --n 84` | Darwin 25.5.0 | OpenVINO 2026.2.1-21919-ede283a88e3-releases/2026/2 | devices ['CPU'] | Intel hardware: no
+
+| backend | embed | head | device | p50 (ms) | p90 (ms) | board Jaccard vs torch |
+|---|---|---|---|---|---|---|
+| torch | torch | StudentRanker | cpu | 9.7 | 26.8 | 1.000 |
+| ov-head | torch | OpenVinoStudent | CPU | 9.7 | 13.6 | 0.913 |
+| ov-full | openvino | OpenVinoStudent | CPU | 5.5 | 9.1 | 0.913 |

@@ -43,12 +43,12 @@ frequent outputs. We report a negative result from doing this for a real-time
 assistive-communication task and explain it with a counting argument.
 Five-fold more distillation data made student--teacher agreement \emph{worse}
 (0.232 $\to$ 0.165). Measurement shows why: the teacher's useful outputs are
-heavy-tailed (2\,362 distinct words over 3\,600 output slots, 94.8\,\% seen
+heavy-tailed (2\,330 distinct words over 3\,600 output slots, 95.5\,\% seen
 fewer than three times), so a frequency-built 94-label vocabulary represents
-only 32.5\,\% of the teacher's choices, half of that is hedge/filler, and
-12.2\,\% of examples have no representable target. Coverage grows only
+only 32.4\,\% of the teacher's choices, half of that is hedge/filler, and
+11.7\,\% of examples have no representable target. Coverage grows only
 logarithmically in vocabulary size ($\approx$0.12 per $e$-fold; an $8\times$
-larger label space reaches 55\,\%). Agreement was therefore capped at 0.325
+larger label space reaches 55\,\%). Agreement was therefore capped at 0.324
 before training, and the student had already reached 51\,\% of that cap. A toy
 model shows that under such a tail, added data tilts a frequency-built
 vocabulary toward filler. We propose the \emph{representability ceiling}---the
@@ -139,7 +139,10 @@ predicts a \emph{decrease}.
 This section is pure counting over the teacher corpus and the vocabulary
 file; no model is run. A slot is \emph{representable} if its word (lower-cased,
 or its canonical-merge image) is in the label set; \emph{filler} is a hedge
-(\emph{maybe}, \emph{I'm not sure}).
+(\emph{maybe}, \emph{I'm not sure}). The corpus was independently regenerated
+once (same contexts, fresh teacher decoding); every number in this section moved
+by less than $0.006$, so the ceiling is a property of the task, not of one
+sampling run.
 
 \begin{table}[t]
 \centering\footnotesize\setlength{\tabcolsep}{2.5pt}
@@ -149,13 +152,13 @@ or its canonical-merge image) is in the label set; \emph{filler} is a hedge
 Quantity (600 rows, shipped 94-word vocab.) & Value \\
 \midrule
 Teacher dynamic word slots & 3\,600 \\
-Distinct teacher dynamic words & 2\,362 \\
-\quad occurring $<3$ times ($f{=}3$ floor) & 2\,238 (94.8\,\%) \\
-Slots representable in the vocabulary & \textbf{32.5\,\%} \\
-\quad of those, hedge/filler & \textbf{49.1\,\%} \\
-Rows with \emph{zero} representable words & 73/600 (12.2\,\%) \\
+Distinct teacher dynamic words & 2\,330 \\
+\quad occurring $<3$ times ($f{=}3$ floor) & 2\,238 (95.5\,\%) \\
+Slots representable in the vocabulary & \textbf{32.4\,\%} \\
+\quad of those, hedge/filler & \textbf{48.6\,\%} \\
+Rows with \emph{zero} representable words & 70/600 (11.7\,\%) \\
 \midrule
-Implied ceiling on \texttt{dynamic\_overlap} & 0.325 \\
+Implied ceiling on \texttt{dynamic\_overlap} & 0.324 \\
 Student v2.1 agreement (share of ceiling) & 0.165 (51\,\%) \\
 \bottomrule
 \end{tabular}
@@ -167,28 +170,28 @@ Student v2.1 agreement (share of ceiling) & 0.165 (51\,\%) \\
 \toprule
 Vocabulary policy & $V$ & $\covv(V)$ & $\hat\covv(V)$ \\
 \midrule
-top-94, $f{=}1$                &   94 & 0.307 & 0.300 \\
-$f{=}3$, cap 200 (shipped) & 124 & 0.332 & 0.333 \\
-$f{=}2$, cap 400               &  292 & 0.425 & 0.437 \\
-$f{=}1$, cap 752 ($8\times$)   &  752 & 0.553 & 0.552 \\
-$f{=}1$, cap 800               &  800 & 0.566 & 0.560 \\
-every word used                & 2\,362 & 1.000 & --- \\
+top-94, $f{=}1$                &   94 & 0.309 & 0.300 \\
+$f{=}3$, cap 200 (shipped) & 129 & 0.333 & 0.333 \\
+$f{=}2$, cap 400               &  305 & 0.431 & 0.437 \\
+$f{=}1$, cap 752 ($8\times$)   &  752 & 0.555 & 0.552 \\
+$f{=}1$, cap 800               &  800 & 0.569 & 0.560 \\
+every word used                & 2\,330 & 1.000 & --- \\
 \bottomrule
 \end{tabular}
 \caption{Coverage of teacher slots vs.\ vocabulary size, corpus fixed.
-$\hat\covv(V)=0.121\ln V-0.252$ (least squares, five finite rows, max residual
+$\hat\covv(V)=0.123\ln V-0.259$ (least squares, five finite rows, max residual
 0.012); each doubling of $V$ buys $\approx0.08$.}
 \label{tab:sweep}
 \end{minipage}
 \end{table}
 
-Table~\ref{tab:repr} gives the result. The teacher used 2\,362 distinct
-dynamic words across 3\,600 slots (mean frequency 1.5), and 94.8\,\% of its
-types fall below the floor that admits a label. Only 32.5\,\% of slots are
-expressible by the student at all, and 49.1\,\% of those are hedges; one row in
+Table~\ref{tab:repr} gives the result. The teacher used 2\,330 distinct
+dynamic words across 3\,600 slots (mean frequency 1.5), and 95.5\,\% of its
+types fall below the floor that admits a label. Only 32.4\,\% of slots are
+expressible by the student at all, and 48.6\,\% of those are hedges; one row in
 eight has \emph{no} representable target, so its training signal is noise with
 respect to the teacher's intent. A student word can only match a representable
-slot, so \texttt{dynamic\_overlap} is bounded above by $0.325$: v2.1's 0.165
+slot, so \texttt{dynamic\_overlap} is bounded above by $0.324$: v2.1's 0.165
 was already 51\,\% of what any 94-way classifier could achieve, although
 against the $\ge0.45$ gate it read as a 16\,\% failure.
 
@@ -198,13 +201,13 @@ measured coverage $\covv(V)$ of the 3\,600 slots (Table~\ref{tab:sweep}).
 
 
 Coverage is closely logarithmic in $V$ over the usable range,
-$\covv(V)\approx0.121\ln V-0.252$: an output layer $8\times$ the shipped one
-still represents only 55.3\,\% of the teacher's choices, and full coverage
-needs all 2\,362 types, i.e.\ the teacher's output set memorised. This is what
+$\covv(V)\approx0.123\ln V-0.259$: an output layer $8\times$ the shipped one
+still represents only 55.5\,\% of the teacher's choices, and full coverage
+needs all 2\,330 types, i.e.\ the teacher's output set memorised. This is what
 a Zipf-like~\citep{zipf1949} distribution predicts: with rank-$r$ probability
 $\propto r^{-s}$, $s\approx1$, the mass in the top $V$ types is
-$H_V/H_N\approx\ln V/\ln N$, slope $1/\ln2362\approx0.13$ per $e$-fold against
-the fitted $0.121$. (A single-exponent Zipf fit to all six points is worse,
+$H_V/H_N\approx\ln V/\ln N$, slope $1/\ln2330\approx0.13$ per $e$-fold against
+the fitted $0.123$. (A single-exponent Zipf fit to all six points is worse,
 max error 0.06 at $s\approx0.6$, because the filler head is heavier than a
 pure power law; the log-linear description is the operationally useful one.)
 
@@ -223,7 +226,7 @@ meant to make the direction of the effect intuitive, not to fit the numbers.
 \emph{wait}, \emph{maybe}) and otherwise a \emph{concrete} word specific to the
 scene (\emph{aunt}, \emph{right arm}). Concrete types seen after $n$ rows grow
 as $D(n)\approx\alpha n^{\beta}$, $\beta$ near 1 (Heaps-type
-growth~\citep{heaps1978}; here $2\,362$ types from $3\,600$ slots). The
+growth~\citep{heaps1978}; here $2\,330$ types from $3\,600$ slots). The
 vocabulary keeps types with count $\ge f$, capped at $V$.
 
 \paragraph{Consequence 1: the ceiling does not rise with $n$.} Head words
@@ -233,7 +236,7 @@ $n$ grows, so the representable fraction of concrete \emph{slots} converges to
 a constant set by the tail shape, not by $n$: the ceiling tends to
 $\covv_\infty\approx\pi+(1-\pi)\,\gamma$, with $\gamma$ the recurring share of
 the tail. Measured here, the head is about half of the representable slots and
-$\covv=0.325$, consistent with a small $\gamma$.
+$\covv=0.324$, consistent with a small $\gamma$.
 
 \paragraph{Consequence 2: the vocabulary tilts toward filler.} Which concrete
 types clear the floor is close to a lottery among low-count types; as $n$
@@ -297,8 +300,8 @@ $\mathcal{V}$ with canonicalisation map $\kappa$,
 \label{eq:rho}
 \end{equation}
 Any slot-level agreement metric is bounded by $\rho$, and any metric that
-discounts filler by $\rho_{\text{useful}}$; here $\rho=0.325$ and
-$\rho_{\text{useful}}=0.325\times(1-0.491)\approx0.165$ (that v2.1's agreement
+discounts filler by $\rho_{\text{useful}}$; here $\rho=0.324$ and
+$\rho_{\text{useful}}=0.324\times(1-0.491)\approx0.165$ (that v2.1's agreement
 coincides with it is, as far as we can tell, a coincidence). Reporting
 agreement as a fraction of $\rho$ turns a misleading ``16\,\%'' into an
 informative ``51\,\% of achievable''; the sweep $\rho(V)$, one line per size,
@@ -413,8 +416,8 @@ the vocabulary with the corpus's own frequency-based builder at
 $(f,V)\in\{(1,94),(3,200),(2,400),(1,752),(1,800),(1,10^4)\}$ and recomputes
 coverage. The log fit is ordinary least squares of $\covv$ on $\ln V$ over the
 five finite rows. The small discrepancy between 94-word coverage in
-Table~\ref{tab:repr} (0.325, shipped vocabulary with canonical merges) and
-Table~\ref{tab:sweep} (0.307, frequency-only rebuild) is the effect of the 22
+Table~\ref{tab:repr} (0.324, shipped vocabulary with canonical merges) and
+Table~\ref{tab:sweep} (0.309, frequency-only rebuild) is the effect of the 22
 canonical merges. \todo{Attach the counting script as supplementary material (anonymised; strip project name and paths).}
 
 \end{document}
