@@ -1,6 +1,18 @@
-# Since 2026-08-23 the Phase-4 corpus and student artifacts ARE versioned
-# (teacher_data.jsonl, vocab.json, canonical.json, splits.json, student.pt,
-# student.onnx + .data, phase4_results.json): <1 MB total, every paper number
-# cites them, and the Intel laptop run needs them to retrain and to benchmark
-# the torch baseline. Only scratch logs stay ignored.
+# What gets committed here is decided by cost to regenerate, not by whether it
+# is "generated". We lost the whole phase-4 artifact set once by ignoring all of
+# it — the IRs survived in git and were useless without their vocab.
+#
+# COMMITTED (see the negations below):
+#   teacher_data.jsonl  hours of local LLM generation. The expensive one.
+#   vocab.json          the student's output labels. The IRs cannot load without it.
+#   canonical.json      the dedup map that gives vocab.json its meaning.
+#   splits.json         the fingerprinted train/test partition. Reproducibility.
+#   student.pt          ~650 KB, same order as the IRs already in git.
+#   phase4_results.json the gate results every paper number cites (2026-08-23).
+#
+# IGNORED: anything rebuildable in seconds from the above.
+
+*.onnx
+*.onnx.data
 *.log
+!phase4_results.json

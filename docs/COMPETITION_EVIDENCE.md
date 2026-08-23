@@ -69,11 +69,15 @@ rule-based system enumerates real life.
 - Ranking: a two-stage architecture — an LLM teacher over-generates candidates and
   MMR-selects a communicatively diverse board (answer-quota reservation for
   questions); a distilled 769-d MLP student supplies relevance candidates that the
-  same symbolic MMR policy then selects over, producing a board in 12–15 ms against
-  the teacher pipeline's 6.7–11.7 s (>400×, `mac/evaluation/phase4/phase4_results.json`)
-  while retaining 94% of the teacher's communicative-function diversity — though
-  NOT the teacher's specific word choices (dynamic overlap 0.056; see
-  `docs/VERIFIED_NUMBERS.md` before quoting any figure here).
+  same symbolic MMR policy then selects over — the full path the device actually
+  serves (embedding, student forward pass, MMR selection) producing a board in
+  12–15 ms against the teacher pipeline's 6.7–11.7 s (>400×,
+  `mac/evaluation/phase4/phase4_results.json`) while retaining 94% of the
+  teacher's communicative-function diversity — though NOT the teacher's specific
+  word choices (dynamic overlap 0.056). Earlier drafts claimed ~7 ms / ~900×
+  (timed only the forward pass, on a path the device no longer runs) and 43.6 ms
+  / 156× (pre-memoisation); both are withdrawn. Check `docs/VERIFIED_NUMBERS.md`
+  before quoting any figure here.
 - Sub-domains demonstrably in play: ASR (Whisper), CV/VLM (Qwen2.5-VL), NLP
   embeddings (MiniLM), knowledge distillation, diversity-aware ranking (MMR),
   post-training quantization (NNCF INT8).
@@ -119,6 +123,15 @@ rule-based system enumerates real life.
   ([W3C](https://www.w3.org/TR/WCAG22/)).
 - Bias: vocabulary evaluation includes per-scenario-category breakdowns; the
   personal-context store (names, routines) never leaves the device.
+
+### GenAI tools used during development
+Generative AI coding assistants were used throughout development: **Anthropic Claude**
+(architecture review, test generation, code review, research summarization) and
+**OpenAI Codex** (code review passes). Design decisions, the system architecture, the
+evaluation methodology, and the hardware build are the team's own; AI assistance was
+used to implement, review, and stress-test them. Multi-model adversarial review is part
+of our process on purpose — several findings recorded in
+`docs/claude/working-notes/` were caught by one model reviewing another's work.
 
 ### Readiness (honest tier)
 - Working end-to-end prototype: wearable (ESP32-S3 camera+mic) → Mac pipeline →

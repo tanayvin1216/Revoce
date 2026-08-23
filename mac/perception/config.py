@@ -14,11 +14,20 @@ WEARABLE_WS_URL = os.environ.get("VOICELINK_WEARABLE_URL", "ws://192.168.4.1:81/
 PERCEPTION_ENABLED = os.environ.get("VOICELINK_PERCEPTION", "1") != "0"
 
 # --- Audio / Whisper ---------------------------------------------------------
-# "faster-whisper" | "mock" | "openvino" (GenAI WhisperPipeline, IR from intel/export_whisper.py)
+# "faster-whisper" | "openvino" | "mock"  <- one-line swap
+#
+# "openvino" serves the INT8 IR in intel/artifacts/whisper-base.en-ov-int8
+# (export: intel/export_whisper.py, or the .venv-export flow in intel/README.md)
+# through openvino_genai.WhisperPipeline, falling back to optimum-intel when
+# genai cannot serve the IR. Latency is at parity with faster-whisper on the
+# ARM dev box (see intel/BENCHMARKS.md); its point is the Intel target, where
+# VOICELINK_OV_DEVICE can put it on GPU/NPU.
 TRANSCRIBER = os.environ.get("VOICELINK_TRANSCRIBER", "faster-whisper")
 WHISPER_MODEL = os.environ.get("VOICELINK_WHISPER_MODEL", "base.en")  # -> "small.en", etc.
 WHISPER_DEVICE = "cpu"            # faster-whisper on Apple Silicon runs on CPU
 WHISPER_COMPUTE_TYPE = "int8"
+WHISPER_OV_DIR = os.environ.get("VOICELINK_WHISPER_OV_DIR")  # None -> intel/artifacts/
+WHISPER_OV_DEVICE = os.environ.get("VOICELINK_WHISPER_OV_DEVICE", "CPU")  # CPU|GPU|NPU
 SAMPLE_RATE = 16000               # must match the wearable's mic stream
 
 # Energy VAD — detects utterance boundaries so we know when one is COMPLETE.

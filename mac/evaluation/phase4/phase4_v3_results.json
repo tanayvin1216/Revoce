@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "model": "v3-biencoder",
+    "bank_size": 1959,
+    "bank_sha": "1709d272c4962877",
+    "config_sha": "d6ce2e56d50b",
+    "val_loss": 0.01725,
+    "personal_context": false
+  },
+  "diversity_retention": {
+    "n_heldout": 84,
+    "student_distinct_functions": 4.69,
+    "teacher_distinct_functions": 4.298,
+    "retention_ratio": 1.091,
+    "student_near_dup": 0.0006,
+    "teacher_near_dup": 0.0006,
+    "student_same_function_pair": 0.1378,
+    "teacher_same_function_pair": 0.1735,
+    "distinct_student_boards": 83,
+    "board_variety": 0.988,
+    "dynamic_variety": 0.988,
+    "pass": true,
+    "verdict": "PASS",
+    "distinct_functions_margin": {
+      "margin": 0.8226,
+      "ci": [
+        0.6107,
+        1.0238
+      ],
+      "n": 84,
+      "verdict": "PASS"
+    },
+    "same_function_pair_margin": {
+      "margin": 0.0357,
+      "ci": [
+        0.0164,
+        0.0556
+      ],
+      "n": 84,
+      "verdict": "PASS"
+    },
+    "need": "HELD-OUT: distinct-fn >= 90% of teacher AND near-dup <= 0.08 AND same-function-pair <= teacher's (0.1735) AND board-variety >= 0.5"
+  },
+  "agreement": {
+    "full_overlap_top7": 0.616,
+    "dynamic_overlap": 0.139,
+    "n_heldout": 84,
+    "pass": null,
+    "need": "report-only (coverage-of-intent is the gated bar)"
+  },
+  "coverage_of_intent": {
+    "student": 0.901,
+    "teacher": 0.944,
+    "n_scored": 71,
+    "student_dynamic": 0.789,
+    "teacher_dynamic": 0.873,
+    "n_scored_dynamic": 71,
+    "pass": true,
+    "verdict": "INCONCLUSIVE",
+    "margin": {
+      "margin": 0.0028,
+      "ci": [
+        -0.1042,
+        0.1042
+      ],
+      "n": 71,
+      "verdict": "INCONCLUSIVE"
+    },
+    "need": "HELD-OUT: student DYNAMIC top-7 non-hedge coverage >= 90% of the teacher's"
+  }
+}
