@@ -4,7 +4,8 @@ Ranker backend configuration — one line selects the runtime.
 Override any value with environment variables:
   VOICELINK_BOARD_STRATEGY "diverse" | "topk"
   VOICELINK_STUDENT_BACKEND "torch" | "openvino"
-  VOICELINK_RANKER         "local-llm" | "heuristic"
+  VOICELINK_RANKER         "local-llm" (MLX, Mac) | "hf" (transformers: hpu/cuda/cpu) | "heuristic"
+  VOICELINK_DEVICE         hpu | cuda | mps | cpu  (hf ranker + train.py; auto if unset)
   VOICELINK_LLM_MODEL      HuggingFace repo id (must already be cached)
   VOICELINK_LLM_MAX_TOKENS maximum tokens to generate
   VOICELINK_LLM_TEMP       sampling temperature (0.0 = greedy, recommended)

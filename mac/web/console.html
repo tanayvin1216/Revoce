@@ -342,6 +342,7 @@
       <div class="readout">
         <h2>Phase status</h2>
         <div id="phaseDashboard"><div class="empty">loading status</div></div>
+        <div id="privacyLine" class="empty">Privacy: checking…</div>
       </div>
     </section>
   </main>
@@ -568,6 +569,19 @@
       }
     }
 
+    async function loadPrivacy() {
+      const el = document.getElementById("privacyLine");
+      try {
+        const p = await fetch("/api/privacy/status").then(r => r.json());
+        el.textContent = `Privacy: ${p.taps.count} taps logged (${(p.taps.bytes / 1024).toFixed(1)} KB, `
+          + `oldest ${p.taps.oldest_iso || "n/a"}) · retention ${p.retention_days || "keep"} d · `
+          + `media on disk: ${p.no_media_artifacts ? "none" : p.media_artifacts_on_disk.length} · `
+          + `faces: none · capture ${p.capture_paused ? "PAUSED" : "active"}`;
+      } catch {
+        el.textContent = "Privacy: status unavailable";
+      }
+    }
+
     async function loadProfiles() {
       const data = await fetch("/api/console/profiles").then(r => r.json());
       profileEl.replaceChildren();
@@ -636,7 +650,7 @@
     fakeDeviceEl.addEventListener("change", toggleFakeLoop);
     fireBtn.addEventListener("click", fireRun);
 
-    Promise.all([loadProfiles(), loadScenarios(), loadPhaseStatus()]).then(() => {
+    Promise.all([loadProfiles(), loadScenarios(), loadPhaseStatus(), loadPrivacy()]).then(() => {
       setStatus("ready");
     });
     setInterval(loadPhaseStatus, 10000);

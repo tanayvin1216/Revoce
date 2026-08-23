@@ -40,6 +40,14 @@ mac/intel/artifacts/*
 !mac/intel/artifacts/*.vocab.sha
 .codex/
 AGENTS.md
+PLAN.md
+!mac/intel/artifacts/e2e_*.json
+!mac/intel/artifacts/whisper_bench_*.json
+!mac/intel/artifacts/int8_accuracy.json
+!mac/intel/artifacts/teacher_slice_*.jsonl
+!mac/intel/artifacts/phase4_results_*.json
+!mac/intel/artifacts/*.log
+!mac/intel/artifacts/*_error.txt
 
 # Bi-encoder quantization sweep outputs (regenerable by intel/biencoder_pareto.py;
 # PARETO.md is copied into the docs when it is worth keeping)

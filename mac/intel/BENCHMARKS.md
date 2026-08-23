@@ -46,46 +46,42 @@ OpenVINO 2026.2.1-21919-ede283a88e3-releases/2026/2 | batch=1, input (1, 769) fl
 [ INFO ] Throughput:   36968.87 FPS
 ```
 
-## Whisper base.en — faster-whisper vs OpenVINO INT8
+## End-to-end board latency — Apple M4
 
-Exported with `optimum-cli export openvino --weight-format int8` in a dedicated
-export venv (see README.md). Measured on Apple M4 Pro via the OpenVINO **ARM CPU
-plugin** — these are NOT Intel-hardware numbers. One 6.254 s clip of synthesized
-speech, median of 5 runs after a warm-up, same machine, same process.
+`intel/bench_e2e.py --n 84` | Darwin 25.5.0 | OpenVINO 2026.2.1-21919-ede283a88e3-releases/2026/2 | devices ['CPU'] | Intel hardware: no
 
-| backend | median | × realtime | on disk |
-|---|---|---|---|
-| **OpenVINO INT8** (optimum-intel runtime) | **0.205 s** | 30.5× | **81 MB** |
-| faster-whisper base.en int8 | 0.324 s | 19.3× | 141 MB |
+| backend | embed | head | device | p50 (ms) | p90 (ms) | board Jaccard vs torch |
+|---|---|---|---|---|---|---|
+| torch | torch | StudentRanker | cpu | 16.8 | 56.6 | 1.000 |
+| ov-head | torch | OpenVinoStudent | CPU | 15.7 | 19.9 | 0.914 |
+| ov-full | openvino | OpenVinoStudent | CPU | 15.3 | 27.4 | 0.914 |
 
-**1.58× faster and 1.74× smaller**, transcript identical apart from a trailing
-period. Both are far inside the latency budget; the size difference is the more
-meaningful one for an edge deployment.
+## Whisper — Apple M4
 
-n=1 clip. This is a smoke measurement, not a WER study — no accuracy claim is
-made beyond "the transcript matched on this clip".
+`intel/bench_whisper.py` n=10 | committed clips `intel/clips/` | quiet machine | OpenVINO 2026.2.1-21919-ede283a88e3-releases/2026/2 | base.en INT8 both
 
-### Known gap: openvino-genai cannot serve this IR
+| clip | audio (s) | faster-whisper p50 (ms) | p90 | openvino p50 (ms) | p90 | same text |
+|---|---|---|---|---|---|---|
+| bench_clip0.wav | 2.1 | 252 | 266 | 300 | 311 | yes |
+| bench_clip1.wav | 4.0 | 407 | 509 | 403 | 548 | yes |
 
-`openvino_genai.WhisperPipeline` is the runtime we want (no transformers
-dependency, and the GenAI API the 2026 rubric names). It currently fails on our
-export with:
+## Historical note (merge of the cloud line, 2026-08-23)
 
-```
-Port for tensor name cache_position was not found.
-```
+The cloud branch measured whisper INT8 via the optimum-intel runtime at 0.205 s
+vs faster-whisper 0.324 s on one 6.25 s clip, and documented that
+openvino_genai.WhisperPipeline could not serve its export ("Port for tensor
+name cache_position was not found", genai <= 2025.3 with transformers <= 4.55
+exports). That gap is version-bound and is gone: the export from
+transformers 5.12 / optimum-intel 2.0 serves through genai 2026.2.1 (the tables
+above). The transcriber still tries genai first, proves it can generate, and
+falls back to optimum-intel, so either runtime works.
 
-Tried and still failing: genai 2025.3 and 2025.2, against exports from
-transformers 4.55.4 and 4.48.3 (optimum-intel 1.26.1). The exported decoder
-exposes `beam_idx / encoder_hidden_states / input_ids`; genai expects a
-`cache_position` port that this optimum-intel does not emit. No newer
-openvino-genai exists than 2025.3.0.0.
+## End-to-end board latency — Apple M4
 
-So the serving path is optimum-intel for now. `OpenVinoWhisperTranscriber` tries
-openvino-genai first, *proves* it can generate before accepting it, and falls
-back to optimum-intel otherwise — so this fixes itself when the versions line up.
+`intel/bench_e2e.py --n 84` | Darwin 25.5.0 | OpenVINO 2026.2.1-21919-ede283a88e3-releases/2026/2 | devices ['CPU'] | Intel hardware: no
 
-Worth being precise about the transformers pin this implies: optimum-intel wants
-`transformers<5.1` and mlx-vlm wants `>=5.5`, so they cannot share one venv. That
-is a **Mac dev-box** problem, not a deployment problem — the Intel target does not
-have mlx on it at all, and there optimum-intel + OpenVINO is the entire stack.
+| backend | embed | head | device | p50 (ms) | p90 (ms) | board Jaccard vs torch |
+|---|---|---|---|---|---|---|
+| torch | torch | StudentRanker | cpu | 9.7 | 26.8 | 1.000 |
+| ov-head | torch | OpenVinoStudent | CPU | 9.7 | 13.6 | 0.913 |
+| ov-full | openvino | OpenVinoStudent | CPU | 5.5 | 9.1 | 0.913 |

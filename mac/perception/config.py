@@ -16,11 +16,12 @@ PERCEPTION_ENABLED = os.environ.get("VOICELINK_PERCEPTION", "1") != "0"
 # --- Audio / Whisper ---------------------------------------------------------
 # "faster-whisper" | "openvino" | "mock"  <- one-line swap
 #
-# "openvino" serves the INT8 IR in intel/artifacts/whisper-base.en-ov-int8:
-# measured 0.205s vs faster-whisper's 0.324s on a 6.25s clip, and 81 MB vs
-# 141 MB on disk (BENCHMARKS.md). It is not the default on the Mac because its
-# working runtime (optimum-intel) pins transformers<5.1 and mlx-vlm needs >=5.5
-# — a dev-box conflict that does not exist on the Intel deployment target.
+# "openvino" serves the INT8 IR in intel/artifacts/whisper-base.en-ov-int8
+# (export: intel/export_whisper.py, or the .venv-export flow in intel/README.md)
+# through openvino_genai.WhisperPipeline, falling back to optimum-intel when
+# genai cannot serve the IR. Latency is at parity with faster-whisper on the
+# ARM dev box (see intel/BENCHMARKS.md); its point is the Intel target, where
+# VOICELINK_OV_DEVICE can put it on GPU/NPU.
 TRANSCRIBER = os.environ.get("VOICELINK_TRANSCRIBER", "faster-whisper")
 WHISPER_MODEL = os.environ.get("VOICELINK_WHISPER_MODEL", "base.en")  # -> "small.en", etc.
 WHISPER_DEVICE = "cpu"            # faster-whisper on Apple Silicon runs on CPU

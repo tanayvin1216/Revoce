@@ -124,10 +124,18 @@ def main() -> int:
     print(f"{len(scenarios)} scenarios, {len(done)} already done, {len(todo)} to gen",
           flush=True)
 
-    from evaluation.phase1.gen_phase1 import MlxRanker  # lazy: imports mlx
-    ranker = MlxRanker()
-    ranker._temp = 0.0
-    print("teacher (Qwen) loaded", flush=True)
+    # Teacher runtime: MLX on the Mac (default), or VOICELINK_RANKER=hf for the
+    # transformers path (Intel Gaudi hpu / cuda / cpu) — same prompts, greedy.
+    import os
+    if os.environ.get("VOICELINK_RANKER") == "hf":
+        from ranker import HfRanker
+        ranker = HfRanker(temp=0.0)
+        print(f"teacher (Qwen, transformers) loaded on {ranker.device}", flush=True)
+    else:
+        from evaluation.phase1.gen_phase1 import MlxRanker  # lazy: imports mlx
+        ranker = MlxRanker()
+        ranker._temp = 0.0
+        print("teacher (Qwen, MLX) loaded", flush=True)
 
     with open(OUT, "a") as f:
         for i, sc in enumerate(todo, 1):

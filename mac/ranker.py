@@ -139,6 +139,79 @@ class LocalLLMRanker(Ranker):
 
 
 # ---------------------------------------------------------------------------
+# HfRanker — the same teacher on ANY PyTorch device (the non-Mac path)
+# ---------------------------------------------------------------------------
+
+def torch_device(preferred: str | None = None) -> str:
+    """Pick the accelerator: VOICELINK_DEVICE wins, else hpu (Intel Gaudi, via
+    habana_frameworks) > cuda > mps > cpu. Kept here so train.py and the HF
+    ranker agree on one rule."""
+    import os
+    want = (preferred or os.environ.get("VOICELINK_DEVICE") or "").lower()
+    import torch
+    if want:
+        if want == "hpu":
+            import habana_frameworks.torch.core  # noqa: F401  registers the device
+        return want
+    try:
+        import habana_frameworks.torch.core  # noqa: F401
+        if torch.hpu.is_available():
+            return "hpu"
+    except Exception:
+        pass
+    if torch.cuda.is_available():
+        return "cuda"
+    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+class HfRanker(Ranker):
+    """Qwen2.5-Instruct through plain transformers, so the teacher runs on Intel
+    Gaudi (device=hpu), an NVIDIA box (cuda), a Xeon (cpu) or the Mac (mps).
+    LocalLLMRanker is the MLX fast path on Apple silicon; this one is the
+    portable path. Prompting, parsing and temperature are identical, so boards
+    are comparable across backends (greedy decoding is deterministic on all)."""
+
+    DEFAULT_MODEL = "Qwen/Qwen2.5-3B-Instruct"
+
+    def __init__(self, model_id: str | None = None, max_tokens: int = 300,
+                 temp: float = 0.0, device: str | None = None) -> None:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        self.device = torch_device(device)
+        model_id = model_id or self.DEFAULT_MODEL
+        # mlx-community ids are 4-bit MLX weights; map them back to the HF original.
+        if model_id.startswith("mlx-community/"):
+            model_id = "Qwen/" + model_id.split("/", 1)[1].replace("-4bit", "")
+        dtype = torch.bfloat16 if self.device in ("hpu", "cuda") else torch.float32
+        self._tok = AutoTokenizer.from_pretrained(model_id)
+        self._model = AutoModelForCausalLM.from_pretrained(model_id, dtype=dtype)
+        self._model.to(self.device).eval()
+        self._max_tokens, self._temp = max_tokens, temp
+        self.model_id = model_id
+
+    def raw(self, system: str, user: str, temp: float | None = None,
+            max_tokens: int | None = None) -> str:
+        import torch
+        msgs = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+        # transformers 5 returns a BatchEncoding here (4.x returned a tensor);
+        # tokenize to a string first so both behave the same.
+        prompt = self._tok.apply_chat_template(msgs, add_generation_prompt=True, tokenize=False)
+        enc = self._tok(prompt, return_tensors="pt").to(self.device)
+        t = self._temp if temp is None else temp
+        kw = {"do_sample": True, "temperature": t} if t > 0 else {"do_sample": False}
+        with torch.no_grad():
+            out = self._model.generate(**enc, max_new_tokens=max_tokens or self._max_tokens,
+                                       pad_token_id=self._tok.eos_token_id, **kw)
+        n_in = enc["input_ids"].shape[1]
+        return self._tok.decode(out[0, n_in:], skip_special_tokens=True)
+
+    def rank(self, system_prompt: str, user_prompt: str, max_tokens: int | None = None) -> list[dict]:
+        return _parse_json_array(self.raw(system_prompt, user_prompt, None, max_tokens))
+
+
+# ---------------------------------------------------------------------------
 # HeuristicRanker (no model; deterministic context-aware fallback)
 # ---------------------------------------------------------------------------
 
@@ -230,6 +303,14 @@ def make_ranker(cfg) -> Ranker:
             return ranker
         except Exception as exc:
             print(f"[ranker] local-llm unavailable ({exc}); using HeuristicRanker")
+            return HeuristicRanker()
+    if name == "hf":
+        try:
+            ranker = HfRanker(cfg.LLM_MODEL, cfg.LLM_MAX_TOKENS, cfg.LLM_TEMP)
+            print(f"[ranker] hf loaded: {ranker.model_id} on {ranker.device}")
+            return ranker
+        except Exception as exc:
+            print(f"[ranker] hf unavailable ({exc}); using HeuristicRanker")
             return HeuristicRanker()
     if name == "heuristic":
         return HeuristicRanker()

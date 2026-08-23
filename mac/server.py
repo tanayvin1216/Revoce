@@ -50,7 +50,9 @@ from typing import Any
 
 from aiohttp import WSMsgType, web
 
+import privacy
 from context_state import ContextState
+from perception.wearable_client import CAPTURE_PAUSED
 from rank_vocabulary import rank_vocabulary, topics_from_context
 from symbol_map import SYMBOLS_DIR
 import perception.config as perception_config
@@ -466,6 +468,26 @@ async def console_transcribe_handler(request: web.Request) -> web.Response:
     })
 
 
+async def privacy_status_handler(request: web.Request) -> web.Response:
+    """Data-management status: tap-log size/age, profile location, proof that no
+    audio/video artifacts exist on disk. No model call (plain file inspection)."""
+    payload = await asyncio.to_thread(privacy.status, TAP_LOG_PATH, PROFILE_PATH)
+    payload["capture_paused"] = CAPTURE_PAUSED.is_set()
+    return web.json_response(payload)
+
+
+async def privacy_pause_handler(request: web.Request) -> web.Response:
+    """Software kill switch: POST toggles the pause flag that makes the wearable
+    client drop every incoming frame/audio chunk (see perception/wearable_client.py).
+    The physical button on the wearable remains the primary kill switch."""
+    if CAPTURE_PAUSED.is_set():
+        CAPTURE_PAUSED.clear()
+    else:
+        CAPTURE_PAUSED.set()
+    print(f"[privacy] capture {'PAUSED' if CAPTURE_PAUSED.is_set() else 'RESUMED'} via /api/privacy/pause")
+    return web.json_response({"capture_paused": CAPTURE_PAUSED.is_set()})
+
+
 async def _produce_and_broadcast(app: web.Application) -> None:
     state = app["state"]
 
@@ -610,6 +632,10 @@ async def on_startup(app: web.Application) -> None:
     app["state"]["personal_context"] = load_profile(PROFILE_PATH)
     app["state"]["ranker"] = make_ranker(ranker_config)
 
+    # Tap-log retention: VOICELINK_TAP_RETENTION_DAYS=N drops taps older than N
+    # days at startup. Default 0 = keep forever (tap data is irreplaceable).
+    privacy.apply_retention(TAP_LOG_PATH)
+
     # Server board strategy (config-flagged; "diverse" by default, "topk" fallback).
     strategy = getattr(ranker_config, "BOARD_STRATEGY", "diverse")
     app["state"]["board_strategy"] = (
@@ -641,7 +667,7 @@ async def on_startup(app: web.Application) -> None:
     print("=" * 64)
     print("VoiceLink server up. LLM ranker active (or heuristic fallback).")
     print("Board fires on scene_changed / addressed (debounced 2s).")
-    print(f"  Open the AAC board on the iPad/phone (same Wi-Fi):")
+    print("  Open the AAC board on the iPad/phone (same Wi-Fi):")
     print(f"      http://{ip}:{PORT}/")
     print(f"  Local:  http://127.0.0.1:{PORT}/")
     print(f"  Taps logged to: {TAP_LOG_PATH}")
@@ -694,6 +720,8 @@ def make_app() -> web.Application:
         web.get("/api/console/profiles", console_profiles_handler),
         web.post("/api/console/run", console_run_handler),
         web.post("/api/console/transcribe", console_transcribe_handler),
+        web.get("/api/privacy/status", privacy_status_handler),
+        web.post("/api/privacy/pause", privacy_pause_handler),
     ])
     # Static route for locally-cached ARASAAC pictograms — same origin, no internet
     app.router.add_static("/symbols/", path=SYMBOLS_DIR, show_index=False)

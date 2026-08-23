@@ -1,0 +1,132 @@
+{
+  "meta": {
+    "n_rows": 559,
+    "vocab": 95,
+    "config_hash": "d6ce2e56d50b"
+  },
+  "diversity_retention": {
+    "n_heldout": 84,
+    "student_distinct_functions": 4.095,
+    "teacher_distinct_functions": 4.298,
+    "retention_ratio": 0.953,
+    "student_near_dup": 0.0,
+    "teacher_near_dup": 0.0006,
+    "student_same_function_pair": 0.1893,
+    "teacher_same_function_pair": 0.1735,
+    "distinct_student_boards": 80,
+    "board_variety": 0.952,
+    "dynamic_variety": 0.952,
+    "pass": false,
+    "verdict": "INCONCLUSIVE",
+    "distinct_functions_margin": {
+      "margin": 0.2274,
+      "ci": [
+        0.006,
+        0.4488
+      ],
+      "n": 84,
+      "verdict": "PASS"
+    },
+    "same_function_pair_margin": {
+      "margin": -0.0159,
+      "ci": [
+        -0.0408,
+        0.0096
+      ],
+      "n": 84,
+      "verdict": "INCONCLUSIVE"
+    },
+    "need": "HELD-OUT: distinct-fn >= 90% of teacher AND near-dup <= 0.08 AND same-function-pair <= teacher's (0.1735) AND board-variety >= 0.5"
+  },
+  "agreement": {
+    "full_overlap_top7": 0.594,
+    "dynamic_overlap": 0.067,
+    "n_heldout": 84,
+    "pass": null,
+    "need": "report-only (coverage-of-intent is the gated bar)"
+  },
+  "coverage_of_intent": {
+    "student": 0.873,
+    "teacher": 0.944,
+    "n_scored": 71,
+    "student_dynamic": 0.789,
+    "teacher_dynamic": 0.873,
+    "n_scored_dynamic": 71,
+    "pass": true,
+    "verdict": "INCONCLUSIVE",
+    "margin": {
+      "margin": 0.0028,
+      "ci": [
+        -0.1183,
+        0.1183
+      ],
+      "n": 71,
+      "verdict": "INCONCLUSIVE"
+    },
+    "need": "HELD-OUT: student DYNAMIC top-7 non-hedge coverage >= 90% of the teacher's"
+  },
+  "speedup": {
+    "student_latency_ms": 10.135,
+    "student_latency_iqr_ms": [
+      6.62,
+      11.43
+    ],
+    "teacher_latency_s": 7.05,
+    "teacher_latency_iqr_s": [
+      6.96,
+      7.46
+    ],
+    "speedup_x": 695.5,
+    "teacher_samples": 8,
+    "student_samples": 50,
+    "note": "",
+    "pass": true,
+    "need": "student >= 10x faster than teacher"
+  },
+  "deictic": {
+    "overall": {
+      "n": 60,
+      "open_fire_rate": 0.8833,
+      "student_answer_hit": 0.8167,
+      "closed_answer_hit": 0.0167
+    },
+    "by_question_type": {
+      "alternative": {
+        "n": 8,
+        "open_fire_rate": 1.0,
+        "student_answer_hit": 1.0,
+        "closed_answer_hit": 0.0
+      },
+      "colour": {
+        "n": 6,
+        "open_fire_rate": 0.8333,
+        "student_answer_hit": 0.8333,
+        "closed_answer_hit": 0.0
+      },
+      "count": {
+        "n": 6,
+        "open_fire_rate": 0.0,
+        "student_answer_hit": 0.0,
+        "closed_answer_hit": 0.0
+      },
+      "where": {
+        "n": 16,
+        "open_fire_rate": 1.0,
+        "student_answer_hit": 0.875,
+        "closed_answer_hit": 0.0
+      },
+      "which": {
+        "n": 12,
+        "open_fire_rate": 1.0,
+        "student_answer_hit": 0.8333,
+        "closed_answer_hit": 0.0
+      },
+      "who": {
+        "n": 12,
+        "open_fire_rate": 1.0,
+        "student_answer_hit": 1.0,
+        "closed_answer_hit": 0.0833
+      }
+    }
+  }
+}

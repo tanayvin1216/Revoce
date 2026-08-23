@@ -56,11 +56,12 @@ def _load_index() -> dict[str, int]:
         raw = json.loads(index_path.read_text())
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
-    return {k: v for k, v in raw.items() if k != "_meta" and isinstance(v, int)}
+    return {k: v for k, v in raw.items()
+            if not k.startswith("_") and isinstance(v, (int, str))}
 
 
 # Module-level singleton — loaded once, never reloaded.
-_INDEX: dict[str, int] = _load_index()
+_INDEX: dict[str, int | str] = _load_index()
 
 
 def resolve_symbol(keyword: str, emoji_fallback: str = "▢") -> str:
@@ -72,8 +73,11 @@ def resolve_symbol(keyword: str, emoji_fallback: str = "▢") -> str:
     """
     key = keyword.strip().lower()
     symbol_id = _INDEX.get(key)
-    if symbol_id is not None:
+    if isinstance(symbol_id, int):          # ARASAAC id
         png = SYMBOLS_DIR / f"{symbol_id}.png"
         if png.exists():
             return f"/symbols/{symbol_id}.png"
+    elif isinstance(symbol_id, str):        # OpenSymbols file name (os_<id>.png)
+        if (SYMBOLS_DIR / symbol_id).exists():
+            return f"/symbols/{symbol_id}"
     return emoji_fallback
