@@ -45,3 +45,13 @@ OpenVINO 2026.2.1-21919-ede283a88e3-releases/2026/2 | batch=1, input (1, 769) fl
 [ INFO ]    Max:           0.50 ms
 [ INFO ] Throughput:   36968.87 FPS
 ```
+
+## End-to-end board latency — Apple M4
+
+`intel/bench_e2e.py --n 84` | Darwin 25.5.0 | OpenVINO 2026.2.1-21919-ede283a88e3-releases/2026/2 | devices ['CPU'] | Intel hardware: no
+
+| backend | embed | head | device | p50 (ms) | p90 (ms) | board Jaccard vs torch |
+|---|---|---|---|---|---|---|
+| torch | torch | StudentRanker | cpu | 16.8 | 56.6 | 1.000 |
+| ov-head | torch | OpenVinoStudent | CPU | 15.7 | 19.9 | 0.914 |
+| ov-full | openvino | OpenVinoStudent | CPU | 15.3 | 27.4 | 0.914 |

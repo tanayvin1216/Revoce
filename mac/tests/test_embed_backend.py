@@ -44,3 +44,16 @@ def test_openvino_embedder_falls_back_when_ir_missing(monkeypatch, tmp_path):
     v = em.embed(["hello"])
     assert v.shape == (1, 384)
     assert em.backend_in_use() == "torch"
+
+
+def test_embed_memo_is_exact_and_order_preserving(monkeypatch):
+    em = _fresh_embed(monkeypatch, "torch")
+    em.cache_clear()
+    a = em.embed(["yes", "no", "carbon dioxide"])
+    b = em.embed(["carbon dioxide", "yes", "water", "yes"])  # mixed hits/misses/dups
+    np.testing.assert_array_equal(b[0], a[2])
+    np.testing.assert_array_equal(b[1], a[0])
+    np.testing.assert_array_equal(b[3], a[0])
+    ref = em._encode(em._get_model(), ["water"])[0]
+    np.testing.assert_allclose(b[2], ref, atol=1e-6)
+    assert b.shape == (4, 384)
