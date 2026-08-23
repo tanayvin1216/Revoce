@@ -49,6 +49,11 @@ def hardware_fingerprint() -> dict:
                 if line.lower().startswith("model name"):
                     cpu = line.split(":", 1)[1].strip()
                     break
+        elif platform.system() == "Windows":
+            import winreg  # platform.processor() gives "Intel64 Family 6 ..." here
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                r"HARDWARE\DESCRIPTION\System\CentralProcessor\0") as k:
+                cpu = str(winreg.QueryValueEx(k, "ProcessorNameString")[0]).strip()
     except Exception:
         pass
     info = {"cpu": cpu, "arch": platform.machine(),
