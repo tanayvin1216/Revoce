@@ -105,6 +105,50 @@ def _search_id(word: str) -> int | None:
     return int(data[0]["_id"]) if data else None
 
 
+# ---------------------------------------------------------------------------
+# OpenSymbols (opensymbols.org) — optional SECOND source, searched only for
+# words ARASAAC misses. Aggregates ~10 open-licensed sets (ARASAAC, Mulberry,
+# Tawasol, Sclera, OpenMoji...) and supports a locale parameter, which is the
+# multilingual path. Needs a shared secret from their application form:
+#     OPENSYMBOLS_SECRET=... python3 fetch_symbols.py [--locale es]
+# Files are saved as symbols/os_<id>.png and the licence of every symbol is
+# recorded in index.json["_licenses"] (they vary per set).
+# ---------------------------------------------------------------------------
+OPENSYMBOLS_API = "https://www.opensymbols.org/api/v2"
+_os_token: str | None = None
+
+
+def _opensymbols_token() -> str | None:
+    global _os_token
+    import os
+    secret = os.environ.get("OPENSYMBOLS_SECRET")
+    if not secret:
+        return None
+    if _os_token is None:
+        req = urllib.request.Request(
+            f"{OPENSYMBOLS_API}/token", data=urllib.parse.urlencode({"secret": secret}).encode(),
+            headers={"User-Agent": "VoiceLink-fetch-symbols/1.0"})
+        with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
+            _os_token = json.loads(resp.read())["access_token"]
+    return _os_token
+
+
+def _opensymbols_search(word: str, locale: str = "en") -> dict | None:
+    token = _opensymbols_token()
+    if token is None:
+        return None
+    q = urllib.parse.urlencode({"q": word, "locale": locale, "access_token": token})
+    try:
+        data = json.loads(_get(f"{OPENSYMBOLS_API}/symbols?{q}"))
+    except Exception as exc:
+        print(f"  [opensymbols error] {word!r}: {exc}", file=sys.stderr)
+        return None
+    for entry in data if isinstance(data, list) else []:
+        if not entry.get("unsafe_result") and entry.get("image_url"):
+            return entry
+    return None
+
+
 def _download_png(symbol_id: int, dest: Path) -> bool:
     """Download a 500px PNG from ARASAAC static CDN.  Returns True on success."""
     if dest.exists():
@@ -119,9 +163,35 @@ def _download_png(symbol_id: int, dest: Path) -> bool:
         return False
 
 
-def _collect_words() -> list[str]:
-    """Union of seed words + personal_context.sample.json hints + common needs."""
-    words: list[str] = list(_COMMON_NEEDS)
+def _board_words() -> list[str]:
+    """Every word the board can actually show: the pinned core, the 94-word
+    student vocabulary, and the concrete answers of the deictic set. Until
+    2026-08-23 only 27 seed words were cached, so most dynamic words rendered
+    as an emoji or a blank box."""
+    words: list[str] = []
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from rank_vocabulary import GUARANTEED_CORE, _CORE_POOL, _STUB_WORDS
+        words += GUARANTEED_CORE + [c["word"] for c in _CORE_POOL] + [w["word"] for w in _STUB_WORDS]
+    except Exception:
+        pass
+    p4 = Path(__file__).resolve().parent / "evaluation" / "phase4"
+    vocab = p4 / "vocab.json"
+    if vocab.exists():
+        v = json.loads(vocab.read_text())
+        words += list(v) if isinstance(v, list) else list(v.keys())
+    deictic = p4 / "deictic_scenarios.jsonl"
+    if deictic.exists():
+        for line in deictic.read_text().splitlines():
+            if line.strip():
+                words += json.loads(line).get("expected_answers", [])
+    return words
+
+
+def _collect_words(extra: list[str] | None = None) -> list[str]:
+    """Union of seed words + board vocabulary + personal_context.sample.json
+    hints + common needs (+ anything passed on the command line)."""
+    words: list[str] = list(_COMMON_NEEDS) + _board_words() + list(extra or [])
 
     if SAMPLE_PROFILE.exists():
         try:
@@ -147,7 +217,7 @@ def _collect_words() -> list[str]:
     return unique
 
 
-def run() -> None:
+def run(extra: list[str] | None = None, locale: str = "en") -> None:
     SYMBOLS_DIR.mkdir(parents=True, exist_ok=True)
 
     # Load existing index
@@ -160,11 +230,12 @@ def run() -> None:
     else:
         existing = {"_meta": {}}
 
-    index: dict[str, int | dict] = {
-        k: v for k, v in existing.items() if k == "_meta" or isinstance(v, int)
+    index: dict = {
+        k: v for k, v in existing.items()
+        if k in ("_meta", "_licenses") or isinstance(v, (int, str))
     }
 
-    words = _collect_words()
+    words = _collect_words(extra)
     print(f"[fetch_symbols] {len(words)} words to process")
     ok = 0
     miss = 0
@@ -174,10 +245,12 @@ def run() -> None:
 
         # Already in index and PNG on disk -> skip
         existing_id = index.get(key)
-        if isinstance(existing_id, int):
-            if (SYMBOLS_DIR / f"{existing_id}.png").exists():
-                ok += 1
-                continue
+        if isinstance(existing_id, int) and (SYMBOLS_DIR / f"{existing_id}.png").exists():
+            ok += 1
+            continue
+        if isinstance(existing_id, str) and (SYMBOLS_DIR / existing_id).exists():
+            ok += 1
+            continue
 
         # Use seed ID if available (no API call needed)
         symbol_id = _SEED_IDS.get(key)
@@ -194,6 +267,22 @@ def run() -> None:
             time.sleep(SLEEP_S)
 
         if symbol_id is None:
+            entry = _opensymbols_search(key, locale)
+            if entry is not None:
+                fname = f"os_{entry['id']}.png"
+                dest = SYMBOLS_DIR / fname
+                try:
+                    if not dest.exists():
+                        dest.write_bytes(_get(entry["image_url"]))
+                    index[key] = fname
+                    index.setdefault("_licenses", {})[fname] = {
+                        "repo": entry.get("repo_key"), "license": entry.get("license"),
+                        "license_url": entry.get("license_url"), "author": entry.get("author")}
+                    print(f"  [ok/opensymbols] {key!r} -> {fname} ({entry.get('repo_key')})")
+                    ok += 1
+                    continue
+                except Exception as exc:
+                    print(f"  [opensymbols download error] {key!r}: {exc}", file=sys.stderr)
             print(f"  [miss] no pictogram found for {key!r}", file=sys.stderr)
             miss += 1
             continue
@@ -217,4 +306,9 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    run()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--locale", default="en", help="OpenSymbols locale (es, ar, ...)")
+    ap.add_argument("words", nargs="*", help="extra words to fetch")
+    a = ap.parse_args()
+    run(a.words, a.locale)
