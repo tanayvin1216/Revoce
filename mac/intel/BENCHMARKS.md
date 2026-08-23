@@ -55,3 +55,14 @@ OpenVINO 2026.2.1-21919-ede283a88e3-releases/2026/2 | batch=1, input (1, 769) fl
 | torch | torch | StudentRanker | cpu | 16.8 | 56.6 | 1.000 |
 | ov-head | torch | OpenVinoStudent | CPU | 15.7 | 19.9 | 0.914 |
 | ov-full | openvino | OpenVinoStudent | CPU | 15.3 | 27.4 | 0.914 |
+
+## Whisper — Apple M4
+
+`intel/bench_whisper.py --n 10` | Darwin 25.5.0 | OpenVINO 2026.2.1-21919-ede283a88e3-releases/2026/2 | devices ['CPU'] | OV device CPU | Intel hardware: no
+
+faster-whisper base.en int8 (CTranslate2, CPU) vs openvino_genai.WhisperPipeline base.en INT8 IR (INFERENCE_PRECISION_HINT=f32 on CPU). Real speech, macOS `say`.
+
+| clip | audio (s) | faster-whisper p50 (ms) | p90 | openvino p50 (ms) | p90 | same text |
+|---|---|---|---|---|---|---|
+| bench_clip0.wav | 2.1 | 681 | 799 | 1162 | 1567 | yes |
+| bench_clip1.wav | 4.0 | 795 | 1149 | 1157 | 1307 | yes |
