@@ -1,0 +1,420 @@
+% =====================================================================
+%  AXIOM 2026 (NeurIPS 2026 Workshop, Paris)
+%  "Foundations of Efficient Deep Learning" -- RESEARCH PAPER
+%  Limit: 4 pages, references and appendix excluded.
+%  Deadline: Aug 29, 2026 23:59 UTC  (= Sat Aug 29, 7:59 PM ET).  NOT AoE.
+%  DOUBLE-BLIND. No author names, project name, repo URLs, or identifying
+%  file paths in the body.  See README.md for the submission checklist.
+%
+%  BUILD:  tectonic voicelink_axiom.tex     (or pdflatex x2)
+%  All numbers come from docs/VERIFIED_NUMBERS.md sections C and D.
+% =====================================================================
+
+\documentclass{article}
+\usepackage{neurips_2026}            % anonymous by default; [final] for camera-ready
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{xcolor}
+
+% Drafting helper -- every \todo must be resolved or deleted before submission.
+\newcommand{\todo}[1]{\textcolor{red}{[\textbf{TODO:} #1]}}
+
+\newcommand{\covv}{\mathcal{C}}
+
+\title{The Closed-Vocabulary Ceiling in Distilling\\an Open-Vocabulary Teacher}
+
+\author{Anonymous Author(s)\\Affiliation\\\texttt{email}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A common efficiency recipe distils an open-vocabulary generator (an LLM) into
+a small classifier over a closed label set built from the teacher's most
+frequent outputs. We report a negative result from doing this for a real-time
+assistive-communication task and explain it with a counting argument.
+Five-fold more distillation data made student--teacher agreement \emph{worse}
+(0.232 $\to$ 0.165). Measurement shows why: the teacher's useful outputs are
+heavy-tailed (2\,362 distinct words over 3\,600 output slots, 94.8\,\% seen
+fewer than three times), so a frequency-built 94-label vocabulary represents
+only 32.5\,\% of the teacher's choices, half of that is hedge/filler, and
+12.2\,\% of examples have no representable target. Coverage grows only
+logarithmically in vocabulary size ($\approx$0.12 per $e$-fold; an $8\times$
+larger label space reaches 55\,\%). Agreement was therefore capped at 0.325
+before training, and the student had already reached 51\,\% of that cap. A toy
+model shows that under such a tail, added data tilts a frequency-built
+vocabulary toward filler. We propose the \emph{representability ceiling}---the
+fraction of teacher output slots expressible in the student's label space---as
+a one-line pre-training diagnostic, and describe an architectural remedy (read
+long-tail answers from the context, not a label space) whose status we report
+candidly: it fires on 2 of 84 held-out rows, so its gate effects are noise; no
+gate regressed.
+\end{abstract}
+
+%------------------------------------------------------------------------------
+\section{Introduction}
+Knowledge distillation~\citep{hinton2015} is the workhorse of efficient
+deployment. When the teacher is an open-vocabulary generator and the student
+must run in milliseconds on-device, a natural and very cheap student is a
+classifier over a \emph{closed} label set: collect the teacher's outputs, keep
+the labels occurring at least $f$ times, cap the set at $V$, train a softmax
+head. It is far cheaper than a generative student, and ``the vocabulary was
+built from the teacher, so it must fit the teacher.'' This paper is about the
+case where that reasoning fails, and how cheaply the failure can be predicted.
+Our setting is augmentative and alternative communication (AAC): a wearable
+senses the conversation around a non-speaking user, and a model must place the
+right words on a communication board within a conversational turn. The teacher is an LLM pipeline that
+composes a ten-word board (four pinned core words plus six \emph{dynamic}
+words) from an ASR transcript and a scene description; the student is a
+two-layer MLP over sentence embeddings with a 94-way output head, $142\times$
+faster than the teacher. The student is fast and diverse. It does not agree
+with the teacher, and giving it more teacher data made agreement \emph{fall}.
+Our contributions are deliberately simple: (1)~the documented negative result
+(\S\ref{sec:obs}); (2)~its measured root cause---a heavy-tailed teacher whose
+outputs a frequency-built vocabulary covers only logarithmically in its size
+(\S\ref{sec:cause}); (3)~a toy model, labelled as such, in which added data
+pushes such a vocabulary \emph{toward} filler (\S\ref{sec:model}); (4)~an
+architectural remedy reported candidly (\S\ref{sec:remedy}) and a one-line
+pre-training diagnostic, the \emph{representability ceiling}
+(\S\ref{sec:general}).
+
+%------------------------------------------------------------------------------
+\section{Setup}
+\label{sec:setup}
+\paragraph{Teacher.} Given a scene description (from a small VLM) and a
+transcript (from local ASR), the teacher LLM%
+\footnote{Qwen-family~\citep{qwen25vl}, run locally. \todo{confirm exact teacher model id.}}
+proposes candidate words, and a symbolic maximal-marginal-relevance
+(MMR)~\citep{mmr1998} stage selects six dynamic words for diversity of
+communicative function. The teacher corpus is 600 rows of synthetic scenarios
+(authored plus earlier phases), each with exactly six dynamic words, i.e.\
+$3\,600$ teacher output slots; after embedding-deduplication and a per-category
+cap, 559 rows remain, split 391/84/84 (train/val/test) with a fingerprint that
+refuses to score a drifted corpus against a stale partition.
+
+\paragraph{Student.} Input is a 769-d vector (384-d MiniLM~\citep{minilm}
+scene and transcript embeddings plus an \texttt{is\_question} bit); the network
+is LayerNorm $\to$ Linear($769{\to}192$) $\to$ ReLU $\to$ Dropout(0.3) $\to$
+Linear($192{\to}94$). The 94 labels are the \emph{dynamic vocabulary}: teacher
+board words with frequency $\ge3$, capped at 200, embedding-deduplicated at
+cosine 0.80 (22 canonical merges). At inference the logits are a candidate
+pool over which the teacher's MMR selection is run; all metrics judge the top
+seven of the ten-word board.
+
+\paragraph{Metrics.} We track slate-quality gates (distinct communicative
+functions, near-duplicate rate, same-function-pair rate, board variety,
+LLM-judged coverage-of-intent on the dynamic slice) and a \emph{teacher
+agreement} metric, \texttt{dynamic\_overlap}: the fraction of the student's
+dynamic words that are also among the teacher's dynamic words for the same
+row. Agreement is the metric this paper is about; the gates are in
+Appendix~\ref{app:gates}.
+
+%------------------------------------------------------------------------------
+\section{Observation: more data, less agreement}
+\label{sec:obs}
+The first student (v2), trained on the authored portion of the corpus,
+reached \texttt{dynamic\_overlap} $=0.232$ against a gate of $\ge 0.45$. The
+obvious hypothesis was data volume. The corpus was enlarged with rows from
+earlier phases---logged as a $5\times$ increase in distillation data%
+\footnote{\todo{The committed corpora are 360 authored rows and a 580-row merged corpus. Reconcile the logged ``$5\times$'' multiplier against those counts (rows vs.\ augmented examples?) and state the exact factor.}}%
+---and the student retrained (v2.1, held-out $n=87$). Agreement fell to
+$0.165$; the diversity and speed gates all passed. A later variant with a
+richer input and MMR over logits fell further, to $0.056$, at which point
+agreement was demoted to report-only. The $0.232\to0.165$ pair is a
+documented historical run (no result file is committed for v2/v2.1); 0.056 is
+reproducible from the committed model. Capacity, optimisation and noise were entertained as explanations; none
+predicts a \emph{decrease}.
+
+%------------------------------------------------------------------------------
+\section{Root cause: the teacher's outputs are not in the label space}
+\label{sec:cause}
+This section is pure counting over the teacher corpus and the vocabulary
+file; no model is run. A slot is \emph{representable} if its word (lower-cased,
+or its canonical-merge image) is in the label set; \emph{filler} is a hedge
+(\emph{maybe}, \emph{I'm not sure}).
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{2.5pt}
+\begin{minipage}[t]{0.52\textwidth}\centering
+\begin{tabular}{@{}lr@{}}
+\toprule
+Quantity (600 rows, shipped 94-word vocab.) & Value \\
+\midrule
+Teacher dynamic word slots & 3\,600 \\
+Distinct teacher dynamic words & 2\,362 \\
+\quad occurring $<3$ times ($f{=}3$ floor) & 2\,238 (94.8\,\%) \\
+Slots representable in the vocabulary & \textbf{32.5\,\%} \\
+\quad of those, hedge/filler & \textbf{49.1\,\%} \\
+Rows with \emph{zero} representable words & 73/600 (12.2\,\%) \\
+\midrule
+Implied ceiling on \texttt{dynamic\_overlap} & 0.325 \\
+Student v2.1 agreement (share of ceiling) & 0.165 (51\,\%) \\
+\bottomrule
+\end{tabular}
+\caption{Representability of teacher outputs in the student's label space.}
+\label{tab:repr}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.46\textwidth}\centering
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Vocabulary policy & $V$ & $\covv(V)$ & $\hat\covv(V)$ \\
+\midrule
+top-94, $f{=}1$                &   94 & 0.307 & 0.300 \\
+$f{=}3$, cap 200 (shipped) & 124 & 0.332 & 0.333 \\
+$f{=}2$, cap 400               &  292 & 0.425 & 0.437 \\
+$f{=}1$, cap 752 ($8\times$)   &  752 & 0.553 & 0.552 \\
+$f{=}1$, cap 800               &  800 & 0.566 & 0.560 \\
+every word used                & 2\,362 & 1.000 & --- \\
+\bottomrule
+\end{tabular}
+\caption{Coverage of teacher slots vs.\ vocabulary size, corpus fixed.
+$\hat\covv(V)=0.121\ln V-0.252$ (least squares, five finite rows, max residual
+0.012); each doubling of $V$ buys $\approx0.08$.}
+\label{tab:sweep}
+\end{minipage}
+\end{table}
+
+Table~\ref{tab:repr} gives the result. The teacher used 2\,362 distinct
+dynamic words across 3\,600 slots (mean frequency 1.5), and 94.8\,\% of its
+types fall below the floor that admits a label. Only 32.5\,\% of slots are
+expressible by the student at all, and 49.1\,\% of those are hedges; one row in
+eight has \emph{no} representable target, so its training signal is noise with
+respect to the teacher's intent. A student word can only match a representable
+slot, so \texttt{dynamic\_overlap} is bounded above by $0.325$: v2.1's 0.165
+was already 51\,\% of what any 94-way classifier could achieve, although
+against the $\ge0.45$ gate it read as a 16\,\% failure.
+
+\paragraph{Does a bigger label space fix it?} Holding the corpus fixed, we
+rebuilt the vocabulary by frequency at several sizes (no deduplication) and
+measured coverage $\covv(V)$ of the 3\,600 slots (Table~\ref{tab:sweep}).
+
+
+Coverage is closely logarithmic in $V$ over the usable range,
+$\covv(V)\approx0.121\ln V-0.252$: an output layer $8\times$ the shipped one
+still represents only 55.3\,\% of the teacher's choices, and full coverage
+needs all 2\,362 types, i.e.\ the teacher's output set memorised. This is what
+a Zipf-like~\citep{zipf1949} distribution predicts: with rank-$r$ probability
+$\propto r^{-s}$, $s\approx1$, the mass in the top $V$ types is
+$H_V/H_N\approx\ln V/\ln N$, slope $1/\ln2362\approx0.13$ per $e$-fold against
+the fitted $0.121$. (A single-exponent Zipf fit to all six points is worse,
+max error 0.06 at $s\approx0.6$, because the filler head is heavier than a
+pure power law; the log-linear description is the operationally useful one.)
+
+Coverage is thus governed by the shape of the teacher's output distribution,
+not by any parameter the student designer controls cheaply. A closed-vocabulary
+classifier is the wrong instrument for the long-tail half of the task.
+
+%------------------------------------------------------------------------------
+\section{Why more data makes it worse (toy model)}
+\label{sec:model}
+We give a mechanism in a deliberately simple model, labelled as a toy: it is
+meant to make the direction of the effect intuitive, not to fit the numbers.
+
+\paragraph{Model.} Each teacher slot is, with probability $\pi$, a
+\emph{head} word from a small fixed set (hedges and general functions:
+\emph{wait}, \emph{maybe}) and otherwise a \emph{concrete} word specific to the
+scene (\emph{aunt}, \emph{right arm}). Concrete types seen after $n$ rows grow
+as $D(n)\approx\alpha n^{\beta}$, $\beta$ near 1 (Heaps-type
+growth~\citep{heaps1978}; here $2\,362$ types from $3\,600$ slots). The
+vocabulary keeps types with count $\ge f$, capped at $V$.
+
+\paragraph{Consequence 1: the ceiling does not rise with $n$.} Head words
+always clear the floor; a concrete type clears it only if it recurs $f$ times.
+With $\beta\to1$ the expected count of a typical concrete type stays $O(1)$ as
+$n$ grows, so the representable fraction of concrete \emph{slots} converges to
+a constant set by the tail shape, not by $n$: the ceiling tends to
+$\covv_\infty\approx\pi+(1-\pi)\,\gamma$, with $\gamma$ the recurring share of
+the tail. Measured here, the head is about half of the representable slots and
+$\covv=0.325$, consistent with a small $\gamma$.
+
+\paragraph{Consequence 2: the vocabulary tilts toward filler.} Which concrete
+types clear the floor is close to a lottery among low-count types; as $n$
+grows more of them clear it, but each one's conditional probability given the
+context stays near $f/n\to0$. Training signal per concrete label does not grow
+with data, whereas head labels accumulate signal linearly in $n$. A student
+minimising cross-entropy over this label set puts its mass on the head, and
+its top-$k$ is increasingly filler. Agreement, which needs the student's words
+to coincide with the teacher's mostly-concrete dynamic words, therefore
+\emph{falls} as the student becomes a better estimator of the only consistent
+signal it is given. This matches \S\ref{sec:obs}, and the independent
+observation that the same student's raw argmax board was a ``hedge wall''
+(2.1 hedge tokens per top-7; 72.6\,\% of boards with $\ge2$ hedges) until
+selection was changed to diversify over the logits.
+
+The model says nothing about student capacity, and assumes $f,V$ fixed as
+$n$ grows; re-tuning them changes constants, not the logarithmic shape of
+\S\ref{sec:cause}. \todo{If time permits: simulate the toy model ($f{=}3$, $V{=}94$, Zipf tail) and add a small figure of $\covv$ and filler share vs.\ $n$ to the appendix.}
+
+%------------------------------------------------------------------------------
+\section{The architectural remedy, and its honest status}
+\label{sec:remedy}
+If concrete answers cannot live in a label space, they must come from
+the \emph{context} at inference time: for an alternative question (``the window seat or the
+aisle?'') the answers are the conjuncts of the question; for a deictic
+wh-question (\emph{where}/\emph{who}/\emph{which}) they are multi-word spans
+of the scene description, ranked against an answer-type prototype blended with
+scene salience and explicitly \emph{not} against the question (an answer to
+``where would you like to sit?'' resembles the answer space, not the
+question). For every other question the open path stands down and the closed
+student's board is unchanged: the closed student supplies fast, diverse general
+functions; the open path supplies the long tail without enlarging the output
+layer. (An earlier attempt that unioned single tokens scored against the
+question vector cost 0.24 coverage; the question-type gate is what made the
+mechanism safe.)
+
+\paragraph{Status.} On the held-out split the open path fires on \textbf{2 of
+84} rows (1 of 71 coverage-scored rows). Every before/after gate delta is
+therefore one- or two-row noise and none is reported as an improvement. What
+the numbers support is the negative claim: \emph{no gate regressed}, dynamic
+coverage-of-intent still clears its bar at $0.901\times$ the teacher, and the
+previously unrepresentable probe (``who do you want to sit next to?'' $\to$
+\emph{aunt}) is now answered. A deictic-question evaluation
+set is the only way this mechanism becomes measurable. Extracted spans are by construction
+not teacher vocabulary words, so word-overlap cannot reward this path.
+
+%------------------------------------------------------------------------------
+\section{A pre-training diagnostic and when it applies}
+\label{sec:general}
+Nothing above used the student: the ceiling was computable from the teacher
+corpus and the vocabulary file before a single gradient step, and would have
+saved the data-volume experiment.
+
+\paragraph{Representability ceiling.} For a teacher corpus with output slots
+$S$ (one per teacher output token or label) and a student label space
+$\mathcal{V}$ with canonicalisation map $\kappa$,
+\begin{equation}
+\rho(\mathcal V)\;=\;\frac{1}{|S|}\sum_{s\in S}\mathbf 1\!\left[\kappa(w_s)\in\mathcal V\right],
+\qquad
+\rho_{\text{useful}}(\mathcal V)\;=\;\frac{1}{|S|}\sum_{s\in S}\mathbf 1\!\left[\kappa(w_s)\in\mathcal V\;\wedge\;w_s\notin\text{filler}\right].
+\label{eq:rho}
+\end{equation}
+Any slot-level agreement metric is bounded by $\rho$, and any metric that
+discounts filler by $\rho_{\text{useful}}$; here $\rho=0.325$ and
+$\rho_{\text{useful}}=0.325\times(1-0.491)\approx0.165$ (that v2.1's agreement
+coincides with it is, as far as we can tell, a coincidence). Reporting
+agreement as a fraction of $\rho$ turns a misleading ``16\,\%'' into an
+informative ``51\,\% of achievable''; the sweep $\rho(V)$, one line per size,
+reveals the growth rate, and a logarithmic curve warns that no affordable
+output layer will close the gap.
+
+\paragraph{Scope.} The argument applies whenever (i) the teacher is
+open-vocabulary, (ii) its \emph{useful} outputs are long-tail, and (iii) the
+student's label space is built by frequency from the teacher's outputs; not
+when useful outputs concentrate in a head (intent, sentiment), where
+closed-label distillation is known to work. The failure is easy to miss
+because vocabulary-building looks self-consistent---every label came from the
+teacher---and gates that do not depend on agreement (diversity, speed) pass.
+The diagnostic is cheap enough to be a default.
+
+%------------------------------------------------------------------------------
+\section{Limitations}
+All evaluation is on \textbf{synthetic scenarios}; the teacher and the
+coverage-of-intent judge are both LLMs, so a student that passes here may be
+imitating the teacher imitating an LLM. Single domain (AAC board composition),
+single teacher, single student architecture, $n=600$ teacher rows (held-out
+$n=84$). The $0.232\to0.165$ pair is a documented historical run, not a
+reproducible artefact; the toy model is unvalidated beyond consistency with
+the observations. No human subjects and no human interaction data; testing was
+on the development team under a self-imposed consent policy. The counting
+results of \S\ref{sec:cause} are, by contrast, exact and reproducible.
+
+\paragraph{Use of LLMs.} (1)~The distillation teacher and the
+coverage-of-intent judge are LLMs (\S\ref{sec:setup}); they are objects of
+study, not sources of claims. (2)~The system and harness were developed
+with AI-assisted coding tools; every number here was recomputed from committed
+files. (3)~An LLM assisted with drafting
+and editing; the authors take responsibility for all content.
+
+%------------------------------------------------------------------------------
+\begin{thebibliography}{9}
+
+\bibitem[Carbonell and Goldstein(1998)]{mmr1998}
+J.~Carbonell and J.~Goldstein.
+\newblock The use of MMR, diversity-based reranking for reordering documents and
+producing summaries.
+\newblock In \emph{SIGIR}, 1998.
+
+\bibitem[Heaps(1978)]{heaps1978}
+H.~S. Heaps.
+\newblock \emph{Information Retrieval: Computational and Theoretical Aspects}.
+\newblock Academic Press, 1978.
+% VERIFY: confirm this is the standard citation for Heaps' law (vocabulary growth).
+
+\bibitem[Hinton et al.(2015)]{hinton2015}
+G.~Hinton, O.~Vinyals, and J.~Dean.
+\newblock Distilling the knowledge in a neural network.
+\newblock \emph{arXiv preprint arXiv:1503.02531}, 2015.
+
+\bibitem[Qwen Team(2025)]{qwen25vl}
+Qwen Team.
+\newblock Qwen2.5-VL technical report.
+\newblock \emph{arXiv preprint}, 2025.
+% VERIFY: exact arXiv number and author list.
+
+\bibitem[Wang et al.(2020)]{minilm}
+W.~Wang, F.~Wei, L.~Dong, H.~Bao, N.~Yang, and M.~Zhou.
+\newblock MiniLM: Deep self-attention distillation for task-agnostic compression
+of pre-trained transformers.
+\newblock In \emph{NeurIPS}, 2020.
+
+\bibitem[Zipf(1949)]{zipf1949}
+G.~K. Zipf.
+\newblock \emph{Human Behavior and the Principle of Least Effort}.
+\newblock Addison-Wesley, 1949.
+
+\end{thebibliography}
+
+%------------------------------------------------------------------------------
+\appendix
+\section{Slate-quality gates for the current student}
+\label{app:gates}
+For context, the gates for the committed student (held-out $n=84$; the model
+whose agreement is 0.056). These are not the subject of the paper; they show
+that a student can pass diversity and speed gates while agreeing with the
+teacher on almost nothing, which is why agreement alone was misleading in both
+directions.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+Metric & student & teacher & verdict \\
+\midrule
+Distinct functions @7 & 4.083 & 4.333 & PASS (retention 0.942 $\ge$ 0.90) \\
+Near-duplicate rate & 0.0006 & 0.0 & PASS ($\le$ 0.08) \\
+Same-function-pair rate & 0.1865 & 0.1684 & \textbf{FAIL} (bar: $\le$ teacher) \\
+Board variety & 0.917 & --- & PASS ($\ge$ 0.5) \\
+Dynamic coverage-of-intent ($n=71$) & 0.761 & 0.845 & PASS ($0.901\times \ge 0.90\times$) \\
+\texttt{dynamic\_overlap} & 0.056 & --- & report-only \\
+Board latency (embed + MLP + MMR) & 47.1\,ms & 6.71\,s & $142.6\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The same-function-pair gate has failed through three review rounds and is
+reported as failing. The open-answer path of \S\ref{sec:remedy} reached exact
+teacher parity on that gate (0.1684) only at full aggression, where dynamic
+coverage fell to 0.690, under its bar; the two remain in tension.
+
+\section{Reproducing the counting results}
+\label{app:repro}
+The numbers in Tables~\ref{tab:repr} and~\ref{tab:sweep} require no model
+call. Dynamic slots are the board words not in the pinned core set; a slot is
+representable if its lower-cased word, or its canonical-merge image, is in the
+vocabulary; filler is decided by the harness's hedge list. The sweep rebuilds
+the vocabulary with the corpus's own frequency-based builder at
+$(f,V)\in\{(1,94),(3,200),(2,400),(1,752),(1,800),(1,10^4)\}$ and recomputes
+coverage. The log fit is ordinary least squares of $\covv$ on $\ln V$ over the
+five finite rows. The small discrepancy between 94-word coverage in
+Table~\ref{tab:repr} (0.325, shipped vocabulary with canonical merges) and
+Table~\ref{tab:sweep} (0.307, frequency-only rebuild) is the effect of the 22
+canonical merges. \todo{Attach the counting script as supplementary material (anonymised; strip project name and paths).}
+
+\end{document}
