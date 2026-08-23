@@ -366,11 +366,25 @@ def generate_pool(
     max_tokens = 720 if answer_mode else 520
 
     r = ranker if ranker is not None else _default_ranker()
+    # Probe the signature once instead of using TypeError as the signal. A
+    # TypeError raised INSIDE a compatible ranker used to be misread as a
+    # signature mismatch, which re-ran a full generation; and if that retry
+    # raised, it escaped the handler and broke this function's never-raises
+    # contract, leaving the trigger loop with no board to push at all.
     try:
-        raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt, max_tokens=max_tokens)
-    except TypeError:
-        raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt)  # ranker w/o max_tokens
-    except Exception:
+        import inspect
+        takes_max_tokens = "max_tokens" in inspect.signature(r.rank).parameters
+    except (TypeError, ValueError):
+        takes_max_tokens = True  # builtins/C-callables: assume the real signature
+
+    try:
+        if takes_max_tokens:
+            raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt, max_tokens=max_tokens)
+        else:
+            raw = r.rank(_DIVERSE_SYSTEM_PROMPT, user_prompt)
+    except Exception as exc:
+        print(f"[seam] WARNING pool generation failed ({type(exc).__name__}: {exc}); "
+              "board falls back to the core pool")
         raw = []
 
     pool: list[dict] = []
@@ -658,6 +672,49 @@ def _load_student_openvino(base) -> tuple:
     return (model, vocab, list(GUARANTEED_CORE), k_dyn)
 
 
+def _load_student_v3(base):
+    """The open-vocabulary bi-encoder + its phrase bank, projections cached.
+
+    Returns (model, bank_index, core_words, k_dyn) — deliberately the same
+    4-tuple shape as the v2 loaders, with the bank standing in for the vocab,
+    so _student_board can dispatch on version without special-casing arity.
+    """
+    import yaml
+
+    import torch
+
+    from evaluation.phase4 import bank as bank_mod
+    from evaluation.phase4 import infer_biencoder as ib
+    from evaluation.phase4.student_biencoder import BiEncoderRanker
+
+    ckpt = base / "student_biencoder.pt"
+    if not ckpt.exists():
+        raise RuntimeError(
+            f"no v3 checkpoint at {ckpt} — run "
+            "evaluation/phase4/train_biencoder.py, or unset "
+            "VOICELINK_STUDENT_VERSION to serve v2")
+    ck = torch.load(ckpt, map_location="cpu", weights_only=False)
+    model = BiEncoderRanker(
+        context_dim=ck["context_dim"], phrase_dim=ck["phrase_dim"],
+        hidden_dim=ck["hidden_dim"], proj_dim=ck["proj_dim"],
+        dropout=ck["dropout"])
+    model.load_state_dict(ck["state_dict"])
+    model.eval()
+
+    phrases, _ = bank_mod.load_bank()
+    # Same staleness discipline as the v2 vocab-sha guard: a checkpoint trained
+    # against a different bank scores the wrong columns and must not serve.
+    stamped, actual = ck.get("bank_sha"), bank_mod.bank_sha(phrases)
+    if stamped and stamped != actual:
+        raise RuntimeError(
+            f"student_biencoder.pt was trained against bank {stamped} but "
+            f"phrase_bank.json is {actual} — retrain before serving")
+
+    k_dyn = int(yaml.safe_load((base / "config.yaml").read_text())["board"]["k_dyn"])
+    return (model, ib.build_bank_index(model, phrases),
+            list(GUARANTEED_CORE), k_dyn)
+
+
 def _load_student():
     global _student_singleton
     if _student_singleton is None:
@@ -665,27 +722,60 @@ def _load_student():
 
         import ranker_config
         base = Path(__file__).resolve().parent / "evaluation" / "phase4"
-        if getattr(ranker_config, "STUDENT_BACKEND", "torch") == "openvino":
+        if getattr(ranker_config, "STUDENT_VERSION", "v2") == "v3":
+            _student_singleton = _load_student_v3(base)
+        elif getattr(ranker_config, "STUDENT_BACKEND", "torch") == "openvino":
             _student_singleton = _load_student_openvino(base)
         else:
             _student_singleton = _load_student_torch(base)
     return _student_singleton
 
 
+_student_failure_reported = False
+
+
 def _student_board(scene, transcript, context, k) -> list[RankedWord]:
     """One board from the distilled student (no LLM). Returns [] on any failure
-    so the caller can fall back to the diverse path and never strand the user."""
+    so the caller can fall back to the diverse path and never strand the user.
+
+    The fallback is SILENT to the user by design, but must not be silent to the
+    operator: it swaps a ~44ms board for a ~30s one. The artifact guards in
+    _load_student_* raise deliberately loud RuntimeErrors ("fail at load time"),
+    and swallowing them here was undoing exactly that intent.
+    """
+    global _student_failure_reported
     try:
-        # Review-opus C1: the device MUST run the same MMR + answer-aware
-        # selection the eval harness measures — raw board_indices() topk here
-        # was serving hedge walls the metrics never saw.
-        from evaluation.phase4.infer import student_board
-        model, vocab, core, k_dyn = _load_student()
+        import ranker_config
+        model, vocab_or_bank, core, k_dyn = _load_student()
         is_q = _is_question(transcript, context)
-        words = student_board(model, vocab, scene or "", transcript or "",
-                              is_q, k, k_dyn, core)
+
+        if getattr(ranker_config, "STUDENT_VERSION", "v2") == "v3":
+            # v3 scores (context, phrase) pairs over the open bank, and can also
+            # see names/routines from the on-device profile the server injects.
+            from evaluation.phase4.infer_biencoder import student_board as v3_board
+            words = v3_board(model, vocab_or_bank, scene or "", transcript or "",
+                             is_q, k, k_dyn, core,
+                             personal_context=(context or {}).get("personal_context"))
+        else:
+            # Review-opus C1: the device MUST run the same MMR + answer-aware
+            # selection the eval harness measures — raw board_indices() topk here
+            # was serving hedge walls the metrics never saw.
+            from evaluation.phase4.infer import student_board
+            words = student_board(model, vocab_or_bank, scene or "",
+                                  transcript or "", is_q, k, k_dyn, core)
+
         return _to_ranked([{"word": w, "symbol_keyword": w.lower()} for w in words])
-    except Exception:
+    except Exception as exc:
+        if not _student_failure_reported:
+            _student_failure_reported = True
+            print(
+                f"[seam] WARNING student board unavailable "
+                f"({type(exc).__name__}: {exc}).\n"
+                f"[seam]         Serving the LLM diverse path instead — that is "
+                f"~30s per board, not ~44ms.\n"
+                f"[seam]         Rebuild the phase-4 artifacts "
+                f"(mac/evaluation/phase4/) to restore the fast path."
+            )
         return []
 
 
@@ -694,7 +784,7 @@ def rank_vocabulary(
     transcript: Optional[str] = None,
     context: Optional[dict] = None,
     ranker=None,
-    strategy: str = "topk",
+    strategy: str = "diverse",
     k: int = BOARD_SIZE,
     lam: float = 0.6,
     topics: Optional[list[str]] = None,
@@ -708,10 +798,19 @@ def rank_vocabulary(
                     may also carry "personal_context" key injected by server
         ranker:     Ranker instance; if None, uses/builds the module singleton.
                     Pass explicitly to avoid re-loading the model per call.
+        strategy:   "diverse" (default, over-generate + MMR), "student" (the
+                    distilled MLP, falling back to diverse), or "topk".
+
+                    "topk" is the RESEARCH BASELINE, not a serving strategy: it
+                    asks the model for its top words and returns them as-is, so
+                    it does NOT pin GUARANTEED_CORE. Phase-1 measures diverse
+                    against it, which is the only reason it still exists. Do not
+                    serve it to a user — a board with no "yes"/"no"/"I need
+                    help"/"wait" is a board an AAC user cannot get out of.
 
     Returns:
-        list of RankedWord with 8-12 items; never raises; never returns <4 items
-        (falls back to _STUB_WORDS in the worst case).
+        Exactly k items for "diverse"/"student"; 8-12 for the topk baseline.
+        Never raises; never returns <4 items (falls back to _STUB_WORDS).
     """
     from personal_context_loader import slice_for_prompt
     from symbol_map import resolve_symbol, EMOJI_FALLBACK
@@ -732,6 +831,7 @@ def rank_vocabulary(
         pool = generate_pool(scene, transcript, ctx, ranker=ranker, topics=topics)
         return select_board(pool, scene, transcript, ctx, k=k, lam=lam)
 
+    # TOPK: the research baseline. No core pinning by design — see the docstring.
     profile = ctx.get("personal_context") or {}
     slice_data = slice_for_prompt(profile, scene, transcript, ctx)
 

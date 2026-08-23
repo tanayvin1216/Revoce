@@ -3,9 +3,28 @@ aiohttp>=3.13,<4
 # Perception (Task 4). faster-whisper takes float32 PCM directly (no ffmpeg).
 faster-whisper>=1.0
 numpy>=1.26
-opencv-python>=4.9
 pillow>=10
 
-# VLM runtime — Apple Silicon only. On Intel, use an OpenVINO backend instead
-# (swap SCENE_DESCRIBER in perception/config.py) rather than installing this.
+# OpenCV: HEADLESS on Linux. perception/vision_worker.py imports cv2 at module
+# scope, and the GUI build needs libGL.so.1, which is not present on a stock
+# Linux runner or on a headless mini-PC — so `import cv2` dies at import time
+# and takes the whole server (and the whole test run) with it. We use only
+# imdecode/imencode/resize/putText; there is not one GUI call in the codebase,
+# so the headless build is strictly correct here — and Linux is the deployment
+# target, not just CI.
+opencv-python-headless>=4.9 ; platform_system == "Linux"
+opencv-python>=4.9 ; platform_system != "Linux"
+
+# Ranking + the distilled student. sentence-transformers backs the shared MiniLM
+# embedder in evaluation/embed.py, which both the MMR selector and the student
+# inference path go through — without it, selection silently degrades to plain
+# function-coverage ordering, so it is a hard runtime dep, not an eval extra.
+torch>=2.2
+sentence-transformers>=2.6
+pyyaml>=6.0
+
+# LLM + VLM runtimes — Apple Silicon only. On Intel, serve the student through
+# the OpenVINO backend (VOICELINK_STUDENT_BACKEND=openvino, see mac/intel/)
+# rather than installing these.
 mlx-vlm>=0.1 ; platform_system == "Darwin" and platform_machine == "arm64"
+mlx-lm>=0.16 ; platform_system == "Darwin" and platform_machine == "arm64"

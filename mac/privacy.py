@@ -39,7 +39,11 @@ CONSENT_DIR = REPO_DIR / "docs" / "consent"
 # Raw-media extensions that must NEVER appear as runtime artifacts. Pictograms
 # (symbols/) and evaluation plots (figures/) are the only legitimate images.
 MEDIA_EXTENSIONS = {".jpg", ".jpeg", ".png", ".wav", ".pcm", ".mp4", ".webm", ".m4a", ".flac", ".raw"}
-MEDIA_ALLOWED_DIRS = ("symbols", "figures")
+# "clips" is mac/intel/clips/: two SYNTHESIZED text-to-speech benchmark
+# sentences committed so every host times whisper on identical audio. They are
+# not captured from any person; nothing recorded by the wearable is ever
+# written to disk (that is what this scan enforces).
+MEDIA_ALLOWED_DIRS = ("symbols", "figures", "clips")
 SCAN_SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", "build"}
 
 # Tap-record fields that can carry free text (and therefore names).

@@ -30,8 +30,8 @@ normal operation.
 - **AAC board (`mac/web/index.html`, plus a developer console `console.html`)** — 10
   large tap targets, no model access of its own.
 
-**The architectural rule the whole project is built around:** every model call in the
-system passes through one function,
+**The architectural rule the whole project is built around:** every model call that
+produces a board passes through one function,
 
 ```python
 rank_vocabulary(scene, transcript, context) -> ranked_words
@@ -40,6 +40,8 @@ rank_vocabulary(scene, transcript, context) -> ranked_words
 Its signature is fixed. The firmware never calls a model; the web app never calls a
 model. That single boundary is what lets the inference backend be swapped (Mac/MLX
 today, Intel/OpenVINO next) without touching the firmware, the routes, or the UI.
+(Whisper and the VLM are model calls too, but they run in `perception/` and feed the
+seam its `scene` and `transcript` arguments rather than passing through it.)
 
 ## How a board gets built
 

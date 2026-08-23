@@ -77,3 +77,25 @@ Whisper decoder degenerates into repeated `!` tokens and runs 8x slower. Always 
   (`v2_scenarios.jsonl` through `data.row_features`), not citations.
 - Qwen2.5-VL export deliberately NOT attempted yet (7 GB download + version
   pitfalls, see research-intel-openvino.md) — documented next step.
+
+## Export venv (the transformers conflict, resolved)
+
+optimum-intel pins `transformers<5.1`; mlx-vlm needs `>=5.5`. They cannot share
+one environment, so exports run in a dedicated venv and nothing else does:
+
+```bash
+python3 -m venv .venv-export
+.venv-export/bin/pip install "optimum-intel[openvino]" openvino nncf
+
+# Whisper base.en -> OpenVINO INT8 (~81 MB)
+PATH=".venv-export/bin:$PATH" optimum-cli export openvino \
+  --model openai/whisper-base.en --weight-format int8 \
+  mac/intel/artifacts/whisper-base.en-ov-int8
+```
+
+The main `.venv` keeps mlx-vlm/mlx-lm and never sees optimum-intel. Verified:
+after installing the export venv, the main venv still reports transformers
+4.57.6 with mlx_lm importable.
+
+Serving is a separate question from exporting — see BENCHMARKS.md for which
+runtime currently works and why.

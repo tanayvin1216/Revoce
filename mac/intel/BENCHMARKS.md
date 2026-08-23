@@ -64,3 +64,14 @@ OpenVINO 2026.2.1-21919-ede283a88e3-releases/2026/2 | batch=1, input (1, 769) fl
 |---|---|---|---|---|---|---|
 | bench_clip0.wav | 2.1 | 252 | 266 | 300 | 311 | yes |
 | bench_clip1.wav | 4.0 | 407 | 509 | 403 | 548 | yes |
+
+## Historical note (merge of the cloud line, 2026-08-23)
+
+The cloud branch measured whisper INT8 via the optimum-intel runtime at 0.205 s
+vs faster-whisper 0.324 s on one 6.25 s clip, and documented that
+openvino_genai.WhisperPipeline could not serve its export ("Port for tensor
+name cache_position was not found", genai <= 2025.3 with transformers <= 4.55
+exports). That gap is version-bound and is gone: the export from
+transformers 5.12 / optimum-intel 2.0 serves through genai 2026.2.1 (the tables
+above). The transcriber still tries genai first, proves it can generate, and
+falls back to optimum-intel, so either runtime works.
