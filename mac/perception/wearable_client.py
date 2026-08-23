@@ -12,11 +12,18 @@ can pause/resume the stream at any time).
 from __future__ import annotations
 
 import asyncio
+import threading
 
 import aiohttp
 
 MSG_FRAME = 0x01
 MSG_AUDIO = 0x02
+
+# Software kill switch (complements the wearable's physical button). While set,
+# every incoming frame/audio chunk is dropped HERE, before it reaches any
+# buffer or worker, so nothing downstream ever sees the data. Toggled by the
+# server's /api/privacy/pause route; read-only in this module.
+CAPTURE_PAUSED = threading.Event()
 
 
 async def wearable_client(url, audio_q, frame_holder, stop_event) -> None:
@@ -30,6 +37,8 @@ async def wearable_client(url, audio_q, frame_holder, stop_event) -> None:
                     backoff = 0.5
                     async for msg in ws:
                         if msg.type == aiohttp.WSMsgType.BINARY and len(msg.data) >= 1:
+                            if CAPTURE_PAUSED.is_set():
+                                continue   # software pause: drop on the floor
                             tag = msg.data[0]
                             payload = msg.data[1:]
                             if tag == MSG_AUDIO:
