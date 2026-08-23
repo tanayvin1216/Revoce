@@ -12,7 +12,6 @@ OpenVINO ARM CPU plugin (dev stage); Intel-hardware numbers pending Tiber access
 from __future__ import annotations
 
 import json
-import platform
 import re
 import shutil
 import subprocess

@@ -7,7 +7,6 @@ be measurable — the held-out corpus fires on 2/84, which is why this set exist
 
 from __future__ import annotations
 
-import json
 import sys
 from collections import Counter
 from pathlib import Path

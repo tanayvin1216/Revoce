@@ -29,7 +29,6 @@ sys.path.insert(0, str(MAC))
 
 from evaluation.embed import embed                                   # noqa: E402
 from evaluation import coverage_metrics as cm                        # noqa: E402
-from evaluation.phase1 import oracle as oracle_mod                   # noqa: E402
 from selection import build_query_vector, mmr_select, intra_list_diversity  # noqa: E402
 
 CACHE = HERE / "cache"
