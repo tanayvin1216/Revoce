@@ -1,5 +1,14 @@
 # VoiceLink — Context Handoff
 
+> **Addendum 2026-08-23.** HEAD has moved well past `b57cbaf`. Read in this order:
+> `docs/VERIFIED_NUMBERS.md` §0 (current numbers; the 47 ms/142.6× and the whisper
+> 0.35 s figures below are superseded), `docs/SUBMISSION_SPRINT.md` (deadlines),
+> `docs/RESPONSIBLE_AI.md`, `paper/{odi,axiom,rtca}/README.md`,
+> `docs/mentor/voicelink_technical_overview.pdf`. Interpreter is
+> `/usr/local/bin/python3`; `bash mac/demo.sh --help`; Intel box:
+> `bash mac/intel/run_on_intel.sh`. Suite: 172 passed.
+
+
 Written 2026-08-06. Branch `phase4-distillation`, HEAD `b57cbaf`.
 Read this first if you are picking up VoiceLink with no prior context.
 
