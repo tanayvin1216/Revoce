@@ -160,6 +160,16 @@ def train() -> dict:
                           len(vocab), cfg["model"]["dropout"]).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=cfg["train"]["lr"],
                            weight_decay=cfg["train"]["weight_decay"])
+    # Intel Extension for PyTorch, when installed and we are on an Intel CPU:
+    # fuses the LayerNorm/Linear/ReLU graph and picks AMX/AVX-512 kernels. It is
+    # a no-op elsewhere and never changes what is learned, only how fast.
+    if dev == "cpu":
+        try:
+            import intel_extension_for_pytorch as ipex
+            model, opt = ipex.optimize(model, optimizer=opt)
+            print(f"ipex {ipex.__version__} optimize() applied", flush=True)
+        except Exception:
+            pass
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=pw)
     rng = np.random.default_rng(cfg["seed"])
 
