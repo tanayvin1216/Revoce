@@ -185,6 +185,12 @@ def is_user_directed(transcript: str | None) -> bool:
 # scene holds props rather than answers.
 _SCENE_ANSWERABLE_WH = frozenset({"where", "who", "whom", "which"})
 
+# "What colour cup do you want?" is deictic despite the wh-word: the user picks
+# among colours physically present, and the head noun ("colour") is already the
+# prototype _wh_head_noun hands to the ranker. Measured on deictic_scenarios:
+# 0/6 -> 5/6 colour rows answered, no change on the other 54.
+_COLOUR_Q_RE = re.compile(r"\bwhat\s+colou?r\b", re.IGNORECASE)
+
 _ALT_RE = re.compile(r"\bor\b", re.IGNORECASE)
 _TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z'-]*")
 
@@ -339,7 +345,8 @@ def answer_candidates(scene: str | None, transcript: str | None,
     # something present: both tests must hold (see _SCENE_ANSWERABLE_WH).
     if not is_user_directed(transcript):
         return []
-    if _wh_word(transcript) not in _SCENE_ANSWERABLE_WH:
+    if _wh_word(transcript) not in _SCENE_ANSWERABLE_WH \
+            and not _COLOUR_Q_RE.search(transcript or ""):
         return []
 
     # Open wh-question: the answer is in the SCENE, and any span echoing the
