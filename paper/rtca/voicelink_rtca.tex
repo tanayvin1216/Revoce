@@ -1,0 +1,379 @@
+% =====================================================================
+%  RTCA 2026 (NeurIPS 2026 Workshop, Sydney) -- SHORT PAPER TRACK
+%  Limit: 4 pages, references and appendices excluded.
+%  Deadline: Aug 29, 2026 AoE  |  Notification: Sep 29, 2026 AoE
+%  DOUBLE-BLIND. Do not add author names or identifying URLs.
+%
+%  SETUP:
+%   1. Download the NeurIPS 2026 author kit and put neurips_2026.sty
+%      next to this file.
+%   2. pdflatex voicelink_rtca.tex  (twice)
+%
+%  The \IfFileExists block below lets you draft before the .sty arrives.
+%  Line counts will differ from the real template -- check the page
+%  limit only after neurips_2026.sty is in place.
+% =====================================================================
+
+\documentclass{article}
+
+\IfFileExists{neurips_2026.sty}{
+  \usepackage{neurips_2026}          % anonymous by default; [final] for camera-ready
+}{
+  \usepackage[margin=1in]{geometry}
+  \usepackage{times}
+  \usepackage[round]{natbib}   % neurips_2026.sty loads natbib itself; this is fallback only
+  \typeout{^^J*** neurips_2026.sty NOT FOUND -- drafting layout only. ***^^J}
+}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{xcolor}
+
+% Drafting helper -- delete before submission.
+\newcommand{\todo}[1]{\textcolor{red}{[\textbf{TODO:} #1]}}
+
+\title{One Shot at the Turn: Diversity-First Vocabulary Selection\\
+for Real-Time Augmentative Communication}
+
+\author{Anonymous Author(s)\\Affiliation\\\texttt{email}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+People who cannot speak converse through augmentative and alternative
+communication (AAC) boards at roughly 10--18 words per minute, against
+125--185 for speech. The resulting asymmetry is not merely slow: by the time a
+response is composed, the conversational turn has usually closed. We argue that
+this makes AAC a real-time turn-taking problem rather than a text-prediction
+problem, and that the standard objective---rank candidate words by
+likelihood---is wrong for it. Under a turn deadline the user gets one slate and
+cannot recover from a wrong one, so the slate should be selected for
+\emph{coverage of the intent space}, not for expected per-word accuracy. We
+present a wearable system that senses the conversational moment with local ASR
+and a vision--language model and composes a seven-word board through a single
+fixed-signature interface. Across 120 scenarios, diversity-first selection
+raises distinct communicative functions per board from 3.88 to 4.68, cuts the
+near-duplicate rate by $68\times$ (0.0274 $\rightarrow$ 0.0004), and raises
+coverage-of-intent from 0.81 to 1.00 against a likelihood-ranked baseline. To
+fit the turn window we distil the candidate generator into a small MLP and keep
+the selection policy symbolic, reducing board latency from 6.71\,s to 47\,ms
+($142.6\times$) while retaining 94\% of the teacher's functional diversity. We
+report a gate that still fails and an evaluation that is entirely synthetic.
+\end{abstract}
+
+% =====================================================================
+\section{Introduction}
+% =====================================================================
+
+Work on real-time conversational agents generally asks how a \emph{machine} can
+respond inside a human turn-taking window. We study the mirrored problem: a
+human who cannot produce speech, and a machine whose job is to get that human's
+response out before the window closes.
+
+Roughly 1 in 31 eight-year-olds in the United States is identified with autism,
+and about a quarter are nonverbal, minimally verbal, or require extensive
+support \citep{cdc2025}. Many communicate through AAC boards: grids of words and
+symbols that are tapped rather than spoken. Measured AAC output runs at
+10--18 words per minute against 125--185 for speech
+\citep{beukelman2013}. Conversational turns in natural dialogue turn over on the
+order of a few hundred milliseconds \citep{sacks1974}. The gap is not an
+inconvenience; it is a structural exclusion from live conversation.
+
+Two properties follow, and both are unusual enough to be worth stating plainly.
+
+\textbf{The latency budget is set by turn-taking, not throughput.} A board that
+arrives after the speaker has moved on is not a degraded answer, it is no answer.
+This is a deadline, not a cost term.
+
+\textbf{There is no second attempt.} A speaker who says the wrong word can
+repair it in the next breath. An AAC user who is given the wrong seven words has
+already spent the turn. The asymmetry between a miss and a hit is therefore much
+larger than in ranking problems where a user can scroll, rephrase, or retry.
+
+Together these motivate our central claim: \emph{under a turn deadline with no
+recovery, ranking by likelihood is the wrong objective.} The correct objective
+is to cover the space of things the user might plausibly want to do with the
+turn. We formalise this as communicative-function coverage, show that a
+diversity-first selection policy dominates a likelihood-ranked baseline on it,
+and show that the resulting pipeline can be compressed to fit the turn window on
+commodity local hardware.
+
+Existing AAC boards are static: a caregiver programs the vocabulary in advance
+and hopes it matches the moment. Prior context-aware AAC work optimises
+keystroke savings \citep{kwickchat2022,praact2024}, which is the right objective
+when the user is composing a sentence and the wrong one when the user is trying
+to catch a turn.
+
+% =====================================================================
+\section{System}
+% =====================================================================
+
+Three nodes. A body-worn clip ($\sim$\$15 in parts) carries a camera and an I2S
+microphone and performs \emph{no} inference; it hosts its own access point and
+multiplexes tagged image and audio payloads over one persistent connection. A
+nearby computer runs all perception and ranking. Any tablet renders the board
+over plain HTTP and reports taps. Nothing leaves the local machine.
+
+\textbf{Perception.} Whisper (\texttt{base.en}) transcribes the surrounding
+conversation; Qwen2.5-VL-3B \citep{qwen25vl} describes the scene. Expensive
+vision is gated behind cheap frame differencing so that the audio path never
+blocks on a slow model call. Board regeneration is event-driven, triggered by
+conversational events rather than a fixed clock.
+
+\textbf{The seam.} Every model call in the system passes through one function
+with a fixed signature,
+\texttt{rank\_vocabulary(scene, transcript, context)}. The firmware never calls
+a model; the tablet never calls a model. This is an engineering constraint
+rather than a research contribution, but it is what allows the inference backend
+to be swapped---PyTorch to OpenVINO---by configuration flag, and it is what
+makes the latency numbers in \S\ref{sec:results} attributable to a single
+replaceable component.
+
+\textbf{Held obligation.} When a question is detected, the system latches an
+``active question'' state with a time-to-live, consumed on tap. This exists
+precisely because of the asymmetry above: the turn may close before the user
+answers, and the obligation to answer outlives the turn.
+
+% =====================================================================
+\section{Selecting for coverage rather than likelihood}
+% =====================================================================
+
+Each candidate utterance is assigned one of a small set of predefined
+\emph{communicative functions} (assent, refusal, request, inquiry, comment,
+answer, and so on) by nearest-exemplar classification in a MiniLM
+\citep{minilm} embedding space. Multiple exemplars per function are required:
+a single centroid mislabelled both ``yes'' and ``carbon dioxide'' as
+\emph{I-don't-know}, and fixing this changed the measured outcome.
+
+We over-generate a candidate pool with an LLM and then select the displayed
+slate with maximal marginal relevance \citep{mmr1998},
+\begin{equation}
+s^{*} = \arg\max_{s \in C \setminus S}
+\Big[\lambda\,\mathrm{rel}(s, c) - (1-\lambda)\max_{s' \in S}\mathrm{sim}(s, s')\Big],
+\end{equation}
+with function labels feeding the tie-break. Four core words
+(\emph{yes}, \emph{no}, \emph{I need help}, \emph{wait}) are deterministically
+pinned, excluded from the learned label space, and re-attached at inference;
+pinning core vocabulary is standard AAC practice, and we claim only the specific
+choice and the exclusion. A reserved answer quota with a hedge cap prevents the
+board from filling with non-committal filler when a question is open.
+
+MMR itself is not new. The claim is that its objective is the \emph{right} one
+here, for a reason specific to turn-limited interaction, and that this is
+measurable.
+
+% =====================================================================
+\section{Meeting the turn deadline}
+% =====================================================================
+
+The teacher pipeline produces a good board in 6.71\,s (IQR 6.63--6.97). That is
+roughly an order of magnitude past any plausible turn window, so the pipeline as
+described cannot be deployed as described.
+
+We distil it, but not in the usual way. The student---a 769-dimensional MLP
+(\texttt{LayerNorm} $\rightarrow$ \texttt{Linear} $\rightarrow$ \texttt{ReLU}
+$\rightarrow$ \texttt{Dropout} $\rightarrow$ \texttt{Linear}) trained multi-label
+with sigmoid + BCE over a 94-word vocabulary---replaces only the expensive
+\emph{candidate generation}. The student's raw top-$k$ board was measured to be
+useless, producing walls of hedges and same-function filler. The fix was not more
+training: we treat the student's logits as a candidate pool
+($3 \times k$) and re-run the \emph{unchanged} production MMR, answer quota and
+hedge cap over it. The learned component supplies relevance; the symbolic
+component supplies the diversity the raw argmax discarded.
+
+For deployment the student exports to ONNX and converts to OpenVINO IR with
+$1.4\times10^{-6}$ parity, then to NNCF INT8 at $2.7\times$ smaller with mean
+top-6 overlap 0.950 (min 0.667). An INT8 \texttt{whisper-base.en} in the same
+runtime transcribes in 0.35\,s against 0.42\,s for \texttt{faster-whisper}.
+
+% =====================================================================
+\section{Results}\label{sec:results}
+% =====================================================================
+
+\begin{table}[t]
+\centering
+\small
+\caption{Diversity-first vs.\ likelihood-ranked selection, 120 scenarios across
+five settings (classroom, clinic, airport, dinner, direct question). Higher is
+better except near-duplicate rate.}
+\label{tab:selection}
+\begin{tabular}{lcc}
+\toprule
+ & \textbf{Diversity-first} & \textbf{Top-$k$} \\
+\midrule
+Distinct communicative functions per board & \textbf{4.68} & 3.88 \\
+Near-duplicate pair rate                   & \textbf{0.0004} & 0.0274 \\
+Coverage-of-intent                          & \textbf{1.00} & 0.81 \\
+Exact match to oracle word                  & \textbf{0.567} & 0.342 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\caption{Distilled student against the teacher pipeline, held-out split
+($n{=}84$; $n{=}71$ for coverage). We report the gate that fails.}
+\label{tab:student}
+\begin{tabular}{lccc}
+\toprule
+ & \textbf{Student} & \textbf{Teacher} & \textbf{Verdict} \\
+\midrule
+Board latency                       & \textbf{47.1\,ms} & 6.71\,s & $142.6\times$ \\
+Distinct functions@7                & 4.083 & 4.333 & 94.2\% retained \\
+Near-duplicate rate                 & 0.0006 & 0.000 & pass \\
+Coverage-of-intent (dynamic slots)  & 0.761 & 0.845 & 90.1\% of teacher \\
+Same-function-pair rate ($\downarrow$) & 0.1865 & 0.1684 & \textbf{fail} \\
+Board variety (77/84 distinct)      & 0.917 & --- & pass \\
+Teacher word agreement (dynamic)    & 0.056 & --- & see \S\ref{sec:limits} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:selection} is the central result. Selecting for coverage rather
+than likelihood improves every measure, including---notably---exact match to the
+oracle word, which the likelihood-ranked baseline is the one optimising for.
+Under a turn deadline, spreading the slate across functions is not a trade
+against accuracy; on this evaluation it dominates.
+
+Table~\ref{tab:student} shows the compressed pipeline lands inside a plausible
+turn window while retaining 94\% of the teacher's functional diversity, at the
+cost of one failing gate.
+
+% =====================================================================
+\section{Limitations}\label{sec:limits}
+% =====================================================================
+
+We state these prominently because several are load-bearing.
+
+\textbf{One gate fails and we are not rounding it away.} The student stacks
+slightly more same-function words than the teacher (0.1865 vs.\ 0.1684, lower is
+better, bar is ``no worse than teacher''). It has been reported as failing
+through three review rounds and remains so.
+
+\textbf{The evaluation is entirely synthetic.} Scenarios are generated, the
+judge is an LLM, and the teacher is itself an LLM. A student that passes here may
+be imitating the teacher imitating a larger model. \textbf{There are no human
+subjects.} The wearable captures bystanders who did not consent, so testing is
+restricted to the authors by self-imposed policy until written proxy consent and
+pseudonym handling exist. Human validation on consented interaction logs is the
+number that ultimately matters and we do not have it.
+
+\textbf{Teacher word agreement is 0.056 and this is not the failure it looks
+like.} The student picks from a fixed 94-word vocabulary, and that vocabulary can
+represent only 32.5\% of the teacher's word choices---49.1\% of what it can
+represent is filler. Because the vocabulary is frequency-built and concrete
+answers are long-tail by construction, adding teacher data pushes it
+\emph{further} toward filler: a $5\times$ data increase moved agreement from
+0.232 to 0.165. We report this negative result rather than the hypothesis it
+falsified. It is why we grade coverage-of-intent rather than word agreement, and
+why concrete answers are now read from context rather than a label space---a
+mechanism that works but currently fires on only 2 of 84 held-out rows, so its
+effect on the aggregate numbers is noise.
+
+\textbf{All measurements are on Apple ARM silicon.} The OpenVINO path is
+validated for correctness but we have no Intel-hardware timings.
+\todo{replace this sentence if Tiber numbers land before the deadline}
+
+% =====================================================================
+\section{Conclusion}
+% =====================================================================
+
+Treating AAC as a turn-taking problem rather than a prediction problem changes
+the objective, and changing the objective measurably changes the board. We
+believe the argument generalises: any interface that gives a user one slate under
+a deadline with no recovery path should select for coverage, not likelihood.
+
+% =====================================================================
+\section*{Ethics statement}
+% =====================================================================
+
+No human-subject data was collected. All 120 evaluation scenarios are
+synthetically generated; no real voice, likeness, or personal data of any
+individual appears in the dataset or the models. The deployed system processes
+audio and video entirely on the local machine with ephemeral buffers and no
+persistent recording, and carries a hardware kill switch. Because a body-worn
+camera and microphone capture bystanders who have not consented, we restrict all
+testing to the authors pending a proxy-consent and pseudonymisation protocol.
+Interaction logs record each tap with the context that produced it and never
+leave the device.
+
+% =====================================================================
+\section*{Use of large language models}
+% =====================================================================
+
+\todo{Required by the NeurIPS Main Track LLM policy that RTCA adopts --- write
+this before submitting. This project was developed through a documented
+AI-assisted multi-agent engineering pipeline, and LLMs are additionally a
+component of the system under study (teacher, judge). Disclose both roles
+explicitly and separately.}
+
+% =====================================================================
+%  REFERENCES -- VERIFY EVERY ENTRY BEFORE SUBMITTING.
+%  Entries marked VERIFY were carried from project notes and have not been
+%  checked against the published record.
+% =====================================================================
+\begin{thebibliography}{9}
+
+\bibitem[Beukelman and Mirenda(2013)]{beukelman2013}
+D.~R. Beukelman and P.~Mirenda.
+\newblock \emph{Augmentative and Alternative Communication: Supporting Children
+and Adults with Complex Communication Needs}.
+\newblock Brookes Publishing, 4th edition, 2013.
+% VERIFY: confirm this edition is the source of the 10-18 wpm figure, or cite
+% the primary rate study directly.
+
+\bibitem[Carbonell and Goldstein(1998)]{mmr1998}
+J.~Carbonell and J.~Goldstein.
+\newblock The use of MMR, diversity-based reranking for reordering documents and
+producing summaries.
+\newblock In \emph{SIGIR}, 1998.
+
+\bibitem[CDC(2025)]{cdc2025}
+Centers for Disease Control and Prevention.
+\newblock Prevalence of autism spectrum disorder among children.
+\newblock Autism and Developmental Disabilities Monitoring (ADDM) Network, 2025.
+% VERIFY: cite the exact ADDM surveillance summary year and MMWR volume.
+
+\bibitem[Qwen Team(2025)]{qwen25vl}
+Qwen Team.
+\newblock Qwen2.5-VL technical report.
+\newblock \emph{arXiv preprint}, 2025.
+% VERIFY: exact arXiv number and author list.
+
+\bibitem[Sacks et al.(1974)]{sacks1974}
+H.~Sacks, E.~A. Schegloff, and G.~Jefferson.
+\newblock A simplest systematics for the organization of turn-taking for
+conversation.
+\newblock \emph{Language}, 50(4):696--735, 1974.
+
+\bibitem[Shen et al.(2022)]{kwickchat2022}
+Anonymous.
+\newblock KWickChat: A multi-turn dialogue system for AAC using context-aware
+sentence generation.
+\newblock In \emph{IUI}, 2022.
+% VERIFY: real author list and exact title -- carried from project notes.
+
+\bibitem[Wang et al.(2020)]{minilm}
+W.~Wang, F.~Wei, L.~Dong, H.~Bao, N.~Yang, and M.~Zhou.
+\newblock MiniLM: Deep self-attention distillation for task-agnostic compression
+of pre-trained transformers.
+\newblock In \emph{NeurIPS}, 2020.
+
+\bibitem[PrAACT(2024)]{praact2024}
+Anonymous.
+\newblock PrAACT: Predictive AAC using contextual transformers.
+\newblock 2024.
+% VERIFY: real venue, authors, title -- carried from project notes.
+
+\end{thebibliography}
+
+\end{document}
