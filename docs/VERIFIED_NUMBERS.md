@@ -24,6 +24,28 @@ exist** as of today.
 
 ---
 
+## 0a. Post-merge re-measurement (2026-08-23, evening) — CURRENT values
+
+The cloud branch's regenerated corpus and retrained v2 student were merged (same
+context fingerprint, so the held-out split is unchanged), and everything was
+re-run against the merged artifacts (`config_hash d6ce2e56d50b`). **Quote these,
+not §0/§1, where they differ.**
+
+| Number | Value (current) | Source | Run date |
+|---|---|---|---|
+| Board, fully OpenVINO (MiniLM IR + INT8 head), 84 held-out | **5.5 ms p50 / 9.1 p90**; ov-head 9.7/13.6; torch 9.7/26.8; board Jaccard vs torch 0.913 | `mac/intel/artifacts/e2e_mac.json` | 2026-08-23 |
+| Student board (torch, harness) vs teacher, same run | **10.1 ms vs 7.05 s = 695×** (teacher timing drifts run to run; quote ">400×") | `phase4_results.json` `speedup` | 2026-08-23 |
+| Distinct-functions @7, student vs teacher | **4.095 vs 4.298**, retention **0.953** (PASS) | same | 2026-08-23 |
+| Same-function-pair rate | **0.1893 vs 0.1735 — still FAIL** (bar: ≤ teacher) | same | 2026-08-23 |
+| Coverage-of-intent, dynamic | **0.789 vs 0.873 = 0.904× (PASS ≥0.90×)** | same | 2026-08-23 |
+| dynamic_overlap / full top-7 | **0.067 / 0.594** (report-only) | same | 2026-08-23 |
+| Deictic set (n=60) | fire 0.883, answer-on-board **0.817 vs 0.017** closed-only | same, `deictic` | 2026-08-23 |
+| Full suite | **213 passed** | `pytest` | 2026-08-23 |
+
+The v3 bi-encoder results (cloud line) live in
+`mac/evaluation/phase4/phase4_v3_results.json` and `V3_BIENCODER_REPORT.md`;
+v3 is NOT the served default and its numbers are not interchangeable with v2's.
+
 ## 0. Re-measured later on 2026-08-23 (supersedes rows below where noted)
 
 After this inventory was built, the embedding memoisation landed (commit 55306d8) and
