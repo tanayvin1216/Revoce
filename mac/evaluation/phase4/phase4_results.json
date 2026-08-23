@@ -1,0 +1,103 @@
+{
+  "meta": {
+    "n_rows": 559,
+    "vocab": 94,
+    "config_hash": "8151a7e34afd"
+  },
+  "diversity_retention": {
+    "n_heldout": 84,
+    "student_distinct_functions": 4.083,
+    "teacher_distinct_functions": 4.333,
+    "retention_ratio": 0.942,
+    "student_near_dup": 0.0006,
+    "teacher_near_dup": 0.0,
+    "student_same_function_pair": 0.1865,
+    "teacher_same_function_pair": 0.1684,
+    "distinct_student_boards": 77,
+    "board_variety": 0.917,
+    "dynamic_variety": 0.917,
+    "pass": false,
+    "need": "HELD-OUT: distinct-fn >= 90% of teacher AND near-dup <= 0.08 AND same-function-pair <= teacher's (0.1684) AND board-variety >= 0.5"
+  },
+  "agreement": {
+    "full_overlap_top7": 0.59,
+    "dynamic_overlap": 0.056,
+    "n_heldout": 84,
+    "pass": null,
+    "need": "report-only (coverage-of-intent is the gated bar)"
+  },
+  "coverage_of_intent": {
+    "student": 0.845,
+    "teacher": 0.944,
+    "n_scored": 71,
+    "student_dynamic": 0.761,
+    "teacher_dynamic": 0.845,
+    "n_scored_dynamic": 71,
+    "pass": true,
+    "need": "HELD-OUT: student DYNAMIC top-7 non-hedge coverage >= 90% of the teacher's"
+  },
+  "speedup": {
+    "student_latency_ms": 13.88,
+    "student_latency_iqr_ms": [
+      10.84,
+      17.35
+    ],
+    "teacher_latency_s": 11.68,
+    "teacher_latency_iqr_s": [
+      11.2,
+      16.79
+    ],
+    "speedup_x": 841.3,
+    "teacher_samples": 12,
+    "student_samples": 50,
+    "note": "",
+    "pass": true,
+    "need": "student >= 10x faster than teacher"
+  },
+  "deictic": {
+    "overall": {
+      "n": 60,
+      "open_fire_rate": 0.8833,
+      "student_answer_hit": 0.8167,
+      "closed_answer_hit": 0.05
+    },
+    "by_question_type": {
+      "alternative": {
+        "n": 8,
+        "open_fire_rate": 1.0,
+        "student_answer_hit": 1.0,
+        "closed_answer_hit": 0.0
+      },
+      "colour": {
+        "n": 6,
+        "open_fire_rate": 0.8333,
+        "student_answer_hit": 0.8333,
+        "closed_answer_hit": 0.1667
+      },
+      "count": {
+        "n": 6,
+        "open_fire_rate": 0.0,
+        "student_answer_hit": 0.0,
+        "closed_answer_hit": 0.0
+      },
+      "where": {
+        "n": 16,
+        "open_fire_rate": 1.0,
+        "student_answer_hit": 0.875,
+        "closed_answer_hit": 0.0625
+      },
+      "which": {
+        "n": 12,
+        "open_fire_rate": 1.0,
+        "student_answer_hit": 0.8333,
+        "closed_answer_hit": 0.0
+      },
+      "who": {
+        "n": 12,
+        "open_fire_rate": 1.0,
+        "student_answer_hit": 1.0,
+        "closed_answer_hit": 0.0833
+      }
+    }
+  }
+}
