@@ -50,7 +50,15 @@ def load_wav(path: Path) -> np.ndarray:
         return np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
 
 
+CLIPS_DIR = HERE / "clips"  # committed 16 kHz mono clips: same audio on every host
+
+
 def default_clips() -> list[Path]:
+    # Prefer the committed clips so a Mac, a Xeon and a laptop are timed on
+    # IDENTICAL audio. Synthesize (macOS `say`) only if they are missing.
+    committed = sorted(CLIPS_DIR.glob("bench_clip*.wav"))
+    if committed:
+        return committed
     SCRATCH.mkdir(parents=True, exist_ok=True)
     out = []
     for i, s in enumerate(DEFAULT_SENTENCES):
