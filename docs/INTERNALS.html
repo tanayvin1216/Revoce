@@ -1,0 +1,819 @@
+<title>VoiceLink Internals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+:root{
+  --paper:#f2f5f5; --surface:#ffffff; --surface-2:#e8eded;
+  --ink:#151b1e; --ink-2:#3c4a4e; --muted:#63747a;
+  --rule:#d2dcdc; --rule-soft:#e2eaea;
+  --accent:#0d6e70; --accent-2:#0a5456; --accent-soft:#d3e6e5;
+  --warn:#9e4b32; --warn-soft:#f2e0da;
+  --good:#3f6b3a; --good-soft:#dfe9dc;
+  --code-bg:#eef2f2;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0e1417; --surface:#151d21; --surface-2:#1c262a;
+    --ink:#e4ecec; --ink-2:#b3c3c5; --muted:#8b9ba0;
+    --rule:#2a3739; --rule-soft:#212c2f;
+    --accent:#57b6b2; --accent-2:#7fcecb; --accent-soft:#1b3436;
+    --warn:#d98a70; --warn-soft:#38221b;
+    --good:#8fb987; --good-soft:#20301d;
+    --code-bg:#101719;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0e1417; --surface:#151d21; --surface-2:#1c262a;
+  --ink:#e4ecec; --ink-2:#b3c3c5; --muted:#8b9ba0;
+  --rule:#2a3739; --rule-soft:#212c2f;
+  --accent:#57b6b2; --accent-2:#7fcecb; --accent-soft:#1b3436;
+  --warn:#d98a70; --warn-soft:#38221b;
+  --good:#8fb987; --good-soft:#20301d;
+  --code-bg:#101719;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:16.5px; line-height:1.65; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 96px}
+
+/* ---- masthead ---- */
+header.mast{
+  border-bottom:1px solid var(--rule); padding:56px 0 28px; margin-bottom:8px;
+}
+.eyebrow{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11.5px;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:0 0 14px;
+}
+h1{
+  font-family:"Spectral",Georgia,serif; font-weight:700; font-size:clamp(34px,5.2vw,52px);
+  line-height:1.08; letter-spacing:-.015em; margin:0 0 16px; text-wrap:balance; max-width:20ch;
+}
+.standfirst{font-size:18px;color:var(--ink-2);max-width:62ch;margin:0 0 22px}
+.mast-meta{
+  font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted);
+  display:flex;flex-wrap:wrap;gap:8px 22px;
+}
+
+/* ---- layout ---- */
+.cols{display:grid;grid-template-columns:1fr;gap:0}
+@media(min-width:1000px){
+  .cols{grid-template-columns:210px minmax(0,1fr);gap:52px;align-items:start}
+  nav.rail{position:sticky;top:24px;padding-top:44px}
+}
+nav.rail ol{list-style:none;margin:0;padding:0;font-size:13.5px}
+nav.rail li{margin:0 0 3px}
+nav.rail a{
+  display:block;padding:5px 10px;color:var(--muted);text-decoration:none;
+  border-left:2px solid var(--rule-soft);border-radius:0 3px 3px 0;
+}
+nav.rail a:hover,nav.rail a:focus-visible{color:var(--accent);border-left-color:var(--accent);background:var(--surface)}
+nav.rail .sub{padding-left:22px;font-size:12.5px}
+nav.rail .grp{
+  font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-2);padding:16px 10px 5px;
+}
+@media(max-width:999px){nav.rail{display:none}}
+
+main{min-width:0;padding-top:36px}
+section{margin:0 0 60px;scroll-margin-top:20px}
+.prose{max-width:68ch}
+
+h2{
+  font-family:"Spectral",Georgia,serif;font-weight:600;font-size:29px;line-height:1.2;
+  letter-spacing:-.01em;margin:0 0 8px;text-wrap:balance;
+}
+h2 .num{
+  font-family:"JetBrains Mono",monospace;font-size:14px;color:var(--accent);
+  display:block;letter-spacing:.1em;margin-bottom:6px;font-weight:500;
+}
+h3{
+  font-family:"Public Sans",sans-serif;font-weight:600;font-size:17.5px;
+  margin:34px 0 6px;color:var(--ink);text-wrap:balance;
+}
+h4{font-size:14px;font-weight:600;margin:22px 0 4px;color:var(--ink-2)}
+p{margin:0 0 14px}
+a{color:var(--accent)}
+strong{font-weight:600}
+em{font-style:italic}
+ul,ol{margin:0 0 14px;padding-left:22px}
+li{margin:0 0 6px}
+.lede{font-size:17.5px;color:var(--ink-2);margin-bottom:20px;max-width:64ch}
+hr.soft{border:0;border-top:1px solid var(--rule-soft);margin:38px 0}
+
+code{
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.86em;
+  background:var(--code-bg);padding:1px 5px;border-radius:3px;color:var(--ink);
+}
+pre{
+  background:var(--code-bg);border:1px solid var(--rule-soft);border-radius:5px;
+  padding:15px 17px;overflow-x:auto;margin:0 0 18px;
+}
+pre code{background:none;padding:0;font-size:12.9px;line-height:1.62;display:block}
+.cap{
+  font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);
+  letter-spacing:.05em;margin:-12px 0 20px;
+}
+
+/* ---- claim chips: the project's own evidence discipline, made visible ---- */
+.chip{
+  display:inline-block;font-family:"JetBrains Mono",monospace;font-size:10px;
+  letter-spacing:.11em;text-transform:uppercase;padding:2.5px 7px;border-radius:3px;
+  vertical-align:2px;margin-left:7px;font-weight:500;white-space:nowrap;
+}
+.chip.m{background:var(--good-soft);color:var(--good)}
+.chip.f{background:var(--warn-soft);color:var(--warn)}
+.chip.u{background:var(--surface-2);color:var(--muted)}
+
+/* ---- callouts ---- */
+.note{
+  border-left:3px solid var(--accent);background:var(--surface);
+  padding:15px 18px;margin:0 0 20px;border-radius:0 5px 5px 0;
+}
+.note.warn{border-left-color:var(--warn)}
+.note .t{
+  font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--accent);margin:0 0 7px;
+}
+.note.warn .t{color:var(--warn)}
+.note p:last-child{margin-bottom:0}
+
+/* ---- tables ---- */
+.scroll{overflow-x:auto;margin:0 0 8px;border:1px solid var(--rule-soft);border-radius:5px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:440px}
+th,td{padding:9px 13px;text-align:left;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+thead th{
+  font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);font-weight:500;
+  border-bottom:1px solid var(--rule);
+}
+tbody tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-family:"JetBrains Mono",monospace;font-variant-numeric:tabular-nums;font-size:13px}
+.fail{color:var(--warn);font-weight:600}
+.pass{color:var(--good)}
+
+/* ---- diagram ---- */
+figure{margin:0 0 26px}
+.diagram{
+  background:var(--surface);border:1px solid var(--rule-soft);border-radius:6px;
+  padding:22px 18px;overflow-x:auto;
+}
+.diagram svg{display:block;min-width:600px;width:100%;height:auto}
+.d-box{fill:var(--surface-2);stroke:var(--rule)}
+.d-box-a{fill:var(--accent-soft);stroke:var(--accent)}
+.d-lbl{fill:var(--ink);font-family:"Public Sans",sans-serif;font-size:12.5px;font-weight:600}
+.d-sub{fill:var(--muted);font-family:"JetBrains Mono",monospace;font-size:10px}
+.d-arrow{stroke:var(--muted);stroke-width:1.4;fill:none}
+.d-note{fill:var(--accent);font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.06em}
+.d-warn{fill:var(--warn);font-family:"JetBrains Mono",monospace;font-size:10.5px}
+.d-dash{stroke:var(--accent);stroke-width:1.4;stroke-dasharray:4 3;fill:none}
+.d-band{fill:var(--rule-soft)}
+
+/* ---- vocab specimen ---- */
+.vocab{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
+.vocab span{
+  font-family:"JetBrains Mono",monospace;font-size:11.5px;padding:3px 8px;
+  border-radius:3px;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--rule-soft);
+}
+.vocab span.h{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.vocab span.s{background:var(--accent-soft);color:var(--accent-2);border-color:transparent}
+
+/* ---- board specimen ---- */
+.board{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 8px}
+.board span{
+  font-family:"Public Sans",sans-serif;font-size:13.5px;padding:8px 13px;border-radius:5px;
+  background:var(--surface);border:1px solid var(--rule);
+}
+.board span.core{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:500}
+.board span.hit{border-color:var(--accent);border-width:2px;font-weight:600;color:var(--accent-2)}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 16px;font-size:14px;margin:0 0 18px}
+.kv dt{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted);white-space:nowrap}
+.kv dd{margin:0}
+
+footer{border-top:1px solid var(--rule);margin-top:56px;padding-top:22px;font-size:13.5px;color:var(--muted);max-width:68ch}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">VoiceLink · engineering reference</p>
+  <h1>How the machine actually picks seven words</h1>
+  <p class="standfirst">A read-through of the ranking pipeline, the distillation, the evaluation, and the Intel path — with the parts that don't work marked as such.</p>
+  <div class="mast-meta">
+    <span>branch phase4-distillation</span>
+    <span>559 rows · 94-word vocab · held-out n=84</span>
+    <span>read from source 2026-08-21</span>
+  </div>
+</header>
+
+<div class="cols">
+
+<nav class="rail" aria-label="Contents">
+  <ol>
+    <li><a href="#shape">The shape of it</a></li>
+    <li class="grp">Ranking</li>
+    <li><a href="#embed" class="sub">Embeddings</a></li>
+    <li><a href="#query" class="sub">The query vector</a></li>
+    <li><a href="#pool" class="sub">Pool generation</a></li>
+    <li><a href="#mmr" class="sub">MMR selection</a></li>
+    <li><a href="#core" class="sub">The core strip</a></li>
+    <li><a href="#answer" class="sub">Answer mode</a></li>
+    <li><a href="#functions" class="sub">Function labels</a></li>
+    <li class="grp">Distillation</li>
+    <li><a href="#half" class="sub">Distilling half</a></li>
+    <li><a href="#student" class="sub">The student</a></li>
+    <li><a href="#loss" class="sub">The loss</a></li>
+    <li><a href="#data" class="sub">Data &amp; leakage</a></li>
+    <li><a href="#vocab" class="sub">The vocabulary</a></li>
+    <li><a href="#negative" class="sub">The negative result</a></li>
+    <li class="grp">Evaluation</li>
+    <li><a href="#metrics" class="sub">The metrics</a></li>
+    <li><a href="#judge" class="sub">What it proves</a></li>
+    <li class="grp">Intel</li>
+    <li><a href="#ovino" class="sub">ONNX → IR → INT8</a></li>
+    <li><a href="#bottleneck" class="sub">The bottleneck</a></li>
+    <li class="grp">Closing</li>
+    <li><a href="#defend">Say it out loud</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ================= 0 ================= -->
+<section id="shape">
+  <div class="prose">
+  <h2><span class="num">00</span>The shape of the whole thing</h2>
+  <p class="lede">If you remember one sentence about VoiceLink's machine learning, make it this one: <strong>over-generate, then select.</strong></p>
+
+  <p>Nearly every design decision in the repo is a consequence of that split. A generator proposes far more candidate phrases than will fit on the board — deliberately spread across different <em>kinds</em> of thing a person might say. Then a separate, non-learned selection step picks the seven that best cover the space of what the user might mean.</p>
+
+  <p>The two halves have completely different characters. The generator is expensive, stochastic, and swappable — an LLM today, a distilled MLP tomorrow, something else later. The selector is cheap, deterministic, and <em>never changes</em>. Everything interesting in the project comes from keeping those two things apart.</p>
+
+  <p>The distillation work is best understood as: <em>replace the expensive half, keep the cheap half exactly as it was.</em> That's unusual — normally you distil a model to reproduce its output. Here the teacher's output is a <em>set</em> whose value lies in its internal structure, and the finding was that a small student can't learn that structure but <em>can</em> learn the pointwise relevance the structure is built from.</p>
+  </div>
+
+  <figure>
+    <div class="diagram">
+      <svg viewBox="0 0 860 300" role="img" aria-label="Pipeline diagram: perception feeds a generator that produces a candidate pool, then a fixed selection stage produces the board. The student replaces only the generator.">
+        <!-- band labels -->
+        <rect class="d-band" x="150" y="16" width="300" height="20" rx="3"/>
+        <rect class="d-band" x="470" y="16" width="330" height="20" rx="3"/>
+        <text class="d-note" x="163" y="30">GENERATE — expensive, swappable</text>
+        <text class="d-note" x="483" y="30">SELECT — cheap, fixed, never distilled</text>
+
+        <!-- perception -->
+        <rect class="d-box" x="8" y="80" width="120" height="62" rx="4"/>
+        <text class="d-lbl" x="22" y="104">Perception</text>
+        <text class="d-sub" x="22" y="120">whisper → transcript</text>
+        <text class="d-sub" x="22" y="133">Qwen2.5-VL → scene</text>
+
+        <path class="d-arrow" d="M128 111 H 158" marker-end="url(#ah)"/>
+
+        <!-- teacher generator -->
+        <rect class="d-box" x="160" y="58" width="150" height="50" rx="4"/>
+        <text class="d-lbl" x="174" y="79">LLM teacher</text>
+        <text class="d-sub" x="174" y="95">13 tagged phrases</text>
+
+        <!-- student generator -->
+        <rect class="d-box-a" x="160" y="122" width="150" height="50" rx="4"/>
+        <text class="d-lbl" x="174" y="143">Student MLP</text>
+        <text class="d-sub" x="174" y="159">94 logits → top 18</text>
+
+        <text class="d-note" x="160" y="192">one or the other</text>
+
+        <path class="d-arrow" d="M310 83 H 350 V 105 H 372" marker-end="url(#ah)"/>
+        <path class="d-arrow" d="M310 147 H 350 V 125 H 372" marker-end="url(#ah)"/>
+
+        <!-- pool -->
+        <rect class="d-box" x="374" y="82" width="86" height="58" rx="4"/>
+        <text class="d-lbl" x="388" y="106">Pool</text>
+        <text class="d-sub" x="388" y="122">~18–24</text>
+        <text class="d-sub" x="388" y="134">candidates</text>
+
+        <path class="d-arrow" d="M460 111 H 490" marker-end="url(#ah)"/>
+
+        <!-- selection stack -->
+        <rect class="d-box" x="492" y="58" width="146" height="26" rx="3"/>
+        <text class="d-sub" x="503" y="75">1 · answer quota (≥2 slots)</text>
+        <rect class="d-box" x="492" y="88" width="146" height="26" rx="3"/>
+        <text class="d-sub" x="503" y="105">2 · MMR fill, λ = 0.6</text>
+        <rect class="d-box" x="492" y="118" width="146" height="26" rx="3"/>
+        <text class="d-sub" x="503" y="135">3 · hedge cap ≤ 1</text>
+        <rect class="d-box" x="492" y="148" width="146" height="26" rx="3"/>
+        <text class="d-sub" x="503" y="165">4 · pin 4 core words</text>
+
+        <path class="d-arrow" d="M638 111 H 668" marker-end="url(#ah)"/>
+
+        <!-- board -->
+        <rect class="d-box-a" x="670" y="76" width="120" height="70" rx="4"/>
+        <text class="d-lbl" x="684" y="100">Board</text>
+        <text class="d-sub" x="684" y="116">4 core + 6 dynamic</text>
+        <text class="d-sub" x="684" y="129">= 10 shown</text>
+
+        <!-- the seam -->
+        <path class="d-dash" d="M146 46 V 250"/>
+        <path class="d-dash" d="M804 46 V 250"/>
+        <path class="d-dash" d="M146 250 H 804"/>
+        <text class="d-note" x="400" y="268">everything between the dashed lines is rank_vocabulary()</text>
+
+        <defs>
+          <marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <path d="M0 0 L7 3.5 L0 7 z" fill="currentColor" style="color:var(--muted)"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+    <p class="cap">The pool/select split. Swapping the generator is a config flag; the selection stack is byte-identical on both paths.</p>
+  </figure>
+</section>
+
+<!-- ================= embeddings ================= -->
+<section id="embed">
+  <div class="prose">
+  <h2><span class="num">01</span>Embeddings are the substrate everything else stands on</h2>
+
+  <p>An <strong>embedding</strong> turns a piece of text into a list of numbers — here 384 of them — positioned so that texts meaning similar things land near each other. "I'm tired" and "I am exhausted" end up close; "I'm tired" and "carbon dioxide" end up far apart.</p>
+
+  <p>VoiceLink uses <code>all-MiniLM-L6-v2</code>, a small sentence-transformer, through one shared loader in <code>evaluation/embed.py</code>. Two details there matter more than they look:</p>
+
+  <ul>
+    <li><strong>One model instance for the whole process.</strong> The production selector and every eval metric import the same <code>embed()</code>, so a metric can never be measuring a different embedding space than the thing it's measuring.</li>
+    <li><strong>Vectors are L2-normalised on the way out.</strong> That means a plain dot product <em>is</em> cosine similarity. Every similarity in the codebase is a matrix multiply — <code>a @ b.T</code> — with no normalisation step to forget. This is why MMR over a 20-item pool costs microseconds.</li>
+  </ul>
+
+  <p>Cosine similarity runs from −1 to 1; in practice sentence embeddings land in roughly 0 to 1. You'll see three thresholds recur: <code>0.85</code> for "these two are near-duplicates", <code>0.95</code> for "these two training rows are the same row", and <code>0.80</code> for "these two vocabulary entries are the same word".</p>
+  </div>
+</section>
+
+<!-- ================= query ================= -->
+<section id="query">
+  <div class="prose">
+  <h2><span class="num">02</span>The query vector, and the 0.7 that stops the scene hijacking the board</h2>
+
+  <p>Before anything is ranked, the situation is compressed into a single 384-d <strong>query vector</strong> in <code>selection.build_query_vector</code>. Relevance is then just cosine to this vector.</p>
+
+  <p>It's a weighted sum of three embedded texts:</p>
+
+  <pre><code>_Q_WEIGHTS = {"transcript": 0.7, "scene": 0.2, "context": 0.1}</code></pre>
+
+  <p>Those weights are a real design decision, not a default. The comment in the source says it plainly: <em>a vivid scene must not pull the board away from the actual question.</em> If someone asks "where do you want to sit?" in a restaurant, a scene-dominant query drags the board toward menus and reservations and away from answering the question. Vision is deliberately subordinated to speech.</p>
+
+  <p>There's a second subtlety. When the live path has latched an <strong>active question</strong>, that question <em>alone</em> becomes the transcript term — not the rolling transcript. Otherwise later small talk dilutes the question the user is still trying to answer. This is the "held obligation" idea: the turn may have closed, but the obligation to answer outlives it.</p>
+  </div>
+</section>
+
+<!-- ================= pool ================= -->
+<section id="pool">
+  <div class="prose">
+  <h2><span class="num">03</span>Pool generation: forcing the LLM out of its own default failure</h2>
+
+  <p>The expensive half is one LLM call (<code>Qwen2.5-3B-Instruct-4bit</code> via MLX) that returns a JSON array of candidate phrases, each tagged with a communicative function and a topic.</p>
+
+  <p>The prompt is <em>slot-based</em>, and that's the whole trick. It doesn't ask for "some good words." It demands exactly one phrase for each of nine named communicative moves, then four more on different topics — thirteen total:</p>
+
+  <pre><code>1. request something          6. express a feeling
+2. reject / disagree          7. be social
+3. comment or react           8. direct attention
+4. ask a question back        9. clarify or repair
+5. share information          10-13. four different topics in play</code></pre>
+
+  <p>Left to itself, an LLM asked for AAC vocabulary <strong>mode-collapses</strong> — it produces seven paraphrases of the single most likely reply. The slot structure makes spanning the space a formatting requirement rather than something you hope for. The system prompt reinforces it: <em>"Two phrases that mean the same thing is a failure."</em></p>
+
+  <p>Two safety properties are built in below the model. A deterministic <code>_CORE_POOL</code> of five words is merged in <em>before</em> anything generated, so a bad generation can never strand the user without yes / no / help. And if fewer than four items survive parsing, a hardcoded stub list tops the pool up. The model is never load-bearing for the user's ability to say "I need help."</p>
+  </div>
+</section>
+
+<!-- ================= mmr ================= -->
+<section id="mmr">
+  <div class="prose">
+  <h2><span class="num">04</span>MMR: the objective that makes this project a project</h2>
+
+  <p><strong>Maximal Marginal Relevance</strong> is a 1998 idea from document retrieval. You pick items greedily, one at a time, and each pick is scored on two things at once: how relevant it is, minus how similar it is to whatever you've already picked.</p>
+
+  <pre><code>score(i) = λ · rel[i]  −  (1 − λ) · max   cos(cand_i, cand_j)
+                                    j ∈ selected</code></pre>
+
+  <p>With <code>λ = 1.0</code> you get pure relevance — plain top-<em>k</em>, the mode-seeking behaviour. With <code>λ = 0.0</code> you get pure spread and relevance is ignored. VoiceLink runs <code>λ = 0.6</code>, described in the source as "the knee."</p>
+
+  <p>Here's the argument that makes this more than a ranking tweak. In ordinary retrieval, a bad slate costs the user a scroll. For an AAC user under a closing conversational turn, a bad slate costs the <em>entire turn</em> — there is no second attempt. When the penalty for a miss is that large and recovery is impossible, maximising expected per-word accuracy is the wrong objective. You want the seven picks to <em>cover the space</em>, so whichever direction the user meant, a launch point is on the board.</p>
+
+  <p>And on this evaluation, that isn't even a trade:</p>
+
+  <div class="scroll"><table>
+    <thead><tr><th>120 scenarios</th><th class="n">Diverse (λ=0.6)</th><th class="n">Top-k</th></tr></thead>
+    <tbody>
+      <tr><td>Distinct communicative functions</td><td class="n">4.683</td><td class="n">3.875</td></tr>
+      <tr><td>Near-duplicate pair rate</td><td class="n">0.0004</td><td class="n">0.0274</td></tr>
+      <tr><td>Coverage-of-intent</td><td class="n">1.000</td><td class="n">0.808</td></tr>
+      <tr><td>Exact match to the oracle word</td><td class="n">0.567</td><td class="n">0.342</td></tr>
+    </tbody>
+  </table></div>
+  <p class="cap">mac/evaluation/phase3/selftest_results.json <span class="chip m">measured</span></p>
+
+  <p>Note the last row. Exact-match is the metric top-<em>k</em> is <em>optimising for</em>, and diversity-first still wins it by 22 points. Spreading the board didn't cost accuracy; it bought accuracy. That's the single most quotable thing in the project.</p>
+
+  <h3>The tie-break that does real work</h3>
+  <p>MMR alone still stacks same-function words. So <code>mmr_select</code> takes an optional per-candidate function label and, among candidates whose scores are within <code>TIE_EPS = 0.02</code>, prefers one whose function hasn't been used yet. Removing this is measurable: same-function-pair rate degrades from 0.168 to 0.197.</p>
+  </div>
+</section>
+
+<!-- ================= core ================= -->
+<section id="core">
+  <div class="prose">
+  <h2><span class="num">05</span>The core strip, and why it's four words and not five</h2>
+
+  <p>Four phrases are pinned into every single board, in fixed order, before anything is selected:</p>
+
+  <div class="board">
+    <span class="core">yes</span><span class="core">no</span><span class="core">I need help</span><span class="core">wait</span>
+  </div>
+
+  <p>Pinning frequent "core vocabulary" is standard AAC practice and not novel. What's specific here is the <em>choice</em>: these four are deliberately four <strong>different communicative functions</strong> — comment, reject, request, direct-attention. Because they're always present and always functionally distinct, "this board is never mode-collapsed" becomes structurally true rather than empirically hoped-for, even if the generator fails completely.</p>
+
+  <p>The board is 10 slots, not 7. The comment explains why: 4 pinned + 6 dynamic leaves real room for situation-specific vocabulary. If it were 7, the safety strip would eat more than half the board.</p>
+
+  <div class="note">
+    <p class="t">The consequence that shows up everywhere in the metrics</p>
+    <p>Those 4 pinned words <em>self-certify</em>. They will always contribute functions and always partially cover intent, on every board, regardless of whether the model did anything useful. This is why the project reports a <strong>dynamic</strong> slice of every metric — scored only over the 6 slots the model actually chose. Whenever you see a full-board number that looks good (0.845 coverage) next to a dynamic number that looks worse (0.761), the dynamic one is the honest one.</p>
+  </div>
+
+  <p>Core words are also excluded from the student's learned vocabulary entirely, and re-attached deterministically at inference by <code>assemble_board</code>. In v1 they were <em>in</em> the label space, which created a 0.571 agreement floor — the student got credit for words it never had to learn.</p>
+  </div>
+</section>
+
+<!-- ================= answer ================= -->
+<section id="answer">
+  <div class="prose">
+  <h2><span class="num">06</span>Answer mode: a different λ for a different job</h2>
+
+  <p>When the system detects that the partner asked a question, the pipeline changes shape. The prompt gains an answer block, the token budget widens from 520 to 720, and selection reserves slots.</p>
+
+  <p>The reservation uses a <em>lower</em> lambda than normal fill:</p>
+
+  <dl class="kv">
+    <dt>ANSWER_LAM = 0.35</dt><dd>Reserved answer slots — diversity-heavy</dd>
+    <dt>FILL_LAM = 0.6</dt><dd>The remaining slots — the normal knee</dd>
+    <dt>ANSWER_SLOTS = 2</dt><dd>At most, and never more than <code>k_dyn − 1</code></dd>
+  </dl>
+
+  <p>The reason is precise. Without it you get six near-duplicate answers all saying roughly "I'm seated." A low lambda forces the reserved answers to be genuinely <em>different</em> answers — <em>in the back</em> / <em>not seated</em> / <em>no table</em> — so the user is choosing between real alternatives rather than synonyms.</p>
+
+  <p>There's a subtlety worth knowing because it's the kind of thing that looks like a bug. On the <em>student</em> path, <code>infer.py</code> deliberately does <strong>not</strong> use low-lambda MMR for the answer quota. It uses relevance order with a near-duplicate guard instead. Why: the teacher's answer candidates are all pre-tagged as answers, so spreading them is safe. The student's pool is unfiltered vocabulary, so a low lambda picks irrelevant-but-different phrases over the actual answer. Measured on a seating probe: <em>"no, thanks."</em> beat <em>"table"</em> and <em>"aunt."</em></p>
+
+  <p>Finally, a hedge cap. At most one phrase from the "I don't know" family reaches any board — and <em>zero</em> when an extracted open answer is present, on the reasoning that a hedge can never contribute dynamic coverage but does count against the same-function-pair rate, so the hedge slot is the one place an answer can be added for free.</p>
+  </div>
+</section>
+
+<!-- ================= functions ================= -->
+<section id="functions">
+  <div class="prose">
+  <h2><span class="num">07</span>Communicative functions, and the bug in the ruler</h2>
+
+  <p>"Distinct communicative functions per board" is the headline metric, so how a phrase gets labelled matters enormously. There's no classifier model — labels come from <strong>nearest-exemplar</strong> matching in the same MiniLM space.</p>
+
+  <p>Nine functions, each anchored by several short first-person exemplars. A board item is labelled by its single nearest <em>exemplar</em>, not by distance to a function's average.</p>
+
+  <p>That distinction is the story. The first implementation used one concatenated sentence per function and classified by nearest <em>centroid</em>. A centroid is a blunt instrument: the "I don't know" anchor became an attractor for any short token, so both <em>"yes"</em> and the genuinely correct answer <em>"carbon dioxide"</em> got labelled <em>I-don't-know</em>, and <em>"wait"</em> got labelled <em>refuse</em>.</p>
+
+  <div class="note">
+    <p class="t">Why this is defensible rather than embarrassing</p>
+    <p>It was a bug in the measuring instrument, and the fix was applied <strong>identically to both arms</strong> — diverse and top-k alike. That's what keeps it a correctness fix rather than tuning your own arm. If a reviewer asks whether you tuned the metric to favour your method, this is the answer, and it's in the source comments with dates.</p>
+  </div>
+
+  <p>One genuine limitation to own: the nine functions have no affirmation or direct-attention bucket, so <em>"yes"</em> / <em>"okay"</em> and <em>"wait"</em> / <em>"hold on"</em> are folded into <em>comment</em>. Defensible, but it is a judgement call baked into your headline number.</p>
+  </div>
+</section>
+
+<hr class="soft">
+
+<!-- ================= half ================= -->
+<section id="half">
+  <div class="prose">
+  <h2><span class="num">08</span>What "distillation" means here, and what half of it you skipped</h2>
+
+  <p><strong>Knowledge distillation</strong> is the standard move of training a small fast model (the <em>student</em>) to imitate a large slow one (the <em>teacher</em>). You run the teacher over many inputs, record what it produced, and train the student on those recordings.</p>
+
+  <p>VoiceLink's version is deliberately partial. The teacher pipeline is <em>generate a pool, then select from it</em>. The student replaces <strong>only the generation step</strong>. The MMR selection, the answer quota, and the hedge cap run afterwards, unchanged, on the student's output.</p>
+
+  <p>This wasn't the original plan — it was forced by a measurement. The student's raw <code>torch.topk</code> board was found to be <em>useless</em>: walls of hedges and same-function filler, documented in <code>INVESTIGATION_useless_boards.md</code>. The obvious response is more training. What actually worked was structural: treat the student's logits as a <em>candidate pool</em> — top <code>pool_mult × k_dyn = 3 × 6 = 18</code> — and re-run the production selection over it.</p>
+
+  <p>The source states the principle in one line: <em>the trained model provides relevance candidates, the selection provides the diversity the raw argmax threw away.</em></p>
+
+  <p>Say this to a reviewer as: <strong>the learned component supplies relevance; the symbolic component supplies structure.</strong> It's distinct from "learning to rank then re-ranking," because the re-ranker here isn't learned — it's the teacher's own deterministic policy, reused verbatim.</p>
+  </div>
+</section>
+
+<!-- ================= student ================= -->
+<section id="student">
+  <div class="prose">
+  <h2><span class="num">09</span>The student is smaller than you'd guess</h2>
+
+  <pre><code>LayerNorm(769)
+Linear(769 → 192)
+ReLU
+Dropout(0.3)
+Linear(192 → 94)</code></pre>
+
+  <p>That's it — about 165,000 parameters, roughly 660 KB on disk. Five layers. There is no transformer here; the heavy semantic lifting already happened in MiniLM, and this head just maps a context embedding to a score per vocabulary word.</p>
+
+  <h3>Why every layer is a boring one</h3>
+  <p>This is deliberate and worth understanding, because it's the decision that made the Intel path work at all. Every operation here is in <strong>ONNX opset 17</strong> and in the OpenVINO operator set. The comment in <code>config.yaml</code> is explicit: <em>standard layers only so it exports cleanly</em>. Pick an exotic activation or a custom op and the export silently breaks — or worse, converts but produces different numbers. The project calls this "export-first": the deployment constraint drove the architecture, not the other way round.</p>
+
+  <h3>The 769-dimensional input, and why it isn't 384</h3>
+  <p>The input is a concatenation:</p>
+  <pre><code>[ scene embedding (384) | transcript embedding (384) | is_question (1) ] = 769</code></pre>
+
+  <p>Versions 1 and 2 fed a <em>single</em> pooled embedding of the string <code>"&lt;scene&gt; || &lt;transcript&gt;"</code> — one 384-d vector for both. That averages the two into a blur, and the model has no way to weight the scene axis differently from the speech axis. Given that the teacher's own query vector weights transcript at 0.7 and scene at 0.2, the student was being denied the very distinction the teacher relies on. Splitting them is v2.2, and the reason it was done is the negative result in §12.</p>
+
+  <h3>Multi-label, not multi-class</h3>
+  <p>The output is 94 numbers, one per vocabulary word. This is a <strong>multi-label</strong> problem: the question is "which of these 94 belong on the board right now," and six of them should be yes simultaneously. That's why the output goes through a <em>sigmoid</em> (each word independently scored 0–1) rather than a <em>softmax</em> (which would force the 94 to compete for a single unit of probability, appropriate only if exactly one word were correct).</p>
+  </div>
+</section>
+
+<!-- ================= loss ================= -->
+<section id="loss">
+  <div class="prose">
+  <h2><span class="num">10</span>The loss function has three parts, and two of them are fighting imbalance</h2>
+
+  <p>The base is <strong>binary cross-entropy</strong> — for each of the 94 words independently, penalise being confident and wrong. But the label matrix is extremely sparse: 6 of 94 words are positive on a typical row, so a model that predicts "no" for everything is right 94% of the time. Two mechanisms push back.</p>
+
+  <h3>Positive weighting</h3>
+  <pre><code>pos_weight = clip(N_neg / N_pos, 1, 20)</code></pre>
+  <p>Per word, how many times more often it's absent than present, capped at 20×. Getting a rare word wrong hurts up to twenty times more than getting a common word wrong. The cap stops a word seen three times from dominating the gradient.</p>
+
+  <h3>Logit adjustment</h3>
+  <pre><code>adj = logits − τ · log(prior)     # τ = 1.0</code></pre>
+  <p>Subtracting the log of each word's base rate during training means the model can't win by simply learning which words are common — that information is already accounted for, so it has to learn something context-dependent instead.</p>
+
+  <div class="note">
+    <p class="t">A detail worth admiring</p>
+    <p>The adjustment is applied <strong>only inside the loss function</strong>, never at inference and never at export. The exported ONNX is the unmodified model. This is exactly the kind of thing that silently breaks a deployment when someone bakes a training-time correction into the graph — and the source comment says so explicitly.</p>
+  </div>
+
+  <h3>The listwise term</h3>
+  <pre><code>loss = BCE(adjusted) + 0.3 · listwise</code></pre>
+  <p>BCE treats all 94 words as 94 unrelated coin flips. But a board is a <em>set</em>, and what matters is which words beat which. The auxiliary term is a log-softmax over the 94 logits averaged across the positives — it pushes the true board words to outrank everything else <em>as a group</em>. Weighted at 0.3, so it nudges rather than dominates.</p>
+
+  <h4>Everything else</h4>
+  <dl class="kv">
+    <dt>epochs 60</dt><dd>with early stopping, patience 15 on validation loss</dd>
+    <dt>batch_size 32</dt><dd></dd>
+    <dt>lr 1e-3</dt><dd>Adam</dd>
+    <dt>weight_decay 1e-3</dt><dd>fairly strong — 559 rows is a small dataset</dd>
+    <dt>dropout 0.3</dt><dd>also on the high side, same reason</dd>
+    <dt>seed 0</dt><dd>every RNG seeded; the config is SHA-hashed and logged per run</dd>
+  </dl>
+  <p>That config hash is good practice you should mention if anyone asks about reproducibility: identical hash means identical configuration, and it's stamped into the checkpoint alongside the row count and training timestamp.</p>
+  </div>
+</section>
+
+<!-- ================= data ================= -->
+<section id="data">
+  <div class="prose">
+  <h2><span class="num">11</span>The data pipeline is mostly defences against fooling yourself</h2>
+
+  <p>559 training rows is small, and small datasets leak. The pipeline in <code>data.py</code> runs four filters <em>before</em> the train/val/test split — the ordering matters, because filtering after splitting is how leakage happens:</p>
+
+  <ol>
+    <li><strong>Exact-text dedup</strong> on the context string.</li>
+    <li><strong>Category cap</strong> at 15% — no single scenario family (classroom, airport…) can dominate.</li>
+    <li><strong>Embedding dedup</strong> at cosine &gt; 0.95. This is the important one: generated scenarios come in template families, and two near-identical contexts landing on opposite sides of the split would inflate held-out agreement for free.</li>
+    <li><strong>Split</strong> 70 / 15 / 15, seeded, and persisted to <code>splits.json</code>.</li>
+  </ol>
+
+  <p>Then a guard most projects don't bother with: the ordered context texts are hashed into a <strong>fingerprint</strong> stored beside the split. If someone regenerates a source file and re-runs evaluation, the fingerprint mismatches and evaluation <em>refuses to score</em> rather than silently scoring against a stale partition. If a reviewer asks how you know your held-out numbers are real, this is the answer.</p>
+  </div>
+</section>
+
+<!-- ================= vocab ================= -->
+<section id="vocab">
+  <div class="prose">
+  <h2><span class="num">12</span>The vocabulary, which is where all the trouble lives</h2>
+
+  <p>The student can only output words that exist in a fixed list. That list is built by counting:</p>
+
+  <dl class="kv">
+    <dt>min_freq 3</dt><dd>a word must appear in ≥3 teacher boards to be kept</dd>
+    <dt>max_size 200</dt><dd>ceiling (only 94 survive the floor)</dd>
+    <dt>dedup_tau 0.80</dt><dd>near-synonyms collapse to one column</dd>
+  </dl>
+
+  <p>The dedup is cleverer than it needs to be, for a real reason. It uses <strong>single-link connected components</strong>, not greedy matching against already-kept words, because the seven hedge paraphrases only unite <em>transitively</em>: <em>"i don't know"</em> and <em>"i am not sure"</em> sit at 0.784 — below the 0.80 threshold — but both link through <em>"i'm not sure"</em> at 0.841 and 0.943. Greedy matching would have left a wall of hedges standing. Dropped variants are mapped to their representative in <code>canonical.json</code> so their label mass survives instead of being thrown away.</p>
+
+  <p>There are two guards on it: every non-hedge merge is printed for manual audit, and a non-hedge component larger than 4 raises rather than silently eating vocabulary.</p>
+
+  <h3>Now look at what actually survived</h3>
+  <p>These are real entries from <code>vocab.json</code>. Filler is marked in clay, one-off specifics in teal:</p>
+
+  <div class="vocab">
+    <span class="h">i don't know</span><span class="h">maybe</span><span class="h">not really</span><span class="h">i don't care</span>
+    <span class="h">i need more time</span><span class="h">i'm fine</span><span class="h">i forgot</span><span class="h">i don't mind</span>
+    <span class="h">maybe later</span><span class="h">i need to check</span><span class="h">later</span><span class="h">i'm good</span>
+    <span class="s">carbon dioxide</span><span class="s">window seat</span><span class="s">my name is john</span>
+    <span class="s">my name is sarah</span><span class="s">more about volcanoes?</span><span class="s">my chest hurts</span>
+    <span class="s">worksheet is confusing</span><span class="s">aisle seat</span>
+  </div>
+  <p class="cap">mac/evaluation/phase4/vocab.json — 94 entries total</p>
+
+  <p>This picture <em>is</em> the negative result. A frequency floor is a filter for generic phrases: "maybe" fits a thousand situations and clears the floor easily. "Carbon dioxide" is the correct answer to exactly one question in the world, so it barely scrapes in — and "my name is john" only survives because the scenario generator reused that name.</p>
+  </div>
+</section>
+
+<!-- ================= negative ================= -->
+<section id="negative">
+  <div class="prose">
+  <h2><span class="num">13</span>The negative result, stated mechanically</h2>
+
+  <p>The obvious hypothesis was: <em>the student's agreement with the teacher is poor because there isn't enough training data.</em> The training corpus was increased fivefold. Agreement got <strong>worse</strong>: 0.232 → 0.165.</p>
+
+  <p>Here is the mechanism, and it's the strongest thing in the project because it's a real explanation rather than a shrug:</p>
+
+  <ol>
+    <li>The vocabulary is built by <strong>frequency</strong>.</li>
+    <li>Concrete answers are <strong>long-tail by nature</strong> — each is correct for approximately one situation.</li>
+    <li>So concrete answers rarely clear the frequency floor, and generic filler always does.</li>
+    <li>Adding more teacher data adds mostly <em>more one-off concrete words</em>, each still below the floor — while the filler's counts keep climbing.</li>
+    <li>Therefore more data pushes the vocabulary <strong>further toward filler</strong>, and the student's ceiling drops.</li>
+  </ol>
+
+  <p>Measured: the 94-word vocabulary can represent only <strong>32.5%</strong> of the teacher's word choices, and <strong>49.1%</strong> of what it <em>can</em> represent is filler. Making the vocabulary eight times larger reaches only 57%.</p>
+
+  <div class="note warn">
+    <p class="t">The number that gets misread — have this answer ready</p>
+    <p>Teacher word agreement is <strong>0.056</strong>. It sounds catastrophic. It is a <em>ceiling artefact</em>: the student is choosing from a 94-word list that can express a third of what the teacher says, so exact word agreement is bounded low by construction, before the model does anything. This is precisely why the project stopped grading on word-matching and grades on <em>coverage-of-intent</em> — does the board give the person a way to say what they mean — where the student scores 0.761 against the teacher's 0.845.</p>
+  </div>
+
+  <h3>What was done about it</h3>
+  <p>Not "make the list bigger" — that was measured and ruled out. The fix is architectural: <code>answers.py</code> extracts concrete answer spans <em>from the context itself</em>, so "aunt" can reach the board without ever having been in the vocabulary. Slot budgets are set per question type, because extraction confidence isn't uniform — an alternative question ("the window seat or the aisle seat?") states its own answers, while a <em>wh</em>-question's spans are inferred from the scene and are speculative.</p>
+
+  <div class="note warn">
+    <p class="t">Do not overstate this</p>
+    <p>The open path fires on <strong>2 of 84</strong> held-out rows. Its effect on the aggregate gates is statistical noise. The defensible claim is <em>"the mechanism works on the probes and no gate regressed."</em> Not <em>"this improved our numbers."</em> It didn't measurably.</p>
+  </div>
+
+  <h3>The attempt that failed first, and is still in the source</h3>
+  <p><code>CONTEXT_UNION = False</code> is a flag over a disabled earlier approach: union single content words from the transcript and scene into the candidate pool. It failed for an instructive reason — single tokens lifted from the question have <em>inflated cosine to the query vector</em>, because the query is 70% that same question. Lexical self-overlap made question-echo nouns like "budget" and "doorway" outrank real answers. The ablation is stark: disabling it recovered dynamic coverage from 0.563 to 0.803.</p>
+  <p>The current open-answer path fixes both defects — it emits multi-word spans, and it <em>never scores candidates against the query vector</em>, ranking them against an answer-type prototype instead. Keeping the failed flag in the source so the ablation stays runnable is good practice; say so if anyone asks.</p>
+  </div>
+</section>
+
+<hr class="soft">
+
+<!-- ================= metrics ================= -->
+<section id="metrics">
+  <div class="prose">
+  <h2><span class="num">14</span>The metrics, and which ones are load-bearing</h2>
+
+  <div class="scroll"><table>
+    <thead><tr><th>Metric</th><th>What it asks</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td><strong>coverage-of-intent</strong> (dynamic)</td><td>Do the 6 model-chosen slots give the user a way to express their actual intent?</td><td>The real bar</td></tr>
+      <tr><td><strong>distinct-functions@7</strong></td><td>How many different kinds of move does the board offer?</td><td>Gated</td></tr>
+      <tr><td><strong>near-duplicate rate</strong></td><td>Fraction of board pairs at cosine ≥ 0.85</td><td>Gated</td></tr>
+      <tr><td><strong>same-function-pair rate</strong></td><td>Fraction of pairs sharing a function — stacking</td><td class="fail">Gated · fails</td></tr>
+      <tr><td><strong>board-variety</strong></td><td>Distinct boards across the held-out set — a degeneracy guard</td><td>Gated</td></tr>
+      <tr><td><strong>dynamic_overlap</strong></td><td>Exact word agreement with the teacher</td><td>Report-only</td></tr>
+    </tbody>
+  </table></div>
+
+  <p>Two things about this table are worth defending out loud.</p>
+
+  <p><strong>Board-variety is an anti-gaming metric.</strong> A model that outputs the same seven excellent words for every situation would score brilliantly on function diversity and near-duplicates. Board-variety catches it: 77 distinct boards out of 84 held-out rows, 0.917. Very few projects instrument against their own metric being gamed by a degenerate solution, and this one does.</p>
+
+  <p><strong>Same-function-pair still fails and hasn't been softened.</strong> 0.1865 against the teacher's 0.1684, where the bar is "no worse than the teacher" and lower is better. It's survived three review rounds as a failure. Keep it that way — a project whose entire differentiator is measured honesty cannot round away its one failing gate.</p>
+
+  <h3>The significance machinery you already have</h3>
+  <p><code>coverage_metrics.py</code> ships a bootstrap confidence interval over paired deltas (10,000 resamples) and a McNemar test over paired coverage flips. If a reviewer asks whether your 4.68-vs-3.88 gap is significant, you have the tooling to answer — make sure the paper actually reports the interval rather than the point estimate.</p>
+  </div>
+</section>
+
+<!-- ================= judge ================= -->
+<section id="judge">
+  <div class="prose">
+  <h2><span class="num">15</span>What the evaluation does and doesn't prove</h2>
+
+  <p>Be precise about this, because it's the first thing a good reviewer will press on.</p>
+
+  <p>The scenarios are <strong>generated</strong>. The judge is an <strong>LLM</strong>, labelled <code>PROXY</code> in the source with a hook for human comparison that hasn't been exercised. The teacher is <strong>also an LLM</strong>. So the chain is: a language model judging whether a small model imitated a language model on situations a language model invented.</p>
+
+  <p>The repo's own honesty note says it best — <em>"a student that passes here may be imitating the teacher imitating GPT."</em></p>
+
+  <p>What the evaluation <em>does</em> establish is narrower but genuine, and you should state exactly this much:</p>
+  <ul>
+    <li>Two selection policies were compared <strong>on identical inputs with an identical measuring instrument</strong>, and one dominated on every axis. That comparison is internally valid regardless of whether the scenarios are realistic.</li>
+    <li>The latency numbers are real measurements of real code.</li>
+    <li>The vocabulary-ceiling analysis is a property of the <em>data</em>, not of a judge's opinion — it would hold if the judge were replaced tomorrow.</li>
+  </ul>
+
+  <p>What it does <strong>not</strong> establish is that any of this helps a real AAC user. There are zero human subjects, by self-imposed policy, because the wearable captures bystanders who haven't consented. Say that plainly and it reads as rigour. Let a reviewer discover it and it reads as concealment.</p>
+  </div>
+</section>
+
+<hr class="soft">
+
+<!-- ================= openvino ================= -->
+<section id="ovino">
+  <div class="prose">
+  <h2><span class="num">16</span>ONNX → IR → INT8, and the one real finding in it</h2>
+
+  <p>Three formats, three steps.</p>
+
+  <p><strong>ONNX</strong> is a portable description of a network's computation graph — a neutral interchange format. <strong>OpenVINO IR</strong> is Intel's own runtime format, produced from the ONNX. Conversion parity is measured at <code>1.4 × 10⁻⁶</code>, which means the IR computes the same numbers as PyTorch to within floating-point noise. That's a check most people skip.</p>
+
+  <p><strong>INT8 quantization</strong> stores weights as 8-bit integers instead of 32-bit floats — a quarter of the bits. On disk: 661 KB → 235 KB, 2.7× smaller. But the numbers get coarser, so you have to prove the outputs didn't shift.</p>
+
+  <h3>Calibration on real data</h3>
+  <p>Quantization needs to know the realistic range of values flowing through each layer, which it learns from a calibration set. This project calibrates on <strong>360 real 769-d feature vectors</strong> produced by the exact same <code>row_features</code> function used at training and inference — not random noise, which is the lazy default and gives you wrong ranges.</p>
+
+  <h3>The finding worth writing up</h3>
+  <div class="note">
+    <p class="t">Last-layer exclusion, measured</p>
+    <p>Quantizing the <em>final vocabulary projection</em> collapsed top-6 overlap with FP32 to <strong>0.73</strong>. Excluding just that one MatMul — standard last-layer exclusion — restored it to <strong>0.950</strong>, while the rest of the network stayed INT8. The exclusion is found by walking backwards from the Result node rather than by hardcoding a name, because torch's ONNX node naming isn't stable across versions.</p>
+  </div>
+
+  <p>Why it happens: that layer's outputs are logits whose <em>relative ordering</em> is the entire product. Everything downstream is a top-<em>k</em>. Quantization error that would be invisible in a hidden layer directly reshuffles the ranking here.</p>
+
+  <p>And the gate is honest in a way most aren't:</p>
+  <pre><code>ok = mean_topk_overlap >= 0.8  AND  min_topk_overlap >= 0.5</code></pre>
+  <p>The mean alone would average away a single scenario silently losing a third of its board. Gating the worst case too is the right call.</p>
+
+  <h3>The staleness guard</h3>
+  <p>Every artifact carries a <code>vocab_sha</code> sidecar — an order-sensitive hash of the vocabulary list. The student's outputs are <em>positional</em>: index 37 means whatever word is 37th. Retrain with a slightly different vocabulary and a stale IR file will happily serve confident, completely wrong words with no error. The hash makes that fail loudly at load. This is a genuinely good piece of engineering and it's the kind of detail that reads as maturity in a paper.</p>
+  </div>
+</section>
+
+<!-- ================= bottleneck ================= -->
+<section id="bottleneck">
+  <div class="prose">
+  <h2><span class="num">17</span>The thing I'd want you to notice about your own latency</h2>
+
+  <p>Put the two latency measurements side by side:</p>
+
+  <div class="scroll"><table>
+    <thead><tr><th>Measurement</th><th class="n">Value</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>Student MLP forward pass, torch CPU</td><td class="n">0.015 ms</td><td>BENCHMARKS.md</td></tr>
+      <tr><td>Student MLP forward pass, OpenVINO FP32</td><td class="n">0.025 ms</td><td>BENCHMARKS.md</td></tr>
+      <tr><td>Student MLP forward pass, OpenVINO INT8</td><td class="n">0.031 ms</td><td>BENCHMARKS.md</td></tr>
+      <tr><td><strong>End-to-end board</strong></td><td class="n">47.081 ms</td><td>phase4_results.json</td></tr>
+    </tbody>
+  </table></div>
+
+  <p>The MLP is <strong>roughly 0.06% of the board</strong>. Whatever the other ~47 milliseconds are, they are not the model you distilled and quantized.</p>
+
+  <p>Reading the code path, the remainder is almost certainly dominated by <code>embed()</code> — MiniLM encoding the ~18–24 pool candidates, plus the query, plus any newly extracted answer spans — followed by the taxonomy classification and the numpy MMR. MiniLM is a real transformer; the student is five layers of arithmetic.</p>
+
+  <div class="note warn">
+    <p class="t">This is inference from the code, not a profile — verify it</p>
+    <p>I have not measured this. Before it goes in a paper or a competition entry, profile <code>student_dynamic_words</code> with the embed calls timed separately. If it holds, three things follow.</p>
+  </div>
+
+  <p><strong>One.</strong> INT8-quantizing the student cannot meaningfully improve board latency, and on ARM it's currently <em>slower</em> than FP32 (0.031 vs 0.025 ms). The quantization work is a legitimate demonstration of the OpenVINO lifecycle and a real size reduction — but don't let a sentence imply it made boards faster.</p>
+
+  <p><strong>Two.</strong> Your actual Intel lever is <strong>MiniLM</strong>, and you already exported it — <code>intel/artifacts/minilm-ov/</code> exists with tokenizer and detokenizer. It does not appear to be wired into the board path. Routing embeddings through OpenVINO would attack the part of the latency that's actually there, and it would strengthen the Intel-technologies story far more than the student quantization does.</p>
+
+  <p><strong>Three.</strong> There's a cheaper win available first: the taxonomy exemplars and the 94-word vocabulary are re-embedded on paths where they could be cached once. Worth checking before you optimise anything else.</p>
+
+  <p>The other Intel result already in hand is the strongest one and gets undersold: <code>whisper-base.en</code> INT8 through OpenVINO transcribes in <strong>0.35 s</strong> against <strong>0.42 s</strong> for faster-whisper. That's a 70 ms saving on a component that <em>is</em> on the critical path, unlike the 6 microseconds saved elsewhere.</p>
+  </div>
+</section>
+
+<!-- ================= defend ================= -->
+<section id="defend">
+  <div class="prose">
+  <h2><span class="num">18</span>Nine sentences you should be able to say without notes</h2>
+
+  <ol>
+    <li><strong>"Every model call in the system goes through one function with a fixed signature."</strong> That's why the backend swaps with a config flag, and why the latency numbers attribute to one replaceable component.</li>
+    <li><strong>"We over-generate and then select, and the selection is not learned."</strong> The generator is swappable; the selection policy is identical on every path.</li>
+    <li><strong>"Ranking by likelihood is wrong when the user gets one slate and can't recover."</strong> That's the thesis. MMR is the implementation, not the idea.</li>
+    <li><strong>"Diversity beat top-k on top-k's own metric."</strong> Exact match 0.567 vs 0.342. Spreading the board bought accuracy rather than costing it.</li>
+    <li><strong>"We distilled the generator and kept the selector symbolic, because the student couldn't learn set structure but could learn pointwise relevance."</strong></li>
+    <li><strong>"Five-times the data made agreement worse, and we know exactly why."</strong> Frequency-built vocabulary + long-tail answers = more data drifts the vocabulary toward filler. 32.5% representable, 49.1% of that filler.</li>
+    <li><strong>"Word agreement of 5.6% is a ceiling artefact, which is why we grade coverage-of-intent instead."</strong></li>
+    <li><strong>"One gate still fails and we report it."</strong> Same-function-pair 0.1865 vs 0.1684, through three review rounds.</li>
+    <li><strong>"Everything is synthetic, there are no human subjects, and every number is from Apple silicon."</strong> Say it before anyone asks.</li>
+  </ol>
+
+  <div class="note">
+    <p class="t">The two open items this read surfaced</p>
+    <p>Profile where the 47 ms actually goes, and check whether the exported MiniLM IR can be routed into the board path. Both feed the paper and the Intel submission at once.</p>
+  </div>
+  </div>
+</section>
+
+<footer>
+  <p>Read from source on branch <code>phase4-distillation</code>, 2026-08-21: <code>rank_vocabulary.py</code>, <code>selection.py</code>, <code>evaluation/phase4/{student,train,data,infer}.py</code>, <code>evaluation/phase3/taxonomy.py</code>, <code>evaluation/coverage_metrics.py</code>, <code>intel/quantize.py</code>. Every number here traces to a file in the repo. The latency-breakdown claim in §17 is the one inference not backed by a measurement, and is marked as such.</p>
+</footer>
+
+</main>
+</div>
+</div>
