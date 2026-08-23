@@ -67,6 +67,13 @@ TAP_LOG_PATH = Path(__file__).parent / "taps.jsonl"
 PHASE_STATUS_PATH = Path(__file__).parent.parent / "phase_status.json"
 MAX_REMEMBERED_BOARDS = 200
 
+# Core taps that ask to HOLD the conversation rather than answer it. Tapping
+# these must not clear the active question -- see _record_tap.
+_QUESTION_HOLDING_TAPS = {"wait", "i need help"}
+
+# How long to wait on a single client's send before treating it as dead.
+WS_SEND_TIMEOUT_S = 5.0
+
 # Trigger-driven push: fire on (scene_changed OR addressed), debounced.
 TRIGGER_POLL_S = 0.5        # how often we check for a trigger condition
 TRIGGER_DEBOUNCE_S = 2.0    # minimum gap between consecutive pushes
@@ -238,10 +245,20 @@ async def _run_console_payload(state: dict, payload: dict, image_bytes: bytes | 
         else state.get("board_strategy", "diverse")
     topics = topics_from_context(scene, transcript, context)
     start = time.perf_counter()
-    board = await asyncio.to_thread(
-        rank_vocabulary, scene, transcript, context, capture_ranker,
-        strategy=strategy, topics=topics,
-    )
+    # Same model instance the push loops use — take the lock. A console "Fire"
+    # during a live generation would otherwise be a third concurrent caller.
+    lock = state.get("inference_lock")
+    if lock is None:
+        board = await asyncio.to_thread(
+            rank_vocabulary, scene, transcript, context, capture_ranker,
+            strategy=strategy, topics=topics,
+        )
+    else:
+        async with lock:
+            board = await asyncio.to_thread(
+                rank_vocabulary, scene, transcript, context, capture_ranker,
+                strategy=strategy, topics=topics,
+            )
     total_ms = (time.perf_counter() - start) * 1000
     pool_ms = capture_ranker.elapsed_ms
 
@@ -313,12 +330,23 @@ def _record_tap(app: web.Application, msg: dict, peer: str) -> None:
         "board_items": board_record.get("items"),
         "peer": peer,
     }
-    with TAP_LOG_PATH.open("a") as f:
-        f.write(json.dumps(entry) + "\n")
+    try:
+        with TAP_LOG_PATH.open("a") as f:
+            f.write(json.dumps(entry) + "\n")
+    except OSError as exc:
+        # The word was already spoken client-side, so losing the log row is the
+        # graceful outcome. Letting this escape would tear down the WebSocket on
+        # every tap and churn the connection instead.
+        print(f"[tap] WARNING could not write tap log: {exc}")
 
-    # The user just answered, so drop the held question and let the board move on.
+    # Most taps answer the held question, so the board should move on. But two
+    # of the core words are not answers: "wait" means "give me time" and
+    # "I need help" is a call for support. An AAC user taps those precisely
+    # BECAUSE they need the moment held — clearing the question on them drops
+    # the answer vocabulary they were composing with and regenerates the board
+    # from ambient chatter. The tap meant to hold the moment destroyed it.
     ctx = app["state"].get("context")
-    if ctx is not None:
+    if ctx is not None and str(word or "").strip().lower() not in _QUESTION_HOLDING_TAPS:
         ctx.clear_active_question()
 
 
@@ -461,9 +489,16 @@ async def privacy_pause_handler(request: web.Request) -> web.Response:
 
 
 async def _produce_and_broadcast(app: web.Application) -> None:
-    board, produced_from = await _make_board(app)
-
     state = app["state"]
+
+    # Claim the slot BEFORE generating, not after. A warm diverse board takes
+    # ~30s; if last_push_ts only moved on completion, the heartbeat loop would
+    # wake mid-generation, still see a stale timestamp, and start a second
+    # generation on the same model.
+    async with state["inference_lock"]:
+        state["last_push_ts"] = time.time()
+        board, produced_from = await _make_board(app)
+
     boards = state["boards"]
     boards[board["board_id"]] = {"items": board["items"], "produced_from": produced_from}
     while len(boards) > MAX_REMEMBERED_BOARDS:
@@ -472,15 +507,23 @@ async def _produce_and_broadcast(app: web.Application) -> None:
     state["latest_board"] = board
     payload = json.dumps(board)
 
-    dead = []
-    for ws in list(state["clients"]):
+    # Send to every client concurrently, with a timeout. Sequential awaits meant
+    # one iPad that slept with a full TCP buffer froze the board for everyone
+    # until aiohttp's 30s heartbeat finally reaped it.
+    async def _send(ws) -> bool:
         try:
-            await ws.send_str(payload)
-        except (ConnectionResetError, RuntimeError):
-            dead.append(ws)
-    for ws in dead:
-        state["clients"].discard(ws)
+            await asyncio.wait_for(ws.send_str(payload), timeout=WS_SEND_TIMEOUT_S)
+            return True
+        except (ConnectionResetError, RuntimeError, asyncio.TimeoutError):
+            return False
 
+    targets = list(state["clients"])
+    results = await asyncio.gather(*(_send(ws) for ws in targets))
+    for ws, ok in zip(targets, results):
+        if not ok:
+            state["clients"].discard(ws)
+
+    state["last_push_ts"] = time.time()
     print(f"[push] vocab_update board={board['board_id'][:8]} "
           f"items={len(board['items'])} -> {len(state['clients'])} client(s)")
 
@@ -509,9 +552,8 @@ async def trigger_loop(app: web.Application) -> None:
                 sig != state["last_trigger_sig"]
                 and now - state["last_push_ts"] >= TRIGGER_DEBOUNCE_S
             ):
-                await _produce_and_broadcast(app)
                 state["last_trigger_sig"] = sig
-                state["last_push_ts"] = now
+                await _produce_and_broadcast(app)
         except Exception as exc:
             print(f"[trigger_loop] error: {exc}")
 
@@ -528,7 +570,6 @@ async def heartbeat_loop(app: web.Application) -> None:
         try:
             if time.time() - state["last_push_ts"] >= HEARTBEAT_INTERVAL_S:
                 await _produce_and_broadcast(app)
-                state["last_push_ts"] = time.time()
         except Exception as exc:
             print(f"[heartbeat_loop] error: {exc}")
 
@@ -545,13 +586,19 @@ def _lan_ip() -> str:
 
 
 async def _warm_up_ranker(app: web.Application) -> None:
-    """Pay the model's one-time kernel-compile cost at STARTUP, not on the first
-    user click.
+    """Pay the serving path's one-time cost at STARTUP, not on the first click.
 
-    The first real diverse generation compiles MLX/Metal kernels for a full
-    ~520-token run (~110s cold). We force that here with a representative prompt
-    and discard the board, so the first board the user fires comes back at the
-    warm latency (~30s) instead of the cold one. Never blocks on failure — a
+    Warms whatever board_strategy actually serves, which matters because the
+    cost differs by three orders of magnitude:
+
+      "student" (default) — loads MiniLM + the checkpoint. A few seconds.
+      "diverse"           — compiles MLX/Metal kernels for a ~520-token
+                            generation. ~110s cold, and the board then costs
+                            ~30s every time.
+
+    This runs BEFORE the socket binds, so it is also how long the board page
+    shows "connecting". That was a two-minute wall when the LLM path was the
+    default; on the student path it is seconds. Never blocks on failure — a
     HeuristicRanker warm-up is instant and harmless.
     """
     warm_context = {
@@ -595,6 +642,9 @@ async def on_startup(app: web.Application) -> None:
         strategy if strategy in ("diverse", "topk", "student") else "diverse")
     print(f"[server] board strategy: {app['state']['board_strategy']}")
 
+    # Bind the seam lock to the running loop before anything can call the seam.
+    app["state"]["inference_lock"] = asyncio.Lock()
+
     # Perception: shared context state + concurrent workers
     app["state"]["context"] = ContextState()
     if perception_config.PERCEPTION_ENABLED:
@@ -612,7 +662,6 @@ async def on_startup(app: web.Application) -> None:
     # Push an initial board now so a client connecting before any trigger fires
     # sees words immediately, not a blank strip for up to HEARTBEAT_INTERVAL_S.
     await _produce_and_broadcast(app)
-    app["state"]["last_push_ts"] = time.time()
 
     ip = _lan_ip()
     print("=" * 64)
@@ -653,6 +702,11 @@ def make_app() -> web.Application:
         "transcriber": None,          # lazy whisper for the console audio route
         "last_trigger_sig": None,
         "last_push_ts": 0.0,
+        # Serializes every seam call. One MLX model instance is shared by the
+        # trigger loop, the heartbeat loop and the console; concurrent
+        # generate() calls on it are not safe. Created lazily in on_startup so
+        # it binds to the running loop.
+        "inference_lock": None,
         "trigger_task": None,
         "heartbeat_task": None,
         "phase_status_path": PHASE_STATUS_PATH,

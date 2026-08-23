@@ -28,14 +28,17 @@ build/
 mac/evaluation/preds-*.jsonl
 
 # OpenVINO artifacts — large/regenerable (minilm, whisper, accuracy json) ignored;
-# only the small student IRs are committed (negations below beat the *.bin rule above)
+# only the small student IRs are committed (negations below beat the *.bin rule
+# above). The .vocab.sha sidecars MUST ship with the IRs — the loader refuses to
+# serve an IR whose vocab it cannot verify, so an IR without its sidecar is dead
+# weight in git.
 mac/intel/artifacts/*
 !mac/intel/artifacts/student_fp32.xml
 !mac/intel/artifacts/student_fp32.bin
 !mac/intel/artifacts/student_int8.xml
 !mac/intel/artifacts/student_int8.bin
+!mac/intel/artifacts/*.vocab.sha
 .codex/
-phase_status.json
 AGENTS.md
 PLAN.md
 !mac/intel/artifacts/e2e_*.json
@@ -45,3 +48,10 @@ PLAN.md
 !mac/intel/artifacts/phase4_results_*.json
 !mac/intel/artifacts/*.log
 !mac/intel/artifacts/*_error.txt
+
+# Bi-encoder quantization sweep outputs (regenerable by intel/biencoder_pareto.py;
+# PARETO.md is copied into the docs when it is worth keeping)
+mac/intel/artifacts/biencoder/
+
+# Isolated export toolchain (optimum-intel pins transformers<5.1; see mac/intel/README.md)
+.venv-export/

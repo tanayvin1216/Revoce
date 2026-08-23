@@ -111,3 +111,56 @@ def test_seam_serves_student_board_on_openvino_backend(monkeypatch):
     assert set(w.lower() for w in core) <= set(words)
     # leave no OpenVINO student cached for other tests
     monkeypatch.setattr(rank_vocabulary, "_student_singleton", None)
+
+
+# --- OpenVINO Whisper ------------------------------------------------------
+
+WHISPER_OV = Path(__file__).resolve().parent.parent / "intel" / "artifacts" / "whisper-base.en-ov-int8"
+
+
+def test_make_transcriber_routes_openvino_without_mock_fallback(monkeypatch):
+    """Selecting the Intel backend must never silently hand back scripted text.
+
+    faster-whisper degrades to MockTranscriber on failure, which is right for a
+    demo but wrong here: quietly returning canned transcripts from the setting
+    that exists to demonstrate OpenVINO would misrepresent the whole thing.
+    """
+    from perception import config as pcfg
+    from perception.transcriber import MockTranscriber, make_transcriber
+
+    monkeypatch.setattr(pcfg, "TRANSCRIBER", "openvino")
+    monkeypatch.setattr(pcfg, "WHISPER_OV_DIR", str(Path("/nonexistent/ir")))
+
+    with pytest.raises((FileNotFoundError, RuntimeError)):
+        tr = make_transcriber(pcfg)
+        assert not isinstance(tr, MockTranscriber)
+
+
+def test_openvino_whisper_transcribes_when_the_ir_is_present():
+    if not (WHISPER_OV / "openvino_encoder_model.xml").exists():
+        pytest.skip("whisper OpenVINO IR not exported in this checkout")
+    from perception.transcriber import OpenVinoWhisperTranscriber
+    try:
+        tr = OpenVinoWhisperTranscriber(WHISPER_OV)
+    except RuntimeError as exc:
+        pytest.skip(f"no working OpenVINO whisper runtime here: {exc}")
+
+    import numpy as np
+    res = tr.transcribe(np.zeros(16000, dtype=np.float32), 16000)
+
+    assert isinstance(res.text, str)
+    assert tr.runtime in (tr.RUNTIME_GENAI, tr.RUNTIME_OPTIMUM)
+
+
+def test_openvino_whisper_rejects_a_wrong_sample_rate():
+    if not (WHISPER_OV / "openvino_encoder_model.xml").exists():
+        pytest.skip("whisper OpenVINO IR not exported in this checkout")
+    from perception.transcriber import OpenVinoWhisperTranscriber
+    try:
+        tr = OpenVinoWhisperTranscriber(WHISPER_OV)
+    except RuntimeError as exc:
+        pytest.skip(f"no working OpenVINO whisper runtime here: {exc}")
+
+    import numpy as np
+    with pytest.raises(ValueError, match="16 kHz"):
+        tr.transcribe(np.zeros(8000, dtype=np.float32), 8000)

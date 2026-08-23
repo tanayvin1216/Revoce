@@ -169,7 +169,27 @@ def test_regression_mode_collapsed_pool_is_rescued_by_pinned_core(fast_embed):
         assert core.lower() in _words(board)
 
 
-# --- topk fallback still works (signature default unchanged) -----------------
+class LegacyBoomRanker:
+    """A ranker with the OLD two-arg signature whose model is also down.
+
+    This is the combination that used to break the never-raises contract: the
+    first call raised TypeError (no max_tokens kwarg), which was read as a
+    signature mismatch, and the retry raised RuntimeError out of the handler.
+    """
+
+    def rank(self, system_prompt, user_prompt):
+        raise RuntimeError("model is down")
+
+
+def test_seam_survives_a_legacy_ranker_whose_model_is_down(fast_embed):
+    board = rank_vocabulary("scene", "talk", {}, LegacyBoomRanker(), strategy="diverse")
+
+    assert len(board) == BOARD_SIZE
+    for core in GUARANTEED_CORE:
+        assert core.lower() in _words(board)
+
+
+# --- topk baseline still works, and is still explicitly opt-in ---------------
 
 def test_topk_strategy_still_returns_a_usable_board(fast_embed):
     items = [
@@ -180,6 +200,26 @@ def test_topk_strategy_still_returns_a_usable_board(fast_embed):
     ]
     board = rank_vocabulary("scene", "talk", {}, FakeRanker(items), strategy="topk")
     assert len(board) >= 4
+
+
+def test_default_strategy_pins_the_safety_core(fast_embed):
+    """The seam's DEFAULT must guarantee the safety words.
+
+    topk returns whatever the model ranked highest and pins nothing — that is
+    correct for a research baseline and wrong for a default, because any caller
+    using the documented signature would silently get boards an AAC user cannot
+    escape. This asserts the default is a core-pinning strategy; it fails if the
+    signature default is ever moved back to topk.
+    """
+    # A pool with no safety words at all. topk would hand these straight back.
+    unsafe = [
+        {"word": f"I want the thing number {i}", "function": "request", "topic": "stuff"}
+        for i in range(12)
+    ]
+    board = rank_vocabulary("a room", "chatter", {}, FakeRanker(unsafe))  # no strategy=
+
+    for core in GUARANTEED_CORE:
+        assert core.lower() in _words(board), f"default strategy dropped {core!r}"
 
 
 # --- topics_from_context: pure, model-free helper ---------------------------

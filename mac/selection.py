@@ -66,19 +66,29 @@ def mmr_select(
     k: int,
     lam: float = DEFAULT_LAMBDA,
     functions: list[str] | None = None,
+    rel: np.ndarray | None = None,
 ) -> list[int]:
     """Return indices of the k MMR-selected candidates, best-first.
 
     cand_vecs : (N, 384) normalized candidate embeddings.
     query_vec : (384,) normalized query, or zeros (then relevance is uniform).
     functions : optional per-candidate communication-function tag for tie-break.
+    rel       : optional (N,) relevance override, already scaled to [0, 1]. When
+                given, it replaces cosine-to-query as the relevance term. The v3
+                bi-encoder uses this to feed its OWN learned scores into MMR
+                instead of having them discarded after the pool cut; leaving it
+                None preserves the v2 behaviour exactly.
     """
     n = cand_vecs.shape[0]
     if n == 0:
         return []
     k = min(k, n)
 
-    if query_vec is not None and np.linalg.norm(query_vec) > 0:
+    if rel is not None:
+        rel = np.clip(np.asarray(rel, dtype=np.float32), 0.0, 1.0)
+        if rel.shape[0] != n:
+            raise ValueError(f"rel has {rel.shape[0]} entries, expected {n}")
+    elif query_vec is not None and np.linalg.norm(query_vec) > 0:
         rel = cand_vecs @ query_vec            # cosine to situation
         rel = np.clip(rel, 0.0, 1.0)
     else:

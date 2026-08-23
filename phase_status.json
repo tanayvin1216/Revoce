@@ -1,0 +1,47 @@
+{
+  "updated_ts": "2026-07-22",
+  "phases": [
+    {
+      "id": 0,
+      "name": "Setup & guardrails",
+      "status": "pending",
+      "note": "Repo is runnable from a clean clone as of the README/requirements/CI work; consent + pseudonym handling still outstanding before any non-team testing."
+    },
+    {
+      "id": 1,
+      "name": "Diverse board + eval pipeline",
+      "status": "green",
+      "note": "120-turn scored run. Diverse boards span the space; see mac/evaluation/phase1/PHASE1_REPORT.md."
+    },
+    {
+      "id": 2,
+      "name": "Console + device simulator",
+      "status": "pending",
+      "note": "Console serves boards and runs the VLM on a dropped image. /api/console/transcribe exists; the record button is markup only \u2014 MediaRecorder not wired."
+    },
+    {
+      "id": 3,
+      "name": "Self-test harness + metric reframe",
+      "status": "green",
+      "note": "120 scenarios, one command, JSONL + plots. Caught a real taxonomy bug."
+    },
+    {
+      "id": 4,
+      "name": "Knowledge distillation",
+      "status": "green",
+      "note": "Corpus regenerated (600 boards) and committed. v2 retrained and reproducible. v3 open-vocabulary bi-encoder added: wins the diversity gates under 5-fold CV (distinct-functions +0.69 [+0.61,+0.76], same-function-pair +0.021 [+0.013,+0.029]) but its coverage margin is -0.0397, so v2 stays the default. Gates now carry bootstrap CIs and report INCONCLUSIVE where they cannot resolve."
+    },
+    {
+      "id": 5,
+      "name": "Intel / OpenVINO readiness",
+      "status": "green",
+      "note": "OpenVINO IRs rebuilt against the retrained student with .vocab.sha sidecars committed; VOICELINK_STUDENT_BACKEND=openvino verified to load and serve a board end-to-end. Per-tower INT8/INT4 quantization Pareto measured (int4/int4 = 197 KB, 5.5x smaller, 0.922 board overlap; INT4 beats INT8 on size, accuracy AND latency). Intel-hardware numbers still pending \u2014 all measurements are Apple Silicon via the ARM CPU plugin."
+    },
+    {
+      "id": 6,
+      "name": "Integration & demo",
+      "status": "pending",
+      "note": "End-to-end test added (real aiohttp server + WebSocket client + tap -> taps.jsonl); the server/transport layer had no coverage before. Default board strategy switched from the ~30s LLM path to the student (measured 18ms), so the board now keeps up with a conversation. Remaining: a real run against the ESP32 wearable, and the console record button is still markup-only."
+    }
+  ]
+}

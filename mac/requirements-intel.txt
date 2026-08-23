@@ -1,10 +1,24 @@
-# Intel/OpenVINO lifecycle deps (Phase 5, Track 3). Installed alongside
-# requirements.txt — the OpenVINO ARM CPU plugin runs on Apple Silicon for the
-# dev loop; the same IRs deploy unchanged on Intel hardware.
+# Intel/OpenVINO RUNTIME deps — install alongside requirements.txt.
+# The OpenVINO ARM CPU plugin runs on Apple Silicon for the dev loop; the same
+# IRs deploy unchanged on Intel hardware.
 openvino>=2025.2
 nncf>=2.14
-optimum[openvino]>=1.24
 
-# Whisper IR inference (openvino_genai.WhisperPipeline). NOTE: pass
-# INFERENCE_PRECISION_HINT="f32" on ARM — the f16 default breaks decoding.
+# Whisper IR inference. openvino-genai is the runtime we want — no transformers
+# dependency at all — but it currently cannot serve our Whisper export (it looks
+# for a `cache_position` port optimum-intel does not emit; see BENCHMARKS.md).
+# OpenVinoWhisperTranscriber tries it, proves it can actually generate, and falls
+# back to optimum-intel, so this starts working by itself once versions line up.
+# NOTE: pass INFERENCE_PRECISION_HINT="f32" on ARM — the f16 default breaks decoding.
 openvino-genai>=2025.2
+
+# NOT LISTED HERE ON PURPOSE: optimum-intel.
+#
+# It pins transformers<5.1 while mlx-vlm needs >=5.5, so installing it into the
+# same venv as the Mac LLM/VLM path breaks that path. Exports run in a separate
+# venv (see mac/intel/README.md). On the Intel deployment target — where mlx does
+# not exist at all — you DO want it in the runtime environment:
+#
+#     pip install "optimum-intel[openvino]"
+#
+# That is what serves the Whisper IR today.

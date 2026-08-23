@@ -91,6 +91,59 @@ def dynamic_words(board: list[str], core_words: list[str],
     return [w for w in board[:k] if w.lower() not in core_lower]
 
 
+def _margin_ci(student: list[float], teacher: list[float],
+               factor: float = 1.0, higher_is_better: bool = True) -> dict:
+    """Bootstrap CI on the PAIRED margin by which a relative gate is met.
+
+    The phase-4 gates are all of the form "student >= factor * teacher" (or
+    "student <= teacher" for same-function-pair). Reporting only the point
+    estimate is how a gate gets called PASS on a margin of a quarter of one
+    scenario — which is exactly what v3's coverage did. This computes the
+    per-scenario margin and its 95% CI, so a pass whose interval straddles zero
+    is reported as INCONCLUSIVE rather than as a pass.
+
+    Returns margin (mean), ci_low, ci_high, and a verdict.
+    """
+    from evaluation.coverage_metrics import bootstrap_ci
+
+    if not student or not teacher or len(student) != len(teacher):
+        return {"margin": None, "ci": None, "verdict": "not-scored"}
+
+    if higher_is_better:
+        deltas = [s - factor * t for s, t in zip(student, teacher)]
+    else:                                  # e.g. sfp: teacher - student >= 0
+        deltas = [factor * t - s for s, t in zip(student, teacher)]
+
+    lo, hi = bootstrap_ci(deltas)
+    mean = float(np.mean(deltas))
+    if lo > 0:
+        verdict = "PASS"                   # reliably on the right side
+    elif hi < 0:
+        verdict = "FAIL"                   # reliably on the wrong side
+    else:
+        verdict = "INCONCLUSIVE"           # point estimate is not evidence
+    return {"margin": round(mean, 4),
+            "ci": [round(lo, 4), round(hi, 4)],
+            "n": len(deltas),
+            "verdict": verdict}
+
+
+def _combine_verdict(margins: list[dict], absolutes_ok: bool) -> str:
+    """Overall verdict for a gate made of several paired comparisons.
+
+    A gate is only PASS when every paired margin is reliably on the right side
+    of zero AND the absolute sub-checks hold. One FAIL sinks it; otherwise a
+    single interval straddling zero makes the whole gate INCONCLUSIVE, because
+    we cannot honestly claim a gate we cannot resolve.
+    """
+    verdicts = [m.get("verdict") for m in margins]
+    if not absolutes_ok or "FAIL" in verdicts:
+        return "FAIL"
+    if "INCONCLUSIVE" in verdicts or "not-scored" in verdicts:
+        return "INCONCLUSIVE"
+    return "PASS"
+
+
 def _df_dup_sfp(board: list[str]) -> tuple[int, float, float]:
     """distinct-functions@7, near-dup rate, same-function-pair rate — one embed."""
     from evaluation.embed import embed
@@ -101,16 +154,22 @@ def _df_dup_sfp(board: list[str]) -> tuple[int, float, float]:
             metrics3.same_function_pair_rate(board, METRIC_K, board_vecs=vecs))
 
 
-def _held_out_rows() -> list[dict]:
-    """Test-split rows with fingerprint guard against stale partitions."""
+def _held_out_rows(splits_path: Path | None = None,
+                   split_key: str = "test") -> list[dict]:
+    """Held-out rows with fingerprint guard against stale partitions.
+
+    split_key exists so hyperparameters can be tuned on "val" and the final
+    number reported once on "test". Sweeping on the test split would make the
+    reported gate a training number.
+    """
     rows = train_mod.gather_rows()
-    splits = json.loads(d.SPLITS_PATH.read_text())
+    splits = json.loads(Path(splits_path or d.SPLITS_PATH).read_text())
     fp = splits.get("fingerprint")
     if fp and fp != d.rows_fingerprint(rows):
         raise SystemExit(
             "splits.json fingerprint mismatch — teacher data changed since training; "
             "retrain before evaluating (otherwise the held-out split is not held-out).")
-    return [rows[i] for i in splits.get("test", []) if i < len(rows)]
+    return [rows[i] for i in splits.get(split_key, []) if i < len(rows)]
 
 
 def _acceptable_moves_lookup() -> dict[tuple, list[str]]:
@@ -132,11 +191,24 @@ def _acceptable_moves_lookup() -> dict[tuple, list[str]]:
     return lookup
 
 
-def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
-    """(1) diversity retention + (2) agreement + (4) coverage-of-intent, held-out."""
+def held_out_eval(model, vocab, k, k_dyn, core_words,
+                  board_fn=None, splits_path: Path | None = None,
+                  split_key: str = "test") -> dict:
+    """(1) diversity retention + (2) agreement + (4) coverage-of-intent, held-out.
+
+    board_fn lets a DIFFERENT student be scored by exactly this gate code —
+    it takes (scene, transcript, is_question) and returns a board. The v3
+    bi-encoder uses it (see evaluate_biencoder.py). Reusing this function
+    rather than reimplementing the metrics is the whole point: if v3 is
+    compared to v2, it has to be the same ruler.
+    """
     core_lower = {w.lower() for w in core_words}
-    held = _held_out_rows()
+    held = _held_out_rows(splits_path, split_key)
     moves_by_ctx = _acceptable_moves_lookup()
+    if board_fn is None:
+        def board_fn(scene, transcript, is_q):
+            return student_board(model, vocab, scene, transcript, is_q,
+                                 k, k_dyn, core_words)
     s_df, s_dup, t_df, t_dup = [], [], [], []
     s_sfp, t_sfp = [], []
     full_overlaps: list[float] = []
@@ -149,8 +221,7 @@ def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
     dynamic_triples: set[frozenset] = set()
 
     for r in held:
-        sb = student_board(model, vocab, r["scene"], r["transcript"],
-                           r.get("is_question", False), k, k_dyn, core_words)
+        sb = board_fn(r["scene"], r["transcript"], r.get("is_question", False))
         moves = moves_by_ctx.get((r.get("scene", "").strip(), r.get("transcript", "").strip()))
         if moves:
             s_cov.append(1.0 if metrics3.coverage_of_intent(sb, moves, METRIC_K) else 0.0)
@@ -209,6 +280,16 @@ def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
     diversity_pass = bool(retention >= 0.90 and sdup_mean <= 0.08
                           and ssfp_mean <= sfp_bar
                           and variety >= BOARD_VARIETY_FLOOR)
+
+    df_margin = _margin_ci(s_df, t_df, factor=0.90)
+    sfp_margin = _margin_ci(s_sfp, t_sfp, higher_is_better=False)
+    cov_margin = _margin_ci(s_cov_dyn, t_cov_dyn, factor=DYNAMIC_COVERAGE_GATE)
+
+    # The absolute sub-checks (near-dup, board-variety) are not paired
+    # comparisons, so they have no interval; they can only veto.
+    absolutes_ok = bool(sdup_mean <= 0.08 and variety >= BOARD_VARIETY_FLOOR)
+    diversity_verdict = _combine_verdict([df_margin, sfp_margin], absolutes_ok)
+    coverage_verdict = _combine_verdict([cov_margin], True)
     return {
         "diversity_retention": {
             "n_heldout": n,
@@ -223,6 +304,12 @@ def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
             "board_variety": round(variety, 3),
             "dynamic_variety": round(dyn_variety, 3),
             "pass": diversity_pass,
+            # The authoritative verdict. "pass" is the legacy point-estimate
+            # boolean; "verdict" additionally requires the margin to survive
+            # resampling, so a gate we cannot resolve reads INCONCLUSIVE.
+            "verdict": diversity_verdict,
+            "distinct_functions_margin": df_margin,
+            "same_function_pair_margin": sfp_margin,
             "need": (f"HELD-OUT: distinct-fn >= 90% of teacher AND near-dup <= 0.08 "
                      f"AND same-function-pair <= teacher's ({round(sfp_bar, 4)}) "
                      f"AND board-variety >= {BOARD_VARIETY_FLOOR}"),
@@ -254,6 +341,8 @@ def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
             "pass": bool(s_cov_dyn and t_cov_dyn
                          and cov_dyn >= DYNAMIC_COVERAGE_GATE
                          * float(np.mean(t_cov_dyn))),
+            "verdict": coverage_verdict,
+            "margin": cov_margin,
             "need": (f"HELD-OUT: student DYNAMIC top-7 non-hedge coverage >= "
                      f"{DYNAMIC_COVERAGE_GATE:.0%} of the teacher's"),
         },
