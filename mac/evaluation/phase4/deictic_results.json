@@ -1,0 +1,2831 @@
+{
+  "overall": {
+    "n": 60,
+    "open_fire_rate": 0.8833,
+    "student_answer_hit": 0.8167,
+    "closed_answer_hit": 0.05
+  },
+  "by_question_type": {
+    "alternative": {
+      "n": 8,
+      "open_fire_rate": 1.0,
+      "student_answer_hit": 1.0,
+      "closed_answer_hit": 0.0
+    },
+    "colour": {
+      "n": 6,
+      "open_fire_rate": 0.8333,
+      "student_answer_hit": 0.8333,
+      "closed_answer_hit": 0.1667
+    },
+    "count": {
+      "n": 6,
+      "open_fire_rate": 0.0,
+      "student_answer_hit": 0.0,
+      "closed_answer_hit": 0.0
+    },
+    "where": {
+      "n": 16,
+      "open_fire_rate": 1.0,
+      "student_answer_hit": 0.875,
+      "closed_answer_hit": 0.0625
+    },
+    "which": {
+      "n": 12,
+      "open_fire_rate": 1.0,
+      "student_answer_hit": 0.8333,
+      "closed_answer_hit": 0.0
+    },
+    "who": {
+      "n": 12,
+      "open_fire_rate": 1.0,
+      "student_answer_hit": 1.0,
+      "closed_answer_hit": 0.0833
+    }
+  },
+  "by_category": {
+    "classroom": {
+      "n": 10,
+      "open_fire_rate": 0.9,
+      "student_answer_hit": 0.8,
+      "closed_answer_hit": 0.0
+    },
+    "clinic": {
+      "n": 10,
+      "open_fire_rate": 0.9,
+      "student_answer_hit": 0.9,
+      "closed_answer_hit": 0.1
+    },
+    "home": {
+      "n": 10,
+      "open_fire_rate": 0.9,
+      "student_answer_hit": 0.9,
+      "closed_answer_hit": 0.1
+    },
+    "playground": {
+      "n": 10,
+      "open_fire_rate": 0.9,
+      "student_answer_hit": 0.8,
+      "closed_answer_hit": 0.0
+    },
+    "store": {
+      "n": 10,
+      "open_fire_rate": 0.9,
+      "student_answer_hit": 0.8,
+      "closed_answer_hit": 0.0
+    },
+    "transport": {
+      "n": 10,
+      "open_fire_rate": 0.8,
+      "student_answer_hit": 0.7,
+      "closed_answer_hit": 0.1
+    }
+  },
+  "rows": [
+    {
+      "id": "deictic-0",
+      "category": "classroom",
+      "question_type": "where",
+      "transcript": "Morning! Where would you like to sit for story time?",
+      "expected_answers": [
+        "window",
+        "reading corner",
+        "beanbag",
+        "bookshelf"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "chair",
+        "desk",
+        "classroom",
+        "bookshelf",
+        "corner",
+        "window",
+        "beanbag",
+        "bright"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "chair",
+        "desk",
+        "bookshelf",
+        "i need to use the restroom.",
+        "corner",
+        "classroom"
+      ],
+      "student_hit": "bookshelf",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "yes, please",
+        "no, thanks.",
+        "can you repeat that?",
+        "i am ready",
+        "maybe"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-1",
+      "category": "classroom",
+      "question_type": "who",
+      "transcript": "Who do you want to be your partner for the science activity?",
+      "expected_answers": [
+        "maya",
+        "jonah",
+        "ms. patel",
+        "patel"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "group",
+        "table",
+        "maya",
+        "assistant",
+        "jonah",
+        "small",
+        "patel",
+        "left"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "group",
+        "table",
+        "assistant",
+        "jonah",
+        "maya",
+        "i am ready"
+      ],
+      "student_hit": "maya",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "sun",
+        "i need to think about it",
+        "i need to use the restroom.",
+        "i am ready",
+        "i don't know",
+        "no, thanks."
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-2",
+      "category": "classroom",
+      "question_type": "which",
+      "transcript": "Which one do you want to use first?",
+      "expected_answers": [
+        "red crayon",
+        "blue marker",
+        "green paintbrush",
+        "crayon",
+        "marker",
+        "paintbrush"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "blue",
+        "paper",
+        "table",
+        "green",
+        "front",
+        "paintbrush"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "blue",
+        "paper",
+        "paintbrush",
+        "no problem",
+        "table",
+        "i need to use the restroom."
+      ],
+      "student_hit": "paintbrush",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "no, thanks.",
+        "i don't mind",
+        "i need to use the restroom.",
+        "no problem",
+        "i don't know",
+        "i need to check my schedule"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-3",
+      "category": "classroom",
+      "question_type": "colour",
+      "transcript": "What colour folder do you want for your work?",
+      "expected_answers": [
+        "yellow",
+        "purple"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "purple",
+        "yellow",
+        "teacher",
+        "name",
+        "one",
+        "tag",
+        "folders",
+        "user's"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "purple",
+        "yellow",
+        "folders",
+        "no, thanks.",
+        "teacher",
+        "i am ready"
+      ],
+      "student_hit": "yellow",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "blue",
+        "no, thanks.",
+        "i need more information",
+        "i am ready",
+        "i don't mind",
+        "i need to take a break."
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-4",
+      "category": "classroom",
+      "question_type": "count",
+      "transcript": "How many pencils do you have on your desk?",
+      "expected_answers": [
+        "two",
+        "three"
+      ],
+      "open_fired": false,
+      "open_spans": [],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "more",
+        "i forgot",
+        "i need to use the restroom.",
+        "no, thanks.",
+        "i'm good",
+        "i need to think about it"
+      ],
+      "student_hit": null,
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "more",
+        "i forgot",
+        "i need to use the restroom.",
+        "no, thanks.",
+        "i'm good",
+        "i need to think about it"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-5",
+      "category": "classroom",
+      "question_type": "alternative",
+      "transcript": "Do you want to go to the library corner or the building blocks?",
+      "expected_answers": [
+        "library corner",
+        "building blocks",
+        "library",
+        "blocks"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "library corner",
+        "building blocks"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "library corner",
+        "building blocks",
+        "i don't mind",
+        "i need to use the restroom.",
+        "yes, please",
+        "i forgot"
+      ],
+      "student_hit": "library corner",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "yes, please",
+        "no, thanks.",
+        "i need more time",
+        "i forgot",
+        "i need to use the restroom.",
+        "i don't mind"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-6",
+      "category": "classroom",
+      "question_type": "where",
+      "transcript": "Where did you put your lunchbox, do you remember?",
+      "expected_answers": [
+        "shelf",
+        "cubbies",
+        "hook"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "shelf above",
+        "lunch",
+        "hallway",
+        "above the cubbies",
+        "line",
+        "hook",
+        "coat",
+        "user's"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "shelf above",
+        "lunch",
+        "i need to use the restroom.",
+        "i forgot",
+        "hallway",
+        "hook"
+      ],
+      "student_hit": "hook",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "i forgot",
+        "not now",
+        "i need to think about it",
+        "can you repeat that?",
+        "i don't know"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-7",
+      "category": "classroom",
+      "question_type": "who",
+      "transcript": "Who would you like to hand the puppet to next?",
+      "expected_answers": [
+        "leo",
+        "priya",
+        "mr. grant",
+        "grant"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "class",
+        "teacher",
+        "leo",
+        "priya",
+        "rug",
+        "front",
+        "grant"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "class",
+        "teacher",
+        "yes, please",
+        "leo",
+        "grant",
+        "rug"
+      ],
+      "student_hit": "leo",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "yes, please",
+        "i'm not ready",
+        "i need to think about it",
+        "can you repeat that?",
+        "maybe",
+        "i need to use the restroom."
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-8",
+      "category": "classroom",
+      "question_type": "which",
+      "transcript": "Which book should we read today, do you want to pick?",
+      "expected_answers": [
+        "dinosaur book",
+        "space book",
+        "dinosaur",
+        "space"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "teacher's laptop",
+        "dinosaur",
+        "space",
+        "smartboard",
+        "options"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "teacher's laptop",
+        "dinosaur",
+        "yes, please",
+        "i need to take a break.",
+        "options",
+        "i agree"
+      ],
+      "student_hit": "dinosaur",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to take a break.",
+        "yes, please",
+        "i agree",
+        "no, thanks.",
+        "can you repeat that?",
+        "i don't mind"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-9",
+      "category": "classroom",
+      "question_type": "where",
+      "transcript": "Where do you want to start your turn?",
+      "expected_answers": [
+        "trampoline",
+        "rope ladder",
+        "mats"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "floor",
+        "gym hall",
+        "trampoline",
+        "corner",
+        "row",
+        "wall",
+        "ladder",
+        "mats"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "floor",
+        "gym hall",
+        "corner",
+        "i need to use the restroom.",
+        "i'm good",
+        "yes, please"
+      ],
+      "student_hit": null,
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "i'm good",
+        "yes, please",
+        "stop",
+        "i need to check my schedule",
+        "i need to think about it"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-10",
+      "category": "home",
+      "question_type": "alternative",
+      "transcript": "Do you want cereal or toast for breakfast?",
+      "expected_answers": [
+        "cereal",
+        "toast"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "cereal",
+        "toast for breakfast"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "cereal",
+        "toast for breakfast",
+        "i am ready",
+        "i need to use the restroom.",
+        "not really",
+        "i'm good"
+      ],
+      "student_hit": "cereal",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i'm good",
+        "i am ready",
+        "i need to use the restroom.",
+        "not now",
+        "i need to think about it",
+        "no, thanks."
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-11",
+      "category": "home",
+      "question_type": "where",
+      "transcript": "Where would you like to sit to watch the film?",
+      "expected_answers": [
+        "sofa",
+        "armchair",
+        "cushion",
+        "floor"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "sofa",
+        "armchair",
+        "cushion",
+        "room",
+        "floor in front",
+        "lamp",
+        "dad"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "sofa",
+        "armchair",
+        "floor in front",
+        "i don't mind",
+        "i need to use the restroom.",
+        "room"
+      ],
+      "student_hit": "sofa",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "yes, please",
+        "i don't mind",
+        "i don't remember",
+        "i need more time",
+        "i agree"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-12",
+      "category": "home",
+      "question_type": "who",
+      "transcript": "Who do you want to sit next to at dinner?",
+      "expected_answers": [
+        "grandma",
+        "uncle raj",
+        "raj",
+        "ana",
+        "sister"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "uncle",
+        "grandma",
+        "sister",
+        "table",
+        "chicken",
+        "raj",
+        "ana",
+        "user's"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "uncle",
+        "grandma",
+        "table",
+        "i'm not hungry",
+        "yes, please",
+        "i need to use the restroom."
+      ],
+      "student_hit": "grandma",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i'm not hungry",
+        "i need to use the restroom.",
+        "yes, please",
+        "i forgot",
+        "i need to think about it",
+        "can you repeat that?"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-13",
+      "category": "home",
+      "question_type": "which",
+      "transcript": "Which toy do you want to take in the car?",
+      "expected_answers": [
+        "rabbit",
+        "truck",
+        "puzzle"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "stuffed rabbit",
+        "truck",
+        "box",
+        "shelf",
+        "bedroom",
+        "puzzle"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "stuffed rabbit",
+        "truck",
+        "i need to use the restroom.",
+        "yes, please",
+        "shelf",
+        "box"
+      ],
+      "student_hit": "truck",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "yes, please",
+        "i need to use the restroom.",
+        "i forgot",
+        "i don't care",
+        "i need more options",
+        "i need to think about it"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-14",
+      "category": "home",
+      "question_type": "colour",
+      "transcript": "What colour cup do you want your juice in?",
+      "expected_answers": [
+        "blue",
+        "orange"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "blue",
+        "orange",
+        "cups",
+        "two",
+        "one",
+        "kitchen",
+        "counter",
+        "carton"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "orange",
+        "cups",
+        "i need a snack",
+        "i am ready",
+        "blue",
+        "no, thanks."
+      ],
+      "student_hit": "blue",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "blue",
+        "i need a snack",
+        "i am ready",
+        "no, thanks.",
+        "i don't know",
+        "i need to use the restroom."
+      ],
+      "closed_hit": "blue"
+    },
+    {
+      "id": "deictic-15",
+      "category": "home",
+      "question_type": "count",
+      "transcript": "How many nuggets do you want on your plate?",
+      "expected_answers": [
+        "four",
+        "two"
+      ],
+      "open_fired": false,
+      "open_spans": [],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i'm not hungry",
+        "i'm good",
+        "yes, please",
+        "i forgot",
+        "more",
+        "i need to use the restroom."
+      ],
+      "student_hit": null,
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i'm not hungry",
+        "i'm good",
+        "yes, please",
+        "i forgot",
+        "more",
+        "i need to use the restroom."
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-16",
+      "category": "home",
+      "question_type": "where",
+      "transcript": "Where would you like to play first?",
+      "expected_answers": [
+        "swing",
+        "paddling pool",
+        "picnic blanket",
+        "pool",
+        "blanket",
+        "lawn"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "garden",
+        "picnic",
+        "lawn",
+        "tree",
+        "pool",
+        "fence",
+        "back",
+        "spread"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "garden",
+        "picnic",
+        "i want to",
+        "pool",
+        "back",
+        "i don't mind"
+      ],
+      "student_hit": "pool",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i want to",
+        "i don't mind",
+        "i'm good",
+        "i need to check my schedule",
+        "maybe",
+        "yes, please"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-17",
+      "category": "home",
+      "question_type": "alternative",
+      "transcript": "Bath or shower tonight?",
+      "expected_answers": [
+        "bath",
+        "shower"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "bath",
+        "shower tonight"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "bath",
+        "shower tonight",
+        "i need to use the restroom.",
+        "i am ready",
+        "can i have a hug?",
+        "i forgot"
+      ],
+      "student_hit": "bath",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "can i have a hug?",
+        "i don't mind",
+        "i am ready",
+        "yes, please",
+        "stop"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-18",
+      "category": "home",
+      "question_type": "who",
+      "transcript": "Who would you like to read your story tonight?",
+      "expected_answers": [
+        "mum",
+        "dad"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "mum",
+        "doorway and dad",
+        "holding a storybook",
+        "bedtime"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "mum",
+        "doorway and dad",
+        "holding a storybook",
+        "yes, please",
+        "i need to use the restroom.",
+        "bedtime"
+      ],
+      "student_hit": "mum",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "can i have a hug?",
+        "yes, please",
+        "i need to use the restroom.",
+        "can you repeat that?",
+        "i don't care",
+        "i need to think about it"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-19",
+      "category": "home",
+      "question_type": "which",
+      "transcript": "Which snack do you want, you can choose?",
+      "expected_answers": [
+        "grapes",
+        "banana",
+        "crackers"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "banana",
+        "crackers",
+        "bowl of grapes",
+        "kitchen table",
+        "packet"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "banana",
+        "crackers",
+        "i'm not hungry",
+        "bowl of grapes",
+        "yes, please",
+        "packet"
+      ],
+      "student_hit": "banana",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i'm not hungry",
+        "yes, please",
+        "i forgot",
+        "i need to use the restroom.",
+        "i agree",
+        "can you repeat that?"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-20",
+      "category": "clinic",
+      "question_type": "where",
+      "transcript": "Where would you like to start today, do you have a preference?",
+      "expected_answers": [
+        "treatment bed",
+        "wobble board",
+        "parallel bars",
+        "bed",
+        "mat"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "physiotherapy room",
+        "board",
+        "bars",
+        "against the wall",
+        "bed is against",
+        "set",
+        "middle"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "physiotherapy room",
+        "board",
+        "i'm good",
+        "i need to check my schedule",
+        "i need to use the restroom.",
+        "bed is against"
+      ],
+      "student_hit": "wobble board",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "i need to check my schedule",
+        "i'm good",
+        "yes, please",
+        "i don't mind",
+        "i need more information"
+      ],
+      "closed_hit": "mat"
+    },
+    {
+      "id": "deictic-21",
+      "category": "clinic",
+      "question_type": "who",
+      "transcript": "Who do you want to come in with you?",
+      "expected_answers": [
+        "mum",
+        "daniel",
+        "nurse",
+        "dr. okafor",
+        "okafor"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "mum",
+        "room",
+        "nurse",
+        "names",
+        "okafor",
+        "daniel",
+        "corridor",
+        "waves"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "mum",
+        "room",
+        "i want to",
+        "daniel",
+        "i am ready",
+        "i need to use the restroom."
+      ],
+      "student_hit": "mum",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i want to",
+        "i need to use the restroom.",
+        "i am ready",
+        "i don't care",
+        "yes, please",
+        "i'm good"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-22",
+      "category": "clinic",
+      "question_type": "which",
+      "transcript": "Which one hurts more, can you show me?",
+      "expected_answers": [
+        "left knee",
+        "right ankle",
+        "knee",
+        "ankle"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "knee",
+        "left",
+        "doctor",
+        "exam",
+        "ankle",
+        "right",
+        "swollen",
+        "touches"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "knee",
+        "left",
+        "my stomach hurts",
+        "doctor",
+        "touches",
+        "swollen"
+      ],
+      "student_hit": "knee",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "my stomach hurts",
+        "more",
+        "i don't know",
+        "can you repeat that?",
+        "i need to think about it",
+        "yes, please"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-23",
+      "category": "clinic",
+      "question_type": "alternative",
+      "transcript": "Do you want the plaster on your arm or your hand?",
+      "expected_answers": [
+        "arm",
+        "hand"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "arm",
+        "hand"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "arm",
+        "hand",
+        "i need to use the restroom.",
+        "i don't mind",
+        "yes, please",
+        "i need to think about it"
+      ],
+      "student_hit": "arm",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "yes, please",
+        "i don't mind",
+        "i need to use the restroom.",
+        "i don't care",
+        "i need to think about it",
+        "i forgot"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-24",
+      "category": "clinic",
+      "question_type": "colour",
+      "transcript": "What colour sticker do you want for being so brave?",
+      "expected_answers": [
+        "green",
+        "pink"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "pink",
+        "green",
+        "stickers",
+        "reception",
+        "top",
+        "star",
+        "desk",
+        "jar"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "pink",
+        "green",
+        "stickers",
+        "yes, please",
+        "jar",
+        "i need to think about it"
+      ],
+      "student_hit": "green",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "blue",
+        "yes, please",
+        "i need to think about it",
+        "maybe",
+        "i need to leave",
+        "i am ready"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-25",
+      "category": "clinic",
+      "question_type": "count",
+      "transcript": "How many tablets did you take this morning?",
+      "expected_answers": [
+        "two"
+      ],
+      "open_fired": false,
+      "open_spans": [],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "more",
+        "i don't remember",
+        "i need to use the restroom.",
+        "i'm fine",
+        "i need to think about it",
+        "no, thanks."
+      ],
+      "student_hit": null,
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "more",
+        "i don't remember",
+        "i need to use the restroom.",
+        "i'm fine",
+        "i need to think about it",
+        "no, thanks."
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-26",
+      "category": "clinic",
+      "question_type": "where",
+      "transcript": "Where do you want to work, at the table or somewhere comfier?",
+      "expected_answers": [
+        "table",
+        "beanbag",
+        "beanbag chair",
+        "standing frame",
+        "window"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "table",
+        "somewhere comfier"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "table",
+        "somewhere comfier",
+        "i need to use the restroom.",
+        "i need more information",
+        "no, thanks.",
+        "i am ready"
+      ],
+      "student_hit": "table",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "i need more options",
+        "no, thanks.",
+        "i need more information",
+        "i am ready",
+        "can you repeat that?"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-27",
+      "category": "clinic",
+      "question_type": "who",
+      "transcript": "Who would you like to help you with the buttons, me or Dad?",
+      "expected_answers": [
+        "sarah",
+        "dad"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "dad"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "dad",
+        "i need more help",
+        "i need to use the restroom.",
+        "yes, please",
+        "i'm good",
+        "i need to leave"
+      ],
+      "student_hit": "dad",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need more help",
+        "i need to use the restroom.",
+        "no, thanks.",
+        "i'm good",
+        "i need to leave",
+        "can you repeat that?"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-28",
+      "category": "clinic",
+      "question_type": "which",
+      "transcript": "Which toothbrush would you like to take home?",
+      "expected_answers": [
+        "electric",
+        "manual",
+        "dinosaur",
+        "electric one"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "toothbrushes",
+        "dentist's",
+        "hygienist",
+        "dinosaur handle",
+        "electric one",
+        "chair",
+        "small manual one",
+        "two"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "toothbrushes",
+        "dentist's",
+        "electric one",
+        "dinosaur handle",
+        "i need to use the restroom.",
+        "hygienist"
+      ],
+      "student_hit": "electric one",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "no, thanks.",
+        "i agree",
+        "i don't know",
+        "i am ready",
+        "i need to think about it"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-29",
+      "category": "clinic",
+      "question_type": "where",
+      "transcript": "Where would you like your bed to be?",
+      "expected_answers": [
+        "window",
+        "nurses' station",
+        "play area",
+        "corridor"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "nurses' station",
+        "hospital",
+        "corridor",
+        "play area",
+        "window",
+        "ward"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "nurses' station",
+        "hospital",
+        "play area",
+        "i don't mind",
+        "corridor",
+        "i need to use the restroom."
+      ],
+      "student_hit": "nurses' station",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "yes, please",
+        "i don't mind",
+        "can you repeat that?",
+        "yes, i am",
+        "maybe"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-30",
+      "category": "playground",
+      "question_type": "where",
+      "transcript": "Where do you want to go first?",
+      "expected_answers": [
+        "slide",
+        "climbing frame",
+        "swings",
+        "bench",
+        "oak tree",
+        "swing"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "bench",
+        "sunny playground",
+        "area",
+        "tree",
+        "sand",
+        "oak",
+        "swings",
+        "frame"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "bench",
+        "sunny playground",
+        "i want to",
+        "oak",
+        "i need to use the restroom.",
+        "area"
+      ],
+      "student_hit": "bench",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i want to",
+        "i need to use the restroom.",
+        "no, thanks.",
+        "i'm good",
+        "i need to check my schedule",
+        "i don't mind"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-31",
+      "category": "playground",
+      "question_type": "who",
+      "transcript": "Who do you want to play with?",
+      "expected_answers": [
+        "ollie",
+        "mia",
+        "cousin",
+        "auntie jo",
+        "jo"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "cousin",
+        "auntie",
+        "ollie",
+        "mia",
+        "sandpit",
+        "user's",
+        "bench",
+        "boy"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "cousin",
+        "auntie",
+        "bench",
+        "mia",
+        "yes, please",
+        "ollie"
+      ],
+      "student_hit": "ollie",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i want to",
+        "i don't mind",
+        "no, thanks.",
+        "i'm good",
+        "i am ready",
+        "can you repeat that?"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-32",
+      "category": "playground",
+      "question_type": "which",
+      "transcript": "Which one do you want to ride today?",
+      "expected_answers": [
+        "tricycle",
+        "scooter"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "scooter",
+        "entrance",
+        "tricycle",
+        "park",
+        "against",
+        "lean"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "scooter",
+        "entrance",
+        "tricycle",
+        "park",
+        "i don't mind",
+        "yes, i am"
+      ],
+      "student_hit": "tricycle",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i don't mind",
+        "yes, please",
+        "yes, i am",
+        "no, thanks.",
+        "i want to",
+        "maybe later"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-33",
+      "category": "playground",
+      "question_type": "alternative",
+      "transcript": "Do you want a cone or a lolly?",
+      "expected_answers": [
+        "cone",
+        "lolly"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "cone",
+        "lolly"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "cone",
+        "lolly",
+        "i am ready",
+        "i don't mind",
+        "i need to use the restroom.",
+        "yes, please"
+      ],
+      "student_hit": "cone",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i don't mind",
+        "yes, please",
+        "i need to use the restroom.",
+        "i am ready",
+        "i want to",
+        "i'm good"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-34",
+      "category": "playground",
+      "question_type": "colour",
+      "transcript": "What colour bike do you want to try?",
+      "expected_answers": [
+        "red",
+        "black"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "black",
+        "grass",
+        "two",
+        "bikes"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "black",
+        "grass",
+        "bikes",
+        "green",
+        "no, thanks.",
+        "i want to"
+      ],
+      "student_hit": "black",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "blue",
+        "green",
+        "no, thanks.",
+        "i want to",
+        "maybe",
+        "i'm good"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-35",
+      "category": "playground",
+      "question_type": "count",
+      "transcript": "How many ducks can you see?",
+      "expected_answers": [
+        "three",
+        "four"
+      ],
+      "open_fired": false,
+      "open_spans": [],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "more",
+        "i forgot",
+        "i need to check my schedule",
+        "i'm good",
+        "i need to think about it",
+        "no, thanks."
+      ],
+      "student_hit": null,
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "more",
+        "i forgot",
+        "i need to check my schedule",
+        "i'm good",
+        "i need to think about it",
+        "no, thanks."
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-36",
+      "category": "playground",
+      "question_type": "where",
+      "transcript": "Where should we eat, can you pick a spot?",
+      "expected_answers": [
+        "blanket",
+        "tree",
+        "picnic table",
+        "pond",
+        "grass"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "picnic table",
+        "park",
+        "pond",
+        "grass",
+        "tree",
+        "dad",
+        "sunny",
+        "blanket"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "picnic table",
+        "park",
+        "i need to use the restroom.",
+        "i don't mind",
+        "pond",
+        "tree"
+      ],
+      "student_hit": "tree",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "i don't mind",
+        "yes, please",
+        "i need to check my schedule",
+        "i forgot",
+        "i need to leave"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-37",
+      "category": "playground",
+      "question_type": "who",
+      "transcript": "Who do you want on your team?",
+      "expected_answers": [
+        "dad",
+        "grandpa",
+        "sam",
+        "ravi"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "grandpa",
+        "dad",
+        "older kids",
+        "ball",
+        "two",
+        "football",
+        "sam",
+        "goal"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "grandpa",
+        "dad",
+        "ball",
+        "yes, please",
+        "i'm good",
+        "older kids"
+      ],
+      "student_hit": "dad",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i'm good",
+        "i am ready",
+        "yes, please",
+        "i forgot",
+        "i don't mind",
+        "i want to"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-38",
+      "category": "playground",
+      "question_type": "which",
+      "transcript": "Which bit do you want to try, you can show me?",
+      "expected_answers": [
+        "fountain",
+        "water wheel",
+        "bucket"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "splash",
+        "bucket",
+        "pad",
+        "sprays",
+        "water",
+        "left",
+        "middle",
+        "wheel"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "splash",
+        "bucket",
+        "pad",
+        "yes, please",
+        "i need to take a break.",
+        "left"
+      ],
+      "student_hit": "bucket",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "yes, please",
+        "no, thanks.",
+        "i need to use the restroom.",
+        "i don't know",
+        "can you repeat that?",
+        "thank you"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-39",
+      "category": "playground",
+      "question_type": "where",
+      "transcript": "Where would you like to go next?",
+      "expected_answers": [
+        "penguins",
+        "monkeys",
+        "giraffes"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "zoo",
+        "holds the map",
+        "afternoon",
+        "signs point",
+        "penguins",
+        "giraffes",
+        "mum",
+        "monkeys"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "zoo",
+        "holds the map",
+        "yes, please",
+        "signs point",
+        "i need to leave",
+        "afternoon"
+      ],
+      "student_hit": null,
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i want to",
+        "yes, please",
+        "maybe",
+        "i'm good",
+        "i don't mind",
+        "i need to leave"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-40",
+      "category": "store",
+      "question_type": "alternative",
+      "transcript": "Apples or bananas this week?",
+      "expected_answers": [
+        "apples",
+        "bananas"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "apples",
+        "bananas this week"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "apples",
+        "bananas this week",
+        "i'm fine",
+        "no, thanks.",
+        "can you repeat that?",
+        "i need to think about it"
+      ],
+      "student_hit": "apples",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i'm not hungry",
+        "i'm fine",
+        "can you repeat that?",
+        "no, thanks.",
+        "i don't know",
+        "i need to use the restroom."
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-41",
+      "category": "store",
+      "question_type": "where",
+      "transcript": "Where do you want to go first?",
+      "expected_answers": [
+        "toy shop",
+        "bookshop",
+        "cafe",
+        "fountain"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "shopping centre",
+        "cafe",
+        "shop",
+        "fountain",
+        "outside",
+        "bookshop",
+        "toy",
+        "ahead"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "shopping centre",
+        "cafe",
+        "i want to",
+        "i need to use the restroom.",
+        "fountain",
+        "ahead"
+      ],
+      "student_hit": "cafe",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i want to",
+        "i need to use the restroom.",
+        "no, thanks.",
+        "i am ready",
+        "i don't know",
+        "i need to check my schedule"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-42",
+      "category": "store",
+      "question_type": "who",
+      "transcript": "Who do you want to pay with the card?",
+      "expected_answers": [
+        "dad",
+        "tom",
+        "brother",
+        "cashier"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "dad",
+        "brother tom",
+        "cashier",
+        "big brother",
+        "items",
+        "basket",
+        "checkout",
+        "bags"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "dad",
+        "brother tom",
+        "checkout",
+        "cashier",
+        "yes, please",
+        "big brother"
+      ],
+      "student_hit": "dad",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "yes, please",
+        "i forgot",
+        "i don't know",
+        "i need to use the restroom.",
+        "can you repeat that?",
+        "stop"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-43",
+      "category": "store",
+      "question_type": "which",
+      "transcript": "Which cereal do you want, you can choose one?",
+      "expected_answers": [
+        "chocolate hoops",
+        "honey flakes",
+        "plain oats",
+        "oats"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "oats",
+        "chocolate",
+        "flakes",
+        "boxes",
+        "honey",
+        "hoops",
+        "plain",
+        "aisle"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "oats",
+        "chocolate",
+        "i am ready",
+        "flakes",
+        "no, thanks.",
+        "boxes"
+      ],
+      "student_hit": "oats",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i am ready",
+        "no, thanks.",
+        "i agree",
+        "i need to use the restroom.",
+        "i forgot",
+        "i'm good"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-44",
+      "category": "store",
+      "question_type": "colour",
+      "transcript": "What colour t-shirt do you like?",
+      "expected_answers": [
+        "teal",
+        "grey"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "grey",
+        "clothes",
+        "t-shirts",
+        "shop",
+        "rack",
+        "one",
+        "teal",
+        "aunt"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "grey",
+        "clothes",
+        "t-shirts",
+        "blue",
+        "i need to think about it",
+        "teal"
+      ],
+      "student_hit": "teal",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "blue",
+        "i need to think about it",
+        "yes, please",
+        "i forgot",
+        "i don't care",
+        "i need to use the restroom."
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-45",
+      "category": "store",
+      "question_type": "count",
+      "transcript": "How many buns do you want to get?",
+      "expected_answers": [
+        "five",
+        "one"
+      ],
+      "open_fired": false,
+      "open_spans": [],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "more",
+        "i need to use the restroom.",
+        "i am ready",
+        "no, thanks.",
+        "i don't know",
+        "i forgot"
+      ],
+      "student_hit": null,
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "more",
+        "i need to use the restroom.",
+        "i am ready",
+        "no, thanks.",
+        "i don't know",
+        "i forgot"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-46",
+      "category": "store",
+      "question_type": "where",
+      "transcript": "Where should we go up, can you point?",
+      "expected_answers": [
+        "lift",
+        "escalator",
+        "upstairs"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "upstairs",
+        "toy section",
+        "store",
+        "escalator",
+        "entrance",
+        "lift",
+        "further along",
+        "big"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "upstairs",
+        "toy section",
+        "can you repeat that?",
+        "yes, please",
+        "i need to use the restroom.",
+        "lift"
+      ],
+      "student_hit": "lift",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "yes, please",
+        "i need to use the restroom.",
+        "can you repeat that?",
+        "stop",
+        "i'm good",
+        "i agree"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-47",
+      "category": "store",
+      "question_type": "who",
+      "transcript": "Who would you like to talk to about your medicine?",
+      "expected_answers": [
+        "mrs. lee",
+        "lee",
+        "pharmacist",
+        "mum"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "mum",
+        "mrs",
+        "pharmacist",
+        "assistant",
+        "pharmacy",
+        "lee",
+        "smiles"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "mum",
+        "mrs",
+        "pharmacist",
+        "i need to use the restroom.",
+        "yes, please",
+        "smiles"
+      ],
+      "student_hit": "pharmacist",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "yes, please",
+        "no, thanks.",
+        "i agree",
+        "i don't care",
+        "yes, i am"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-48",
+      "category": "store",
+      "question_type": "which",
+      "transcript": "Which pair do you want to try on?",
+      "expected_answers": [
+        "red trainers",
+        "brown boots",
+        "trainers",
+        "boots"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "pairs",
+        "shoe",
+        "two",
+        "laces",
+        "boots",
+        "red trainers",
+        "velcro and brown",
+        "bench"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "pairs",
+        "shoe",
+        "velcro and brown",
+        "laces",
+        "no, thanks.",
+        "i want to"
+      ],
+      "student_hit": null,
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "no, thanks.",
+        "i don't mind",
+        "i want to",
+        "i agree",
+        "maybe",
+        "i need to check my schedule"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-49",
+      "category": "store",
+      "question_type": "alternative",
+      "transcript": "Would you like a hot chocolate or an apple juice?",
+      "expected_answers": [
+        "hot chocolate",
+        "apple juice"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "hot chocolate",
+        "apple juice"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "hot chocolate",
+        "apple juice",
+        "i need a snack",
+        "no, thanks.",
+        "i'm good",
+        "i need to think about it"
+      ],
+      "student_hit": "hot chocolate",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need a snack",
+        "i'm good",
+        "not really",
+        "yes, please",
+        "i need to think about it",
+        "i'm fine"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-50",
+      "category": "transport",
+      "question_type": "where",
+      "transcript": "Where would you like to sit on the bus?",
+      "expected_answers": [
+        "window",
+        "front",
+        "back row",
+        "wheelchair space",
+        "middle door",
+        "back"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "seat",
+        "wheelchair space",
+        "interior",
+        "back row",
+        "door",
+        "front",
+        "window",
+        "middle"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "seat",
+        "wheelchair space",
+        "interior",
+        "i need to use the restroom.",
+        "i don't mind",
+        "can you repeat that?"
+      ],
+      "student_hit": "wheelchair space",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "i don't mind",
+        "can you repeat that?",
+        "yes, i am",
+        "i don't know",
+        "i need to leave"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-51",
+      "category": "transport",
+      "question_type": "who",
+      "transcript": "Who do you want to sit with?",
+      "expected_answers": [
+        "zara",
+        "ms. brown",
+        "brown",
+        "mr. hayes",
+        "hayes",
+        "friend"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "user's friend",
+        "friend zara",
+        "escort",
+        "bus",
+        "hayes",
+        "door",
+        "driver",
+        "back"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "user's friend",
+        "friend zara",
+        "escort",
+        "i need to use the restroom.",
+        "hayes",
+        "yes, please"
+      ],
+      "student_hit": "hayes",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "i want to",
+        "i don't mind",
+        "can you repeat that?",
+        "yes, please",
+        "i need more information"
+      ],
+      "closed_hit": "mr. hayes"
+    },
+    {
+      "id": "deictic-52",
+      "category": "transport",
+      "question_type": "which",
+      "transcript": "Which train do you want to take?",
+      "expected_answers": [
+        "fast train",
+        "slow stopping train",
+        "platform two",
+        "platform one",
+        "fast",
+        "slow"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "city",
+        "fast",
+        "slow",
+        "platform",
+        "two",
+        "one"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "city",
+        "fast",
+        "i am ready",
+        "i don't mind",
+        "i want to",
+        "platform"
+      ],
+      "student_hit": "fast",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i want to",
+        "i am ready",
+        "no, thanks.",
+        "i don't know",
+        "i don't mind",
+        "can you repeat that?"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-53",
+      "category": "transport",
+      "question_type": "alternative",
+      "transcript": "Do you want to go in the car or on the minibus?",
+      "expected_answers": [
+        "car",
+        "minibus"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "car"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "car",
+        "i need to use the restroom.",
+        "i don't mind",
+        "can you repeat that?",
+        "yes, i am",
+        "i want to"
+      ],
+      "student_hit": "car",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "i don't mind",
+        "can you repeat that?",
+        "yes, i am",
+        "i want to",
+        "i am ready"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-54",
+      "category": "transport",
+      "question_type": "colour",
+      "transcript": "What colour taxi should we take?",
+      "expected_answers": [
+        "white",
+        "black"
+      ],
+      "open_fired": false,
+      "open_spans": [],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "yes, please",
+        "i need to use the restroom.",
+        "i don't know",
+        "i need to think about it",
+        "not really",
+        "i need more options"
+      ],
+      "student_hit": null,
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "yes, please",
+        "i need to use the restroom.",
+        "i don't know",
+        "i need to think about it",
+        "not really",
+        "i need more options"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-55",
+      "category": "transport",
+      "question_type": "count",
+      "transcript": "How many buses came at once?",
+      "expected_answers": [
+        "two"
+      ],
+      "open_fired": false,
+      "open_spans": [],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i forgot",
+        "more",
+        "i need to use the restroom.",
+        "i don't know",
+        "i'm fine",
+        "can you repeat that?"
+      ],
+      "student_hit": null,
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i forgot",
+        "more",
+        "i need to use the restroom.",
+        "i don't know",
+        "i'm fine",
+        "can you repeat that?"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-56",
+      "category": "transport",
+      "question_type": "where",
+      "transcript": "Where do you want to wait, you can choose?",
+      "expected_answers": [
+        "chairs",
+        "window",
+        "play corner",
+        "coffee stand",
+        "pillar"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "chairs",
+        "airport",
+        "coffee stand",
+        "corner",
+        "row",
+        "pillar",
+        "faces the window",
+        "mum"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "chairs",
+        "airport",
+        "i am ready",
+        "maybe later",
+        "corner",
+        "i need to use the restroom."
+      ],
+      "student_hit": "chairs",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "maybe later",
+        "i am ready",
+        "i need to use the restroom.",
+        "no, thanks.",
+        "i need to leave",
+        "can you repeat that?"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-57",
+      "category": "transport",
+      "question_type": "who",
+      "transcript": "Who do you want to sit next to in the back?",
+      "expected_answers": [
+        "dad",
+        "grandma",
+        "eli",
+        "brother"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "grandma",
+        "user's brother eli",
+        "dad",
+        "passenger",
+        "car",
+        "seat",
+        "journey"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "grandma",
+        "user's brother eli",
+        "seat",
+        "yes, please",
+        "i need to use the restroom.",
+        "can you repeat that?"
+      ],
+      "student_hit": "grandma",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "yes, please",
+        "i don't care",
+        "can you repeat that?",
+        "i forgot",
+        "i need to think about it"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-58",
+      "category": "transport",
+      "question_type": "which",
+      "transcript": "Which part do you want to sit in, inside or out on the deck?",
+      "expected_answers": [
+        "inside lounge",
+        "outside deck",
+        "lounge",
+        "deck",
+        "benches"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "sit in inside"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "sit in inside",
+        "i need to use the restroom.",
+        "yes, please",
+        "i need to leave",
+        "thank you",
+        "i am ready"
+      ],
+      "student_hit": null,
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "yes, please",
+        "i don't care",
+        "i am ready",
+        "no, thanks.",
+        "thank you"
+      ],
+      "closed_hit": null
+    },
+    {
+      "id": "deictic-59",
+      "category": "transport",
+      "question_type": "where",
+      "transcript": "Where would you like to stand while we wait?",
+      "expected_answers": [
+        "shelter",
+        "bench",
+        "ticket machine",
+        "lamp post"
+      ],
+      "open_fired": true,
+      "open_spans": [
+        "shelter",
+        "bench",
+        "tram",
+        "ticket machine",
+        "lamp post",
+        "dad",
+        "stop"
+      ],
+      "student_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "shelter",
+        "bench",
+        "i need to use the restroom.",
+        "yes, please",
+        "lamp post",
+        "ticket machine"
+      ],
+      "student_hit": "shelter",
+      "closed_board": [
+        "yes",
+        "no",
+        "I need help",
+        "wait",
+        "i need to use the restroom.",
+        "i need to leave",
+        "yes, please",
+        "stop",
+        "i don't know",
+        "i am ready"
+      ],
+      "closed_hit": null
+    }
+  ]
+}
