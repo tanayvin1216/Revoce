@@ -8,4 +8,4 @@ student.onnx.data
 vocab.json
 canonical.json
 splits.json
-phase4_results.json
+# phase4_results.json is versioned since 2026-08-23: it is the file every paper number cites
