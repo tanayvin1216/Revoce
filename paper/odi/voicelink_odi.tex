@@ -353,10 +353,11 @@ the margin; whether this matters is a question for the slate metrics, not for
 parity.
 
 \textbf{Speech.} whisper-base.en INT8 through \texttt{openvino\_genai} runs
-at 1162 and 1157\,ms p50 against 681 and 795\,ms for \texttt{faster-whisper}
-on 2.1 and 4.0\,s clips ($n{=}10$, identical text) on this ARM host; an earlier
-$n{=}1$ figure favouring OpenVINO did not reproduce. With the board at 15\,ms,
-perception (0.7--1.2\,s speech, 1--4\,s scene) is the latency budget.
+at 300 and 403\,ms p50 against 252 and 407\,ms for \texttt{faster-whisper}
+on 2.1 and 4.0\,s clips ($n{=}10$, identical text) on this ARM host: parity,
+with no Intel-specific gain expected until the CPU plugin is Intel's own. With
+the board at 15\,ms, perception (0.3--0.4\,s speech, 1--4\,s scene) is the
+latency budget.
 
 % =====================================================================
 \section{Limitations}\label{sec:limits}

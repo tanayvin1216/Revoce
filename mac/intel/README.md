@@ -59,7 +59,7 @@ VOICELINK_TRANSCRIBER=openvino         # serve it (perception/config.py one-line
 - Test: `tests/test_whisper_openvino.py` (skips without openvino_genai / the IR).
 
 Measured (`bench_whisper.py`, Apple M4, ARM CPU plugin, N=10, identical transcripts):
-faster-whisper int8 p50 **0.68–0.80 s** vs WhisperPipeline INT8 p50 **1.16 s** on 2–4 s
+faster-whisper int8 p50 **252 / 407 ms** vs WhisperPipeline INT8 p50 **300 / 403 ms** on the committed 2.1 / 4.0 s clips (`intel/clips/`, n=10, quiet M4): parity on the ARM plugin. An earlier run on a loaded machine (0.68 vs 1.16 s) is superseded.
 clips. On this ARM box OpenVINO is ~1.5x SLOWER than CTranslate2 — the earlier one-off
 "0.35 vs 0.42 s" smoke number did not reproduce. The point of this backend is the Intel
 port (CPU/GPU/NPU via one env var), not ARM speed; Intel numbers pending.
