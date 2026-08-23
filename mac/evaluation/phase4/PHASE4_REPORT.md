@@ -1,6 +1,6 @@
 # Phase-4 distillation v2 — evaluation report
 
-Generated: 2026-08-17 03:22:39  |  student rows=559 vocab=94 config_hash=8151a7e34afd
+Generated: 2026-08-23 13:16:02  |  student rows=559 vocab=94 config_hash=8151a7e34afd
 
 ## The three numbers (① and ② on the HELD-OUT split, n=84)
 
@@ -14,7 +14,7 @@ Generated: 2026-08-17 03:22:39  |  student rows=559 vocab=94 config_hash=8151a7e
 | ① | **combined** | — | — | all three above | **FAIL** |
 | ② | dynamic_overlap (report-only) | 0.056 | — | — | — (n=84) |
 | ② | full_overlap_top7 (continuity) | 0.59 | — | — | — |
-| ③ | speedup | 47.081 ms | 6.71 s | ≥10× | PASS (142.6×) |
+| ③ | speedup | 14.832 ms | 15.69 s | ≥10× | PASS (1057.5×) |
 | ④ | coverage-of-intent, full board (reported, NOT gated) | 0.845 | 0.944 | — | — (n=71) |
 | ④ | **coverage-of-intent, DYNAMIC (the real bar)** | **0.761** | 0.845 | ≥90% of teacher | PASS (n=71) |
 
@@ -27,6 +27,20 @@ Does the board the MODEL built give the user a way to express their intent? Stud
 Rule: dead IFF ① diversity retention AND ③ speedup both pass; ② is supporting. We read ④ coverage-of-intent as the honest 'is the board good' signal.
 
 > The v2 student achieved the speedup but did NOT retain teacher diversity (mode-collapse). Iterating on diversity loss / more teacher data. Not a win.
+
+## Deictic-question set (informational, NOT gated; n=60)
+
+RC-3's open answer path fires on only 2/84 held-out rows, so its effect is measured on the authored `deictic_scenarios.jsonl` instead (eval_deictic.py). hit@board = any expected concrete answer appears on the board.
+
+| slice | n | open fire | hit@board (student) | hit@board (closed-only) |
+|---|---|---|---|---|
+| overall | 60 | 0.883 | 0.817 | 0.050 |
+| alternative | 8 | 1.000 | 1.000 | 0.000 |
+| colour | 6 | 0.833 | 0.833 | 0.167 |
+| count | 6 | 0.000 | 0.000 | 0.000 |
+| where | 16 | 1.000 | 0.875 | 0.062 |
+| which | 12 | 1.000 | 0.833 | 0.000 |
+| who | 12 | 1.000 | 1.000 | 0.083 |
 
 ## Honesty note
 v2 is validated against TEACHER behaviour on SYNTHETIC scenarios; the teacher is itself an LLM (Qwen) over curated/synthetic contexts. A student that passes here may be imitating the teacher imitating GPT. Human/pilot validation on consented interaction logs is the next step and the number that ultimately matters.

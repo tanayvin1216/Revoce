@@ -262,7 +262,6 @@ def held_out_eval(model, vocab, k, k_dyn, core_words) -> dict:
 
 def speedup(model, vocab, k, k_dyn, core_words, teacher_samples: int) -> dict:
     """(3) end-to-end board latency: student (embed+MLP+assemble) vs teacher."""
-    from evaluation.embed import embed
     scenarios = scengen.load_scenarios()
 
     _ = student_board(model, vocab, scenarios[0]["scene"], scenarios[0]["transcript"],
