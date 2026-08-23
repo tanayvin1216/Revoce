@@ -144,14 +144,20 @@ def train() -> dict:
     splits["fingerprint"] = d.rows_fingerprint(rows)
     d.save_splits(splits)
 
-    Xt = torch.from_numpy(X)
-    Yt = torch.from_numpy(Y)
+    # Device: VOICELINK_DEVICE or auto (hpu > cuda > mps > cpu). The MLP is tiny,
+    # so this is about running the TRAINING stage on Intel Gaudi, not speed; the
+    # checkpoint is always saved on CPU so every backend loads it.
+    from ranker import torch_device
+    dev = torch_device()
+    print(f"training device: {dev}", flush=True)
+    Xt = torch.from_numpy(X).to(dev)
+    Yt = torch.from_numpy(Y).to(dev)
     tr, va = splits["train"], splits["val"]
 
-    pw = _pos_weight(Y)
-    log_p = _log_priors(Y)
+    pw = _pos_weight(Y).to(dev)
+    log_p = _log_priors(Y).to(dev)
     model = StudentRanker(cfg["model"]["context_dim"], cfg["model"]["hidden_dim"],
-                          len(vocab), cfg["model"]["dropout"])
+                          len(vocab), cfg["model"]["dropout"]).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=cfg["train"]["lr"],
                            weight_decay=cfg["train"]["weight_decay"])
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=pw)
@@ -176,7 +182,7 @@ def train() -> dict:
         if va:
             if vloss < best_val:
                 best_val = vloss
-                best_state = {k: v.clone() for k, v in model.state_dict().items()}
+                best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
                 no_improve = 0
             else:
                 no_improve += 1
@@ -188,6 +194,7 @@ def train() -> dict:
 
     if best_state is not None:
         model.load_state_dict(best_state)
+    model.to("cpu").eval()  # export + checkpoint on CPU regardless of training device
 
     torch.save({
         "state_dict": model.state_dict(),
