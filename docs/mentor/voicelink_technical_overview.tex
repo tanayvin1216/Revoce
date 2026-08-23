@@ -47,7 +47,7 @@ questions on which we would value a mentor's guidance.
 \end{abstract}
 
 \tableofcontents
-\clearpage
+\medskip
 
 %==============================================================================
 \section{Problem and motivation}
@@ -236,7 +236,7 @@ Same-function-pair rate & 0.1865 & 0.1684 & \textbf{FAIL} (bar: $\le$ teacher) \
 Board variety & 0.917 & --- & PASS \\
 Dynamic coverage-of-intent ($n=71$) & 0.761 & 0.845 & PASS (0.90$\times$) \\
 Dynamic word overlap with teacher & 0.056 & --- & reported only \\
-Board latency (embed + MLP + MMR) & 47.1\,ms & 6.71\,s & 142.6$\times$ \\
+Board latency (embed + MLP + MMR) & 12--15\,ms & 6.7--11.7\,s & ${>}400\times$ \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -259,9 +259,7 @@ scene+transcript into one encoder call brought a board to \textbf{15.3\,ms p50}
 on the fully-OpenVINO path (embed + head + selection; context texts evicted
 between rounds so every board still encodes a never-seen scene and
 transcript). The OpenVINO MiniLM export matches the PyTorch embeddings at cosine
-1.000 and encodes a single text in 5.6\,ms versus 16.0\,ms. This supersedes the
-47\,ms figure above and will be re-measured against the teacher before any
-speedup is quoted.
+1.000 and encodes a single text in 5.6\,ms versus 16.0\,ms. Re-running the full harness the same day gave a 12--15\,ms student against a 10.6--11.7\,s teacher; the teacher timing drifts run to run, so the table quotes a range.
 
 %==============================================================================
 \section{The closed-vocabulary ceiling (negative result)}
@@ -295,7 +293,7 @@ and a deictic-question evaluation set is being built to measure it properly.
 \begin{itemize}
 \item Student: PyTorch $\to$ ONNX (opset 17, standard layers only) $\to$ OpenVINO IR (max logit delta vs ONNX $1.4\times10^{-6}$) $\to$ NNCF post-training INT8 on 360 real calibration contexts: 661\,KB $\to$ 235\,KB (2.8$\times$), top-6 overlap with FP32 0.950 mean / 0.667 min, max logit delta 1.05.
 \item MiniLM: exported with \code{optimum-cli} (tokenizer, encoder and pooling in one graph); serves the MMR embeddings torch-free.
-\item Whisper: whisper-base.en INT8 through \code{openvino\_genai.WhisperPipeline}; an earlier one-clip measurement gave 0.35\,s vs 0.42\,s for faster-whisper with identical transcripts ($n=1$, now being turned into a repeatable benchmark).
+\item Whisper: whisper-base.en INT8 through \code{openvino\_genai.WhisperPipeline}; on the Mac's ARM plugin it is \emph{slower} than faster-whisper (1.16\,s vs 0.68\,s p50 on a 2\,s clip, $n=10$, identical transcripts); an earlier one-clip 0.35 vs 0.42\,s figure did not reproduce and was withdrawn. Its value is the Intel CPU/GPU/NPU port, which is unmeasured.
 \item Serving: \code{VOICELINK\_STUDENT\_BACKEND=openvino} compiles the INT8 IR (FP32 fallback) behind the seam, with a vocabulary-hash sidecar so a stale artifact refuses to serve wrong words; \code{VOICELINK\_OV\_DEVICE} targets CPU, GPU or the Core Ultra NPU with the same file.
 \item Pitfall worth knowing: OpenVINO's ARM CPU plugin defaults to f16 inference, which made the Whisper decoder degenerate and drifted logits by $10^{-2}$; we pin \code{INFERENCE\_PRECISION\_HINT=f32} on CPU.
 \item \textbf{What does not exist:} any measurement on Intel silicon. Every number above is Apple M-series through the ARM plugin. The benchmark scripts self-label the hardware so a run on an Intel box is one command.
@@ -321,7 +319,7 @@ disclosed in the project documentation.
 %==============================================================================
 \section{Status, open problems, and where we would value guidance}
 \textbf{Status.} Phases 0--5 (guardrails, live pipeline, console, self-test
-harness, distillation, Intel readiness) are complete; 147 automated tests pass.
+harness, distillation, Intel readiness) are complete; 172 automated tests pass.
 Phase 6 (integration demo and video) is in progress. A patent novelty brief
 exists; nothing has been filed.
 
@@ -350,7 +348,7 @@ mac/web/index.html, console.html  AAC board; developer console
 mac/evaluation/phase1,3,4     diverse-vs-topk study; 120-scenario self-test; distillation
 mac/evaluation/phase4/answers.py  open-vocabulary answer extraction (RC-3)
 mac/intel/                    ONNX->IR->INT8 lifecycle, OpenVINO embedder, benchmarks
-mac/tests/                    147 tests (seam invariants, gates, Intel path, privacy)
+mac/tests/                    172 tests (seam invariants, gates, Intel path, privacy)
 docs/VERIFIED_NUMBERS.md      every quotable number with its source and command
 docs/claude/working-notes/    verbatim engineering notes per phase
 \end{lstlisting}
@@ -358,7 +356,7 @@ docs/claude/working-notes/    verbatim engineering notes per phase
 \section{Reproducing the key numbers}
 \begin{lstlisting}
 cd mac
-VOICELINK_PERCEPTION=0 python3 -m pytest -q                      # 147 passed
+VOICELINK_PERCEPTION=0 python3 -m pytest -q                      # 172 passed
 VOICELINK_PERCEPTION=0 python3 evaluation/phase3/selftest.py --from-boards
 VOICELINK_PERCEPTION=0 python3 evaluation/phase4/evaluate.py --teacher-samples 0
 VOICELINK_PERCEPTION=0 python3 intel/convert.py && python3 intel/quantize.py
