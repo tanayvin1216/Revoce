@@ -38,3 +38,6 @@ mac/intel/artifacts/*
 phase_status.json
 AGENTS.md
 PLAN.md
+!mac/intel/artifacts/e2e_*.json
+!mac/intel/artifacts/whisper_bench_*.json
+!mac/intel/artifacts/int8_accuracy.json

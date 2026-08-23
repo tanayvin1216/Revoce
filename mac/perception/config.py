@@ -14,7 +14,7 @@ WEARABLE_WS_URL = os.environ.get("VOICELINK_WEARABLE_URL", "ws://192.168.4.1:81/
 PERCEPTION_ENABLED = os.environ.get("VOICELINK_PERCEPTION", "1") != "0"
 
 # --- Audio / Whisper ---------------------------------------------------------
-# "faster-whisper" | "mock" | (later) "openvino"  <- one-line swap
+# "faster-whisper" | "mock" | "openvino" (GenAI WhisperPipeline, IR from intel/export_whisper.py)
 TRANSCRIBER = os.environ.get("VOICELINK_TRANSCRIBER", "faster-whisper")
 WHISPER_MODEL = os.environ.get("VOICELINK_WHISPER_MODEL", "base.en")  # -> "small.en", etc.
 WHISPER_DEVICE = "cpu"            # faster-whisper on Apple Silicon runs on CPU
