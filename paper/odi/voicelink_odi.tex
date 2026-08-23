@@ -60,7 +60,7 @@ useless, and re-running the unchanged MMR over the student's logits recovered
 ($1.4\times10^{-6}$ logit parity) and NNCF INT8 ($2.8\times$ smaller, top-6
 overlap 0.950 mean / 0.667 min). A profile of the end-to-end path found that 71
 of 73\,ms per board was re-embedding a static 94-word vocabulary; memoising it
-gives a 15.3\,ms p50 board on the fully-OpenVINO path. We report a diversity gate
+gives a 5.5\,ms p50 board on the fully-OpenVINO path. We report a diversity gate
 that still fails, an evaluation that is entirely synthetic and LLM-judged, and
 the absence of any Intel-hardware measurement.
 \end{abstract}
@@ -269,13 +269,13 @@ and is reported as failing.}
 \toprule
  & \textbf{Student} & \textbf{Teacher} & \textbf{Bar / verdict} \\
 \midrule
-Distinct functions@7                  & 4.083  & 4.333  & $\ge$0.90 retention: pass (0.942) \\
+Distinct functions@7                  & 4.095  & 4.298  & $\ge$0.90 retention: pass (0.953) \\
 Near-duplicate pair rate              & 0.0006 & 0.0    & $\le$0.08: pass \\
-Same-function-pair rate ($\downarrow$) & 0.1865 & 0.1684 & $\le$ teacher: \textbf{fail} \\
+Same-function-pair rate ($\downarrow$) & 0.1893 & 0.1735 & $\le$ teacher: \textbf{fail} \\
 Board variety (77/84 distinct)        & 0.917  & ---    & $\ge$0.5: pass \\
-Coverage-of-intent, dynamic slots ($n{=}71$) & 0.761 & 0.845 & $\ge$0.90$\times$: pass (0.901$\times$) \\
-Coverage-of-intent, full board ($n{=}71$)     & 0.845 & 0.944 & reported only \\
-Dynamic word agreement with teacher   & 0.056  & ---    & reported only (\S\ref{sec:limits}) \\
+Coverage-of-intent, dynamic slots ($n{=}71$) & 0.789 & 0.873 & $\ge$0.90$\times$: pass (0.901$\times$) \\
+Coverage-of-intent, full board ($n{=}71$)     & 0.873 & 0.944 & reported only \\
+Dynamic word agreement with teacher   & 0.067  & ---    & reported only (\S\ref{sec:limits}) \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -334,18 +334,17 @@ Jaccard'' is set overlap of the produced board with the torch path.}
 \toprule
 \textbf{Backend} & \textbf{Embedder} & \textbf{Head} & \textbf{Device} & \textbf{p50 (ms)} & \textbf{p90 (ms)} & \textbf{Jaccard vs.\ torch} \\
 \midrule
-torch   & torch    & PyTorch        & cpu & 16.8 & 56.6 & 1.000 \\
-ov-head & torch    & OpenVINO INT8  & CPU & 15.7 & 19.9 & 0.914 \\
-ov-full & OpenVINO & OpenVINO INT8  & CPU & \textbf{15.3} & 27.4 & 0.914 \\
+torch   & torch    & PyTorch        & cpu & 9.7 & 26.8 & 1.000 \\
+ov-head & torch    & OpenVINO INT8  & CPU & 9.7 & 13.6 & 0.913 \\
+ov-full & OpenVINO & OpenVINO INT8  & CPU & \textbf{5.5} & 9.1 & 0.913 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:latency} is the result: 15.3\,ms p50 on the fully-OpenVINO path
-and 16.8\,ms on torch, from roughly 70\,ms before. Two points need care.
+Table~\ref{tab:latency} is the result: 5.5\,ms p50 on the fully-OpenVINO path
+and 9.7\,ms on torch, from roughly 70\,ms before. Two points need care.
 First, re-running the full harness three times after memoisation gave a
-12--15\,ms student against a 10.6--11.7\,s teacher on the same day
-(6.71\,s on an earlier day), i.e.\ roughly $500$--$850\times$; the teacher
+10\,ms student against a 7.1\,s teacher in the same run, i.e.\ roughly $700\times$; the teacher
 timing drifts run to run, so we quote a range, not a ratio. Second, the board the
 OpenVINO path produces is not identical to the torch board (Jaccard 0.914),
 which is the expected consequence of INT8 logits reordering a candidate pool at
@@ -382,10 +381,10 @@ deployment target. The benchmark scripts self-label the hardware so that a run
 on an Intel host is one command, but that run has not happened.
 \todo{replace this paragraph if Intel (Tiber / Core Ultra) numbers land before the deadline}
 
-\textbf{One gate fails.} Same-function-pair rate 0.1865 versus teacher 0.1684
+\textbf{One gate fails.} Same-function-pair rate 0.1893 versus teacher 0.1735
 (Table~\ref{tab:student}).
 
-\textbf{Teacher word agreement is 0.056, and a closed vocabulary is why.} The
+\textbf{Teacher word agreement is 0.067, and a closed vocabulary is why.} The
 student picks from 94 words, and that vocabulary can represent only 32.5\% of
 the teacher's dynamic word choices, 49.1\% of which are hedge/filler; 12.2\% of
 rows have no representable dynamic word at all. A vocabulary $8.5\times$ larger
@@ -395,11 +394,11 @@ context by an open-vocabulary extractor rather than from a label space. On the
 held-out split that extractor fires on only 2 of 84 rows, so it moves no gate.
 On a purpose-built set of 60 where/who/which/colour/alternative questions whose
 answer is present in the scene or transcript, it fires on 88\% and puts an
-expected answer on the board for 0.817 of scenarios versus 0.050 for the closed
+expected answer on the board for 0.817 of scenarios versus 0.017 for the closed
 vocabulary alone (`how many' questions: 0/6, by design). That set was authored
 by us and is not independent evidence.
 
-\textbf{Latency figures supersede one another.} The 47\,ms and 15.3\,ms boards
+\textbf{Latency figures supersede one another.} The 47\,ms and 5.5\,ms boards
 come from the harness before and after memoisation; we state which is which and
 quote no speedup for the new one.
 
