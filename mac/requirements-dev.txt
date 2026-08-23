@@ -6,6 +6,7 @@ pytest>=8.0
 # ONNX export path (evaluation/phase4/export_onnx.py and its round-trip test).
 onnx>=1.16
 onnxruntime>=1.18
+onnxscript>=0.1  # torch.onnx dynamo exporter needs it; present implicitly on the dev Mac
 
 # Eval harness: figure generation and the HuggingFace corpus loader.
 matplotlib>=3.8

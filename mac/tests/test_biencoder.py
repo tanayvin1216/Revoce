@@ -60,7 +60,8 @@ def test_an_out_of_bank_phrase_is_scorable(model, bank):
     proj = ib._project_phrases(
         model, np.asarray(embed([novel]), dtype=np.float32))
 
-    score = float(proj @ ctx)
+    # numpy >= 2.3 refuses float() on a shape-(1,) result; index the row first.
+    score = float(proj[0] @ ctx)
     assert np.isfinite(score)
 
 
