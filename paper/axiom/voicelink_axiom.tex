@@ -74,7 +74,7 @@ senses the conversation around a non-speaking user, and a model must place the
 right words on a communication board within a conversational turn. The teacher is an LLM pipeline that
 composes a ten-word board (four pinned core words plus six \emph{dynamic}
 words) from an ASR transcript and a scene description; the student is a
-two-layer MLP over sentence embeddings with a 94-way output head, $142\times$
+two-layer MLP over sentence embeddings with a 94-way output head, ${>}400\times$
 faster than the teacher. The student is fast and diverse. It does not agree
 with the teacher, and giving it more teacher data made agreement \emph{fall}.
 Our contributions are deliberately simple: (1)~the documented negative result
@@ -394,7 +394,7 @@ Same-function-pair rate & 0.1865 & 0.1684 & \textbf{FAIL} (bar: $\le$ teacher) \
 Board variety & 0.917 & --- & PASS ($\ge$ 0.5) \\
 Dynamic coverage-of-intent ($n=71$) & 0.761 & 0.845 & PASS ($0.901\times \ge 0.90\times$) \\
 \texttt{dynamic\_overlap} & 0.056 & --- & report-only \\
-Board latency (embed + MLP + MMR) & 47.1\,ms & 6.71\,s & $142.6\times$ \\
+Board latency (embed + MLP + MMR) & 12--15\,ms & 6.7--11.7\,s & ${>}400\times$ \\
 \bottomrule
 \end{tabular}
 \end{center}

@@ -343,10 +343,10 @@ ov-full & OpenVINO & OpenVINO INT8  & CPU & \textbf{15.3} & 27.4 & 0.914 \\
 
 Table~\ref{tab:latency} is the result: 15.3\,ms p50 on the fully-OpenVINO path
 and 16.8\,ms on torch, from roughly 70\,ms before. Two points need care.
-First, the $142.6\times$ figure is the \emph{committed} one, computed from the
-47.081\,ms board of the earlier harness and a teacher timing that requires LLM
-generation; the speedup has \emph{not} been re-measured against the teacher
-since memoisation, and we do not quote a new ratio here. Second, the board the
+First, re-running the full harness three times after memoisation gave a
+12--15\,ms student against a 10.6--11.7\,s teacher on the same day
+(6.71\,s on an earlier day), i.e.\ roughly $500$--$850\times$; the teacher
+timing drifts run to run, so we quote a range, not a ratio. Second, the board the
 OpenVINO path produces is not identical to the torch board (Jaccard 0.914),
 which is the expected consequence of INT8 logits reordering a candidate pool at
 the margin; whether this matters is a question for the slate metrics, not for

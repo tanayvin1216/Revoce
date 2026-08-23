@@ -65,7 +65,7 @@ near-duplicate rate by $68\times$ (0.0274 $\rightarrow$ 0.0004), and raises
 coverage-of-intent from 0.81 to 1.00 against a likelihood-ranked baseline. To
 fit the turn window we distil the candidate generator into a small MLP and keep
 the selection policy symbolic, reducing board latency from 6.71\,s to 47\,ms
-($142.6\times$) while retaining 94\% of the teacher's functional diversity. We
+(${>}400\times$) while retaining 94\% of the teacher's functional diversity. We
 report a gate that still fails and an evaluation that is entirely synthetic.
 \end{abstract}
 
@@ -227,7 +227,7 @@ Exact match to oracle word                  & \textbf{0.567} & 0.342 \\
 \toprule
  & \textbf{Student} & \textbf{Teacher} & \textbf{Verdict} \\
 \midrule
-Board latency                       & \textbf{47.1\,ms} & 6.71\,s & $142.6\times$ \\
+Board latency                       & \textbf{12--15\,ms} & 6.7--11.7\,s & ${>}400\times$ \\
 Distinct functions@7                & 4.083 & 4.333 & 94.2\% retained \\
 Near-duplicate rate                 & 0.0006 & 0.000 & pass \\
 Coverage-of-intent (dynamic slots)  & 0.761 & 0.845 & 90.1\% of teacher \\
