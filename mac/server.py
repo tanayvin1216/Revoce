@@ -618,7 +618,7 @@ async def on_startup(app: web.Application) -> None:
     print("=" * 64)
     print("VoiceLink server up. LLM ranker active (or heuristic fallback).")
     print("Board fires on scene_changed / addressed (debounced 2s).")
-    print(f"  Open the AAC board on the iPad/phone (same Wi-Fi):")
+    print("  Open the AAC board on the iPad/phone (same Wi-Fi):")
     print(f"      http://{ip}:{PORT}/")
     print(f"  Local:  http://127.0.0.1:{PORT}/")
     print(f"  Taps logged to: {TAP_LOG_PATH}")

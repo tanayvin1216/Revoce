@@ -25,7 +25,6 @@ def render(results: dict, out_dir: Path = FIG) -> Path:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    import numpy as np
 
     out_dir.mkdir(exist_ok=True)
     d = results["overall"]["diverse"]
