@@ -284,8 +284,9 @@ generalises to any closed-label distillation of an open-vocabulary teacher whose
 useful outputs are long-tail. The fix we shipped is architectural: read concrete
 answers out of the context (Section~\ref{sec:ranking}) instead of from a label
 space. Its honest status: it fires on only 2 of 84 held-out rows, so its effect
-on the gates is noise; the claim is ``the mechanism works and nothing regressed'',
-and a deictic-question evaluation set is being built to measure it properly.
+on the gates is noise. On a purpose-built set of 60 where/who/which/colour/alternative
+questions (authored by us) it fires on 88\% and puts an expected answer on the board
+for 0.817 of scenarios versus 0.050 for the closed vocabulary alone.
 
 %==============================================================================
 \section{Deployment path on Intel (OpenVINO)}
