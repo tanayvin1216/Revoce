@@ -1,7 +1,7 @@
 # Intel laptop run — copy-paste steps (Windows, Core Ultra 9 185H)
 
 Goal: produce `e2e_<laptop>.json`, `whisper_bench_<laptop>.json` and an updated
-`BENCHMARKS.md`, committed to branch `phase4-distillation`. ~30 minutes, mostly waiting.
+`BENCHMARKS.md`, committed to `main`. ~30 minutes, mostly waiting.
 
 ## 1. Install (once)
 1. Python 3.12: https://www.python.org/downloads/windows/ → "Windows installer (64-bit)".
@@ -18,7 +18,7 @@ Open **PowerShell** (Start → type "PowerShell"), then paste:
 cd $HOME
 git clone https://github.com/tanayvin1216/VoiceLink.git
 cd VoiceLink
-git checkout phase4-distillation
+git checkout main
 ```
 Git will open a browser window to sign in to GitHub the first time.
 
