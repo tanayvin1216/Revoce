@@ -68,12 +68,16 @@ rule-based system enumerates real life.
 - Vision: Qwen2.5-VL-3B describes the scene from the wearable camera, locally.
 - Ranking: a two-stage architecture — an LLM teacher over-generates candidates and
   MMR-selects a communicatively diverse board (answer-quota reservation for
-  questions); a distilled 769-d MLP student reproduces that policy end-to-end in
-  43.6 ms vs the teacher's 6.8 s (**156×**), enabling real-time boards on edge CPUs.
-  That figure times the full path the device actually serves — embedding, student
-  forward pass, and MMR selection. An earlier draft of this document claimed ~7 ms
-  / ~900×; that number timed only the forward pass, on a code path the device no
-  longer runs, and is withdrawn.
+  questions); a distilled 769-d MLP student supplies relevance candidates that the
+  same symbolic MMR policy then selects over — the full path the device actually
+  serves (embedding, student forward pass, MMR selection) producing a board in
+  12–15 ms against the teacher pipeline's 6.7–11.7 s (>400×,
+  `mac/evaluation/phase4/phase4_results.json`) while retaining 94% of the
+  teacher's communicative-function diversity — though NOT the teacher's specific
+  word choices (dynamic overlap 0.056). Earlier drafts claimed ~7 ms / ~900×
+  (timed only the forward pass, on a path the device no longer runs) and 43.6 ms
+  / 156× (pre-memoisation); both are withdrawn. Check `docs/VERIFIED_NUMBERS.md`
+  before quoting any figure here.
 - Sub-domains demonstrably in play: ASR (Whisper), CV/VLM (Qwen2.5-VL), NLP
   embeddings (MiniLM), knowledge distillation, diversity-aware ranking (MMR),
   post-training quantization (NNCF INT8).

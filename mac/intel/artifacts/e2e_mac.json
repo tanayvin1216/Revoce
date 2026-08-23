@@ -1,0 +1,71 @@
+{
+  "hardware": {
+    "cpu": "Apple M4",
+    "arch": "arm64",
+    "os": "Darwin 25.5.0",
+    "python": "3.13.6",
+    "openvino": "2026.2.1-21919-ede283a88e3-releases/2026/2",
+    "ov_devices": [
+      "CPU"
+    ],
+    "intel_hardware": false,
+    "ov_device_names": {
+      "CPU": "Apple M4"
+    }
+  },
+  "n_scenarios": 84,
+  "scenario_source": "phase4 held-out split (evaluate._held_out_rows)",
+  "results": [
+    {
+      "backend": "torch",
+      "env": {
+        "VOICELINK_STUDENT_BACKEND": "torch",
+        "VOICELINK_EMBED_BACKEND": "torch"
+      },
+      "embed_backend_used": "torch",
+      "student_runtime": "StudentRanker",
+      "ov_device": null,
+      "n": 84,
+      "repeats": 3,
+      "first_call_incl_load_s": 1.45,
+      "p50_ms": 9.696833498310298,
+      "p90_ms": 26.763720510643914,
+      "mean_ms": 13.593761356859764,
+      "board_jaccard_vs_torch": 1.0
+    },
+    {
+      "backend": "ov-head",
+      "env": {
+        "VOICELINK_STUDENT_BACKEND": "openvino",
+        "VOICELINK_EMBED_BACKEND": "torch"
+      },
+      "embed_backend_used": "torch",
+      "student_runtime": "OpenVinoStudent",
+      "ov_device": "CPU",
+      "n": 84,
+      "repeats": 3,
+      "first_call_incl_load_s": 1.323,
+      "p50_ms": 9.650833497289568,
+      "p90_ms": 13.584204207290895,
+      "mean_ms": 10.393311977197069,
+      "board_jaccard_vs_torch": 0.9133049490192349
+    },
+    {
+      "backend": "ov-full",
+      "env": {
+        "VOICELINK_STUDENT_BACKEND": "openvino",
+        "VOICELINK_EMBED_BACKEND": "openvino"
+      },
+      "embed_backend_used": "openvino",
+      "student_runtime": "OpenVinoStudent",
+      "ov_device": "CPU",
+      "n": 84,
+      "repeats": 3,
+      "first_call_incl_load_s": 0.847,
+      "p50_ms": 5.505082997842692,
+      "p90_ms": 9.122237472911365,
+      "mean_ms": 5.979989935844464,
+      "board_jaccard_vs_torch": 0.9133049490192349
+    }
+  ]
+}

@@ -9,7 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import numpy as np
 import torch
 
 MAC = Path(__file__).resolve().parent.parent
@@ -176,19 +175,35 @@ def test_infer_question_reserves_answer_slots():
     assert sum(1 for w in words if infer.is_hedge(w)) <= 1
 
 
-def test_context_union_disabled_by_default():
+def test_single_token_context_union_stays_disabled():
     """Review-opus fix 2: the single-token union injected question-echo nouns
     that displaced real answers (ablation: 0.563 -> 0.803 coverage without it).
-    It stays OFF until a multi-word answer extractor exists."""
+    It stays OFF — RC-3 is served by answers.py's multi-word extractor instead."""
     from evaluation.phase4 import infer
     assert infer.CONTEXT_UNION is False
+
+
+def test_every_board_word_is_vocab_or_grounded_in_the_context():
+    """The RC-3 invariant that replaced "nothing outside the trained vocab".
+
+    Open answers are out-of-vocab BY DESIGN — that is the whole point, "aunt"
+    can never clear the frequency floor. What must still hold is that nothing is
+    invented: an out-of-vocab word has to be read out of the scene or the
+    question the partner actually said.
+    """
+    from evaluation.phase4 import infer
     vocab = ["i don't know", "i am not sure", "my aunt", "my friend"]
     m = _bias_model(len(vocab), [5.0, 4.5, 1.0, 0.9])
+    scene = "A train carriage with empty seats."
+    transcript = "Do you want the window seat or the aisle seat?"
     words = infer.student_dynamic_words(
-        m, vocab, scene="A train carriage with empty seats.",
-        transcript="Do you want the window seat or the aisle seat?",
-        is_question=True, k_dyn=6)
-    assert all(w in vocab for w in words)  # nothing outside the trained vocab
+        m, vocab, scene=scene, transcript=transcript, is_question=True, k_dyn=6)
+
+    context = f"{scene} {transcript}".lower()
+    for w in words:
+        assert w in vocab or all(tok in context for tok in w.lower().split()), w
+    # and the open path did fire here — the answers are stated in the question
+    assert any(w not in vocab for w in words), words
 
 
 def test_context_union_still_works_when_enabled(monkeypatch):
@@ -239,10 +254,14 @@ _needs_ckpt = pytest.mark.skipif(
 
 # Review S2: the old stems accepted generic scene nouns ("room", "table"), so
 # the test passed on boards whose real answer sat outside top-7. Probes now
-# demand the ACTUAL answer tokens. The two out-of-vocab probes are xfail: with
-# the context union disabled (review fix 2) an answer the teacher never emitted
-# above the frequency floor is unrepresentable — that is RC-3, owned by
-# teacher-side answer coverage (PLAN.md item 4), and the xfail marks it honestly.
+# demand the ACTUAL answer tokens.
+#
+# The two out-of-vocab probes were xfail while the board could only emit closed
+# vocabulary: an answer the teacher never produced above the frequency floor was
+# unrepresentable at any model quality. They are live assertions now that
+# answers.py supplies open-vocabulary answers for deictic questions — "aunt" is
+# reachable because it is read out of the scene, not because it entered the
+# vocab. See answers.py for why the frequency floor cannot fix this on its own.
 SEATING_PROBES = [
     pytest.param(
         "A train carriage with pairs of seats, some by the window and some by the aisle.",
@@ -253,17 +272,11 @@ SEATING_PROBES = [
         "The teacher gestures around a room with several open desks as the user comes in.",
         "Where would you like to sit today?",
         ("sit", "seat", "desk", "front", "back"),
-        marks=pytest.mark.xfail(
-            reason="RC-3: no seat/desk answer cleared the teacher-data frequency "
-                   "floor for this scene family; needs teacher answer-coverage"),
         id="oov-classroom"),
     pytest.param(
         "Crowded holiday dinner table, aunt pulling out an empty chair between two relatives.",
         "Who do you want to sit next to?",
         ("aunt", "friend", "sibling", "grandparent", "mom", "dad"),
-        marks=pytest.mark.xfail(
-            reason="RC-3: person-word answers are below the teacher-data "
-                   "frequency floor; needs teacher answer-coverage"),
         id="oov-dinner-person"),
 ]
 

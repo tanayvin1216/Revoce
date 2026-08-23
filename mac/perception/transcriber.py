@@ -90,9 +90,13 @@ class OpenVinoWhisperTranscriber(Transcriber):
     RUNTIME_GENAI = "openvino-genai"
     RUNTIME_OPTIMUM = "optimum-intel"
 
-    def __init__(self, model_dir, device: str = "CPU") -> None:
+    def __init__(self, model_dir, device: str | None = None) -> None:
+        import os
         from pathlib import Path
 
+        # Device from VOICELINK_OV_DEVICE (CPU default; GPU/NPU on Intel boxes).
+        device = (device or os.environ.get("VOICELINK_OV_DEVICE", "CPU")).upper()
+        self.device = device
         model_dir = Path(model_dir)
         if not (model_dir / "openvino_encoder_model.xml").exists():
             raise FileNotFoundError(
@@ -109,7 +113,11 @@ class OpenVinoWhisperTranscriber(Transcriber):
         genai_error = None
         try:
             import openvino_genai
-            self._pipe = openvino_genai.WhisperPipeline(str(model_dir), device)
+            # ARM pitfall (mac/intel/README.md): the CPU plugin defaults to f16
+            # and the decoder degenerates into '!!!' at 8x the latency. f32 is
+            # correct on real Intel CPUs too; GPU/NPU plugins reject the prop.
+            props = {"INFERENCE_PRECISION_HINT": "f32"} if device == "CPU" else {}
+            self._pipe = openvino_genai.WhisperPipeline(str(model_dir), device, **props)
             # Loading can succeed and generation still fail on a graph-shape
             # mismatch, so prove it works before claiming this runtime.
             self._pipe.generate(np.zeros(16000, dtype=np.float32))
@@ -143,6 +151,8 @@ class OpenVinoWhisperTranscriber(Transcriber):
             raise ValueError(
                 f"OpenVINO Whisper expects 16 kHz, got {sample_rate}")
         pcm = np.asarray(pcm_f32, dtype=np.float32).ravel()
+        if pcm.shape[0] < 480:  # whisper's mel front-end needs >= ~30 ms
+            pcm = np.pad(pcm, (0, 480 - pcm.shape[0]))
 
         if self.runtime == self.RUNTIME_GENAI:
             text = str(self._pipe.generate(pcm)).strip()

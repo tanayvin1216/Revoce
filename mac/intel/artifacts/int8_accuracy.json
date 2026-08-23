@@ -1,0 +1,8 @@
+{
+  "n_calibration_rows": 360,
+  "k_dyn": 6,
+  "max_abs_logit_delta": 1.0528192520141602,
+  "mean_abs_logit_delta": 0.22787794470787048,
+  "mean_topk_overlap": 0.9504629629629631,
+  "min_topk_overlap": 0.6666666666666666
+}

@@ -1,0 +1,366 @@
+% VoiceLink — technical overview for a research mentor
+% Build: pdflatex voicelink_technical_overview.tex  (twice, for the TOC/refs)
+% Self-contained: no figures required; every number cites the repository file
+% that produced it (see docs/VERIFIED_NUMBERS.md in the repo for the inventory).
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{microtype}
+\hypersetup{colorlinks=true, linkcolor=blue!60!black, urlcolor=blue!60!black}
+\lstset{basicstyle=\ttfamily\small, breaklines=true, frame=single, columns=fullflexible}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\file}[1]{\texttt{\small #1}}
+\setlist{nosep}
+
+\title{VoiceLink: Context-Aware Vocabulary for Wearable AAC\\
+\large A technical overview of the hardware, software, evaluation and open problems}
+\author{Tanay Vinaykya\\ \small prepared for discussion with a research mentor}
+\date{23 August 2026 --- repository branch \code{main}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+VoiceLink is a wearable communication aid for nonverbal and minimally-verbal
+people who use augmentative and alternative communication (AAC) boards. A
+\$15-class body-worn device (ESP32-S3 camera + I$^2$S microphone) streams what
+is happening around the user to a nearby computer, which transcribes the
+conversation, describes the scene, combines both with a private personal-context
+store, and pushes the vocabulary that fits \emph{this moment} onto a
+tablet-hosted AAC board in real time. No caregiver pre-programs the board.
+All inference is local. The system is built around a single architectural seam,
+\code{rank\_vocabulary(scene, transcript, context)}, through which every model
+call passes, so the inference backend has already been swapped from a
+PyTorch/MLX development path to an OpenVINO INT8 path without touching the
+firmware, server or UI. This document describes the hardware, the software
+pipeline, the evaluation methodology and its measured results, one negative
+result that we consider the most interesting scientific finding so far, and the
+questions on which we would value a mentor's guidance.
+\end{abstract}
+
+\tableofcontents
+\medskip
+
+%==============================================================================
+\section{Problem and motivation}
+People who cannot speak often communicate through an AAC board: a grid of words
+and pictograms they tap. The words on the board must be chosen in advance by a
+caregiver or speech-language pathologist, who is guessing what the user will need.
+The guess is frequently wrong, changing it takes another person and time, and
+the user is left without the one word the conversation actually called for.
+The concrete case we use throughout the project: a teacher asks
+``\emph{what do plants take in from the air?}'' --- no pre-programmed board has
+\emph{carbon dioxide} on it.
+
+VoiceLink removes the guessing. The aid senses the situation and assembles the
+board live. The design goal is not to predict \emph{the} word the user will say
+(the AAC literature on keystroke savings already optimises that) but to offer a
+\emph{slate} of 10 words that spans the different communicative moves the user
+might want to make --- answer, reject, request, ask back, comment --- so that
+whichever one they mean is reachable in one tap.
+
+Target population is autism-first, extending to aphasia, ALS and Parkinson's.
+Development and testing are restricted to the team until written proxy consent
+and pseudonym handling exist (Section~\ref{sec:privacy}).
+
+%==============================================================================
+\section{System architecture}
+\subsection{Three devices, one seam}
+\begin{center}
+\begin{tabular}{@{}p{0.27\linewidth}p{0.68\linewidth}@{}}
+\toprule
+\textbf{Device} & \textbf{Role} \\ \midrule
+Wearable capture device (ESP32-S3) & Senses and streams: one VGA JPEG every 2\,s and continuous 16\,kHz mono PCM over a single WebSocket. Does \emph{no} processing. Runs its own Wi-Fi access point so it needs no router. \\
+Computer (Mac today; Intel mini-PC is the deployment target) & All intelligence: speech recognition, scene description, personal-context retrieval, vocabulary ranking and board selection, tap logging. Serves the AAC web app. \\
+Tablet / phone & Shows the board as a plain-HTTP web page with a WebSocket for live updates. The user taps; every tap is logged with the context that produced the board. \\
+\bottomrule
+\end{tabular}
+\end{center}
+The wearable talks only to the computer; the tablet talks only to the computer.
+Nothing leaves the local network.
+
+\subsection{The seam}
+Every model call in the system goes through one function with a fixed signature
+(\file{mac/rank\_vocabulary.py}):
+\begin{lstlisting}
+rank_vocabulary(scene, transcript, context, strategy=...) -> list[RankedWord]
+\end{lstlisting}
+The firmware never calls a model; the web app never calls a model; the server
+reaches intelligence only through this function. The \code{strategy} argument
+selects the policy (\code{topk}, \code{diverse}, \code{student}) and environment
+flags select the runtime underneath it
+(\code{VOICELINK\_STUDENT\_BACKEND=torch|openvino},
+\code{VOICELINK\_EMBED\_BACKEND}, \code{VOICELINK\_OV\_DEVICE=CPU|GPU|NPU}).
+This is what allowed the Intel/OpenVINO port (Section~\ref{sec:intel}) to be a
+configuration change rather than a rewrite, and it is the property we would
+most like to preserve as the models change.
+
+%==============================================================================
+\section{Hardware}
+\subsection{Wearable capture device}
+\begin{itemize}
+\item \textbf{Board:} Freenove ESP32-S3-WROOM CAM (dual-core Xtensa LX7 at 240\,MHz, 8\,MB OPI PSRAM, OV2640-class camera on the \code{ESP32S3\_EYE} pin map).
+\item \textbf{Microphone:} Knowles SPH0645 I$^2$S MEMS microphone (BCLK GPIO\,1, WS GPIO\,2, DIN GPIO\,42; SEL tied to GND for the left channel). The SPH0645 delivers 18-bit samples left-justified in 32-bit words; the firmware reads raw words and arithmetic-shifts by 14 bits to 16-bit PCM.
+\item \textbf{Capture cadence:} VGA (640$\times$480) JPEG at quality~12 every 2000\,ms; audio in 512-sample chunks (32\,ms) at 16\,kHz.
+\item \textbf{Indicators and controls:} the on-board WS2812 LED is lit red whenever capture is active, as the visible signal to bystanders; a debounced push-button on GPIO\,14 toggles capture on and off (the hardware kill switch).
+\item \textbf{Network:} SoftAP \code{VoiceLink-Capture} on channel~6, WebSocket server on \code{ws://192.168.4.1:81/}. Binary frames carry a 1-byte type tag: \code{0x01} + JPEG, \code{0x02} + PCM16LE.
+\item \textbf{Concurrency:} the I$^2$S read-and-send loop is a high-priority FreeRTOS task pinned to core~0; camera capture, WebSocket servicing and the button run in \code{loop()} on core~1, so a slow JPEG grab can never stutter the audio.
+\item \textbf{Build:} Arduino-ESP32 core, FQBN \code{esp32:esp32:esp32s3} with \code{PSRAM=opi}, \code{PartitionScheme=huge\_app}, \code{USBMode=hwcdc}; the current firmware compiles to 1.0\,MB (31\,\% of flash). Source: \file{firmware/voicelink\_capture/voicelink\_capture.ino} (361 lines). A separate bench rig (\file{firmware/mic\_test/}) records raw I$^2$S audio over serial for verifying the microphone wiring before trusting the stream.
+\item \textbf{Cost:} the board and microphone are in the \$15--20 range at single-unit prices; a formal bill of materials has not yet been written (flagged as unsourced in our numbers inventory).
+\end{itemize}
+
+\subsection{Host computer}
+Development host is an Apple M4 Mac. The deployment target is an Intel
+mini-PC / AI PC (Core Ultra with NPU, or a small Xeon) running the same Python
+server with the OpenVINO backend selected. No Intel-hardware measurements exist
+yet; Section~\ref{sec:intel} describes exactly what has and has not been measured.
+
+%==============================================================================
+\section{Software}
+All host code is Python (\file{mac/}, about 7\,000 lines including evaluation),
+served with \code{aiohttp}. The audio path is non-blocking by construction:
+model calls run in worker threads and the board is pushed when ready.
+
+\subsection{Perception pipeline (\file{mac/perception/})}
+\begin{itemize}
+\item \textbf{Wearable client} connects to the device's WebSocket and demultiplexes the two streams into ephemeral in-memory buffers. Nothing is written to disk.
+\item \textbf{Audio worker} runs an energy VAD (30\,ms frames, RMS threshold 350, 600\,ms trailing silence, 300\,ms minimum utterance) to find utterance boundaries, then transcribes each complete utterance. A near-field loudness heuristic (RMS $>$ 800) labels speech as \emph{partner} (addressed to the user) versus \emph{ambient}; questions flip an \code{addressed} flag that downstream selection uses.
+\item \textbf{Transcriber} is behind an abstract interface: \code{faster-whisper} \code{base.en} INT8 on CPU by default; an OpenVINO GenAI \code{WhisperPipeline} backend (whisper-base.en, INT8 weights) is the Intel path. Measured faster-whisper latency on the Mac: 0.33\,s for a 2.5\,s clip, 0.46\,s for 5.2\,s (real-time factor 0.09--0.13 on short utterances).
+\item \textbf{Vision worker} polls the latest frame every 0.5\,s, runs a 64$\times$64 grayscale change detector (0.21\,ms per frame) and only invokes the VLM when the mean absolute difference exceeds 12 and at least 2\,s have elapsed. The VLM is Qwen2.5-VL-3B-Instruct (4-bit, MLX on the Mac) prompted for one sentence about what the user might want to talk about; frames are downscaled to $\le$768\,px (4.1\,s per description at 768\,px, 2.1\,s at 512\,px; the gate keeps the duty cycle low).
+\item \textbf{Context state} holds the rolling transcript, last utterance, addressed flag and current scene sentence, and exposes a \code{snapshot()} that is what the seam receives.
+\end{itemize}
+
+\subsection{Personal context}
+A local JSON profile (\file{mac/personal\_context.json}, never committed, never transmitted) carries identity, relationships, routines, today's events with vocabulary hints, and sensory notes. \file{personal\_context\_loader.py} slices the profile against the current scene and transcript (name matches, event windows, noise-sensitivity triggers) so the prompt sees only the relevant part.
+
+\subsection{Ranking and board composition}
+\label{sec:ranking}
+The \code{diverse} strategy is the production teacher policy:
+\begin{enumerate}
+\item \textbf{Over-generate} a pool with a local LLM (Qwen2.5-3B-Instruct, 4-bit) using a slot-based prompt: exactly one first-person phrase for each of nine AAC communicative functions (request, reject, comment, question, share-information, express-feeling, social, direct-attention, clarify) plus four phrases on the concrete topics in play. Slot prompting is what stops the model mode-collapsing onto the single likeliest reply.
+\item \textbf{Inject} a deterministic core pool (\emph{yes}, \emph{no}, \emph{I don't know}, \emph{wait}, \emph{I need help}) so a bad generation can never strand the user.
+\item \textbf{Select} with maximal marginal relevance (MMR) over MiniLM sentence embeddings (\code{all-MiniLM-L6-v2}, 384-d), with per-candidate function tags so the selection spans functions, a low $\lambda$ (0.35) for answers to a question so that answers spread across distinct responses rather than paraphrases, an answer-quota reservation when a question is active, and a hedge cap so ``I'm not sure'' variants cannot fill the board.
+\item \textbf{Assemble} four pinned core words (yes / no / I need help / wait --- four distinct functions, so ``never mode-collapsed'' is structurally true) plus six dynamic words, padded to exactly ten.
+\end{enumerate}
+Since RC-3 (Section~\ref{sec:ceiling}) an \emph{open-vocabulary answer extractor}
+(\file{evaluation/phase4/answers.py}) reads concrete answers out of the context
+for alternative (``A or B?'') and deictic (where/who/which) questions and
+reserves slots for them, so that an answer like \emph{window seat} can reach the
+board even though it is in no fixed vocabulary.
+
+\subsection{AAC web app}
+A single-origin page (\file{mac/web/index.html}) served over plain HTTP on the
+LAN (HTTPS would hit the mixed-content wall with the device's \code{ws://}
+stream), with ARASAAC pictograms cached locally. Every tap is sent back and
+appended to \file{mac/taps.jsonl} together with the board id and the full
+context snapshot that produced the board. This interaction log is the dataset
+that will eventually replace synthetic evaluation and it has been collected
+from the first UI version. A second page (\file{console.html}) is a developer
+console: scenario injection, profile switching, a phase dashboard, and the
+ability to push a real image through the real VLM.
+
+\subsection{Models in use}
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Role} & \textbf{Model} & \textbf{Runtime} \\ \midrule
+Speech & Whisper base.en (INT8) & faster-whisper / OpenVINO GenAI \\
+Scene & Qwen2.5-VL-3B-Instruct (4-bit) & MLX (Mac); OpenVINO export is a documented next step \\
+Teacher ranker & Qwen2.5-3B-Instruct (4-bit) & MLX-LM \\
+Embeddings & all-MiniLM-L6-v2 & sentence-transformers / OpenVINO IR \\
+Student ranker & 769$\to$192$\to$94 MLP (LayerNorm, ReLU, dropout 0.3) & PyTorch / ONNX / OpenVINO FP32 / NNCF INT8 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%==============================================================================
+\section{Evaluation methodology}
+\label{sec:eval}
+We found early that the obvious metric --- does the board contain the oracle
+word --- is easy to game (a board of ten synonyms of the likeliest answer scores
+well and is useless). The harness therefore uses slate metrics chosen to resist
+that failure:
+\begin{description}
+\item[Distinct communicative functions @7] how many of the nine AAC functions the top seven words span, classified by multi-exemplar nearest-centroid in embedding space (a single-centroid version mislabelled \emph{yes} and \emph{carbon dioxide} as ``I don't know''; fixed and applied to both arms).
+\item[Near-duplicate pair rate] fraction of word pairs with cosine $\ge$ a threshold.
+\item[Same-function-pair rate] fraction of pairs sharing a function --- the direct measure of ``seven paraphrases''.
+\item[Coverage-of-intent] fraction of scenarios where at least one of the authored \emph{acceptable moves} is expressible from the board. We report it on the \emph{dynamic} slice only, because the four pinned core words self-certify on the full board.
+\item[Board variety] distinct boards over the held-out set (a degeneracy guard).
+\item[Teacher agreement] word-level overlap of student and teacher dynamic words --- reported, not gated, for the reason in Section~\ref{sec:ceiling}.
+\end{description}
+Judging uses an LLM and is labelled \emph{proxy}; a human-comparison hook exists
+but no human study has been run. Every evaluation is on \textbf{synthetic
+scenarios}: 120 phase-3 scenarios across five settings, and a 600-row teacher
+corpus (authored scenarios plus earlier phases) that is embedding-deduplicated
+at cosine 0.95, category-capped at 15\,\%, split 391/84/84 with a fingerprint
+so a drifted corpus refuses to score against a stale partition. We say this
+plainly in every document: a student that passes here may be imitating the
+teacher imitating an LLM.
+
+%==============================================================================
+\section{Measured results}
+All values below are from \file{docs/VERIFIED\_NUMBERS.md}, re-derived on
+23~August~2026 from the committed result files without model calls unless
+marked; all on Apple M-series hardware.
+
+\subsection{Diversity-first selection beats naive top-$k$ (phase 3, 120 scenarios)}
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+ & \textbf{diverse (MMR)} & \textbf{top-$k$} \\ \midrule
+Distinct functions @7 & 4.68 & 3.88 \\
+Near-duplicate rate & 0.0004 & 0.0274 (69$\times$ higher) \\
+Coverage-of-intent @7 & 1.00 & 0.78 (0.81 with the June scorer) \\
+\bottomrule
+\end{tabular}
+\end{center}
+Source: \file{mac/evaluation/phase3/selftest\_results.json}; re-scorable with
+\code{selftest.py --from-boards}.
+
+\subsection{Distillation (phase 4, held-out $n=84$)}
+\begin{center}
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{Metric} & \textbf{student} & \textbf{teacher} & \textbf{verdict} \\ \midrule
+Distinct functions @7 & 4.095 & 4.298 & PASS (retention 0.953 $\ge$ 0.90) \\
+Near-duplicate rate & 0.0006 & 0.0 & PASS \\
+Same-function-pair rate & 0.1893 & 0.1735 & \textbf{FAIL} (bar: $\le$ teacher) \\
+Board variety & 0.917 & --- & PASS \\
+Dynamic coverage-of-intent & 0.789 & 0.873 & PASS (0.904$\times$) \\
+Dynamic word overlap with teacher & 0.067 & --- & reported only \\
+Board latency (embed + MLP + MMR) & 12--15\,ms & 6.7--11.7\,s & ${>}400\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Source: \file{mac/evaluation/phase4/phase4\_results.json}. The failing gate has
+survived three review rounds and is reported as failing. The student is fast and
+diverse; it is \emph{not} a faithful policy match, and we do not claim it is.
+
+Two process findings from this phase that we think are generally useful:
+\begin{itemize}
+\item The raw student \emph{argmax} board was measured useless (hedge walls: 2.1 hedge tokens per top-7, 72.6\,\% of boards with $\ge$2 hedges). The fix was architectural, not more training: treat the student's logits as a \emph{candidate pool} and run the same symbolic MMR selection the teacher uses over it. Hedges fell to 0.012 per board; the device now runs exactly the policy the harness measures.
+\item 5$\times$ more distillation data made teacher agreement \emph{worse} (0.232 $\to$ 0.165), falsifying the data-volume hypothesis. The reason is Section~\ref{sec:ceiling}.
+\end{itemize}
+
+\subsection{Latency engineering (23 August 2026)}
+An end-to-end benchmark through the seam (\file{mac/intel/bench\_e2e.py}, 84
+held-out rows, three runtime combinations, hardware fingerprint recorded)
+showed that 71 of 73\,ms per board was MiniLM re-embedding the static 94-word
+vocabulary on every call. Memoising embeddings per (backend, text) and batching
+scene+transcript into one encoder call brought a board to \textbf{5.5\,ms p50}
+on the fully-OpenVINO path (embed + head + selection; context texts evicted
+between rounds so every board still encodes a never-seen scene and
+transcript). The OpenVINO MiniLM export matches the PyTorch embeddings at cosine
+1.000 and encodes a single text in 5.6\,ms versus 16.0\,ms. Re-running the full harness the same day gave a 12--15\,ms student against a 10.6--11.7\,s teacher; the teacher timing drifts run to run, so the table quotes a range.
+
+%==============================================================================
+\section{The closed-vocabulary ceiling (negative result)}
+\label{sec:ceiling}
+The distillation target is an open-vocabulary teacher (an LLM that can write
+\emph{carbon dioxide}, \emph{window seat}, \emph{Ms.~Lee}); the student is a
+classifier over a closed label set built by frequency from the teacher's own
+boards (minimum frequency 3, maximum 200, embedding-deduplicated at $\tau=0.80$,
+giving 94 words). Measured over the 3\,600 dynamic word slots the teacher
+produced:
+\begin{itemize}
+\item the teacher used 2\,362 distinct dynamic words, 94.8\,\% of which appear fewer than three times;
+\item the 94-word vocabulary can express only \textbf{32.5\,\%} of the teacher's word choices, and \textbf{49.1\,\%} of what it can express is hedge/filler (\emph{I'm not sure}, \emph{maybe}, \ldots);
+\item 12.2\,\% of rows have \emph{no} representable dynamic word at all;
+\item growing the vocabulary helps only slowly: 292 words $\to$ 42.5\,\%, 752 words (8$\times$) $\to$ 55.3\,\%, 800 words $\to$ 56.6\,\%; full coverage needs all 2\,362.
+\end{itemize}
+This explains the data-volume result: every added row contributes mostly
+one-off concrete words, so a frequency-built vocabulary drifts \emph{further}
+toward filler as data grows, and the achievable agreement ceiling (0.325) is
+low by construction --- the student's 0.165 was already half of it. The lesson
+generalises to any closed-label distillation of an open-vocabulary teacher whose
+useful outputs are long-tail. The fix we shipped is architectural: read concrete
+answers out of the context (Section~\ref{sec:ranking}) instead of from a label
+space. Its honest status: it fires on only 2 of 84 held-out rows, so its effect
+on the gates is noise. On a purpose-built set of 60 where/who/which/colour/alternative
+questions (authored by us) it fires on 88\% and puts an expected answer on the board
+for 0.817 of scenarios versus 0.050 for the closed vocabulary alone.
+
+%==============================================================================
+\section{Deployment path on Intel (OpenVINO)}
+\label{sec:intel}
+\begin{itemize}
+\item Student: PyTorch $\to$ ONNX (opset 17, standard layers only) $\to$ OpenVINO IR (max logit delta vs ONNX $1.4\times10^{-6}$) $\to$ NNCF post-training INT8 on 360 real calibration contexts: 661\,KB $\to$ 235\,KB (2.8$\times$), top-6 overlap with FP32 0.950 mean / 0.667 min, max logit delta 1.05.
+\item MiniLM: exported with \code{optimum-cli} (tokenizer, encoder and pooling in one graph); serves the MMR embeddings torch-free.
+\item Whisper: whisper-base.en INT8 through \code{openvino\_genai.WhisperPipeline}; on the Mac's ARM plugin it is at parity with faster-whisper (300 vs 252\,ms on a 2.1\,s clip, 403 vs 407\,ms on 4.0\,s; $n=10$, identical transcripts, committed clips); an earlier one-clip 0.35 vs 0.42\,s figure was withdrawn. Its value is the Intel CPU/GPU/NPU port, which is unmeasured.
+\item Serving: \code{VOICELINK\_STUDENT\_BACKEND=openvino} compiles the INT8 IR (FP32 fallback) behind the seam, with a vocabulary-hash sidecar so a stale artifact refuses to serve wrong words; \code{VOICELINK\_OV\_DEVICE} targets CPU, GPU or the Core Ultra NPU with the same file.
+\item Pitfall worth knowing: OpenVINO's ARM CPU plugin defaults to f16 inference, which made the Whisper decoder degenerate and drifted logits by $10^{-2}$; we pin \code{INFERENCE\_PRECISION\_HINT=f32} on CPU.
+\item \textbf{What does not exist:} any measurement on Intel silicon. Every number above is Apple M-series through the ARM plugin. The benchmark scripts self-label the hardware so a run on an Intel box is one command.
+\end{itemize}
+
+%==============================================================================
+\section{Privacy, consent and responsible use}
+\label{sec:privacy}
+The wearable captures audio and images that include bystanders who have not
+consented. Our response is enforced in the architecture rather than in policy
+text: inference is local-only; audio and frame buffers are ephemeral (no
+persistent recording; nothing is written to disk); the device has a physical
+capture toggle and a visible recording LED; the personal-context store never
+leaves the host; the VLM produces a one-sentence scene description and no face
+detection or identification is performed; the only persisted data is the tap
+log, which the user's own taps create. Testing is team-only until written proxy
+consent and pseudonym handling exist. The model \emph{suggests}; the user's tap
+is always the utterance, and four safety words are pinned outside model
+control. Synthetic-scenario evaluation and LLM judging are documented bias
+risks. Generative-AI tooling used in development (Claude Code, Codex) is
+disclosed in the project documentation.
+
+%==============================================================================
+\section{Status, open problems, and where we would value guidance}
+\textbf{Status.} Phases 0--5 (guardrails, live pipeline, console, self-test
+harness, distillation, Intel readiness) are complete; 172 automated tests pass.
+Phase 6 (integration demo and video) is in progress. A patent novelty brief
+exists; nothing has been filed.
+
+\textbf{Open problems.}
+\begin{enumerate}
+\item \emph{Evaluation validity.} Everything is synthetic and LLM-judged. What is the smallest human study (team-internal first, then consented pilot) that would give a defensible number, and which of our slate metrics would you expect to survive contact with real AAC users?
+\item \emph{The ceiling.} Is closed-label distillation the wrong frame entirely? Alternatives we are weighing: a retrieval student over an open candidate store; a small sequence model that emits words rather than classes; distilling the \emph{selection policy} (MMR weights, quotas) rather than the word choices.
+\item \emph{Turn-taking latency budget.} With boards at 15\,ms the bottleneck is now perception (0.3--0.5\,s speech, 2--4\,s scene). How should the board update policy trade freshness against stability for a user who is scanning it?
+\item \emph{Bystander privacy.} What would a defensible consent model look like for a continuously sensing assistive wearable in a classroom?
+\item \emph{Venues.} We are preparing short workshop submissions (on-device intelligence; efficient deep learning) and an Intel AI Global Impact Festival entry. Which framing --- systems, negative result, or accessibility --- do you think is strongest?
+\end{enumerate}
+
+%==============================================================================
+\appendix
+\section{Repository map}
+\begin{lstlisting}
+firmware/voicelink_capture/   ESP32-S3 capture firmware (camera + I2S mic + WS server)
+firmware/mic_test/            serial I2S bench rig for checking mic wiring
+mac/server.py                 aiohttp server: WS board push, tap logging, console routes
+mac/rank_vocabulary.py        THE SEAM; diverse / topk / student strategies
+mac/selection.py              MMR selection, query vector, function-aware fill
+mac/ranker.py, ranker_config.py   local LLM ranker + one-line runtime config
+mac/perception/               wearable client, VAD/audio worker, transcriber, VLM worker
+mac/personal_context_loader.py    private profile slicing
+mac/web/index.html, console.html  AAC board; developer console
+mac/evaluation/phase1,3,4     diverse-vs-topk study; 120-scenario self-test; distillation
+mac/evaluation/phase4/answers.py  open-vocabulary answer extraction (RC-3)
+mac/intel/                    ONNX->IR->INT8 lifecycle, OpenVINO embedder, benchmarks
+mac/tests/                    172 tests (seam invariants, gates, Intel path, privacy)
+docs/VERIFIED_NUMBERS.md      every quotable number with its source and command
+docs/claude/working-notes/    verbatim engineering notes per phase
+\end{lstlisting}
+
+\section{Reproducing the key numbers}
+\begin{lstlisting}
+cd mac
+VOICELINK_PERCEPTION=0 python3 -m pytest -q                      # 172 passed
+VOICELINK_PERCEPTION=0 python3 evaluation/phase3/selftest.py --from-boards
+VOICELINK_PERCEPTION=0 python3 evaluation/phase4/evaluate.py --teacher-samples 0
+VOICELINK_PERCEPTION=0 python3 intel/convert.py && python3 intel/quantize.py
+VOICELINK_PERCEPTION=0 python3 intel/bench_e2e.py --n 84        # end-to-end board latency
+\end{lstlisting}
+\end{document}

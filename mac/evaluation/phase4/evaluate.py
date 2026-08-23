@@ -351,7 +351,6 @@ def held_out_eval(model, vocab, k, k_dyn, core_words,
 
 def speedup(model, vocab, k, k_dyn, core_words, teacher_samples: int) -> dict:
     """(3) end-to-end board latency: student (embed+MLP+assemble) vs teacher."""
-    from evaluation.embed import embed
     scenarios = scengen.load_scenarios()
 
     _ = student_board(model, vocab, scenarios[0]["scene"], scenarios[0]["transcript"],
@@ -467,6 +466,25 @@ def write_report(res: dict) -> None:
             "(mode-collapse). Iterating on diversity loss / more teacher data. Not a win.")
     else:
         lines.append("> v2 did not clear the bars; see numbers above. Honest finding, iterate.")
+    dq = res.get("deictic")
+    if dq and "overall" in dq:
+        o = dq["overall"]
+        lines += [
+            "",
+            f"## Deictic-question set (informational, NOT gated; n={o['n']})",
+            "",
+            "RC-3's open answer path fires on only 2/84 held-out rows, so its effect is "
+            "measured on the authored `deictic_scenarios.jsonl` instead (eval_deictic.py). "
+            "hit@board = any expected concrete answer appears on the board.",
+            "",
+            "| slice | n | open fire | hit@board (student) | hit@board (closed-only) |",
+            "|---|---|---|---|---|",
+            f"| overall | {o['n']} | {o['open_fire_rate']:.3f} | "
+            f"{o['student_answer_hit']:.3f} | {o['closed_answer_hit']:.3f} |",
+        ]
+        for t, sl in dq.get("by_question_type", {}).items():
+            lines.append(f"| {t} | {sl['n']} | {sl['open_fire_rate']:.3f} | "
+                         f"{sl['student_answer_hit']:.3f} | {sl['closed_answer_hit']:.3f} |")
     lines += [
         "",
         "## Honesty note",
@@ -501,6 +519,14 @@ def main() -> int:
         "coverage_of_intent": held["coverage_of_intent"],
         "speedup": speedup(model, vocab, k, k_dyn, core_words, args.teacher_samples),
     }
+    # Informational, non-gating: the open answer path on the authored deictic
+    # set (no LLM; both boards come through the seam). Never blocks the gates.
+    try:
+        from evaluation.phase4 import eval_deictic
+        dq = eval_deictic.run(eval_deictic.load_scenarios())
+        res["deictic"] = {k_: dq[k_] for k_ in ("overall", "by_question_type")}
+    except Exception as exc:  # pragma: no cover - report-only block
+        res["deictic"] = {"error": f"{type(exc).__name__}: {exc}"}
     (HERE / "phase4_results.json").write_text(json.dumps(res, indent=2))
     write_report(res)
 

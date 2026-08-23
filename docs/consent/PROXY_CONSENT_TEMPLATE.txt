@@ -1,0 +1,48 @@
+VOICELINK — PROXY CONSENT FOR PARTICIPATION (TEMPLATE)
+======================================================
+
+Project:      VoiceLink — wearable context-aware AAC vocabulary support
+Participant:  ______________________________   Date of birth: ____________
+Proxy/guardian (if participant cannot consent for themselves):
+              ______________________________   Relationship: _____________
+Study contact: _____________________________   Email/phone: ______________
+
+WHAT THE DEVICE DOES
+  A small body-worn device streams camera frames and microphone audio to ONE
+  computer in the same room over a private Wi-Fi link. That computer turns them
+  into (a) a one-sentence description of the scene and (b) a text transcript of
+  nearby speech, and uses those to suggest words on the participant's AAC board.
+
+WHAT IS RECORDED AND KEPT
+  * Audio and video are processed in memory only and are NEVER saved to disk.
+  * When the participant taps a word, the word and the TEXT context at that
+    moment (scene sentence, transcript snippet) are written to a log on that
+    computer. This log is kept to improve the system and is never uploaded.
+  * The participant's personal-context profile (names of people close to them,
+    routines, today's events) stays on that computer only.
+  * No face recognition or person identification is performed.
+  * Logs can be pseudonymized (names replaced by PERSON_1, PERSON_2 ...) before
+    any analysis, and can be deleted at any time on request
+    (python3 mac/privacy.py purge --taps).
+
+PEOPLE NEARBY
+  Speech from people near the participant may appear in transcripts. A red LED
+  on the device is lit whenever capture is active, and a physical button pauses
+  capture immediately. Bystanders will be told the device is active.
+
+YOUR RIGHTS
+  * Participation is voluntary; you can stop at any time with no consequence.
+  * You may ask to see, pseudonymize, or delete all logged data.
+  * Data is used only for the purposes above and is not shared with third
+    parties or cloud services.
+
+CONSENT
+  I have read the above (or had it explained to me), my questions have been
+  answered, and I consent on behalf of the participant named above.
+
+  Proxy signature: ____________________________   Date: ______________
+  Participant assent (where possible): ______________   Date: __________
+  Researcher signature: _______________________   Date: ______________
+
+NOTE: this is a template. Review with your institution's ethics/IRB process
+and local law (e.g. GDPR Art. 9 / COPPA / state wiretap rules) before use.

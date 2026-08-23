@@ -256,8 +256,11 @@ def context_features(rows: list[dict]) -> np.ndarray:
     from evaluation.embed import embed  # lazy, shared MiniLM
     if not rows:
         return np.zeros((0, CONTEXT_DIM), np.float32)
-    scenes = embed([r.get("scene", "") for r in rows])       # (N, 384)
-    trans = embed([r.get("transcript", "") for r in rows])   # (N, 384)
+    # ONE batched call for scene+transcript: two calls cost two full encoder
+    # round-trips (~5.5 ms each on OpenVINO) for what is a 2-row batch.
+    both = embed([r.get("scene", "") for r in rows] +
+                 [r.get("transcript", "") for r in rows])    # (2N, 384)
+    scenes, trans = both[:len(rows)], both[len(rows):]
     flags = np.array([[1.0 if r.get("is_question") else 0.0] for r in rows],
                      dtype=np.float32)
     return np.concatenate([scenes, trans, flags], axis=1).astype(np.float32)

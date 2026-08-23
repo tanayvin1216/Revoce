@@ -8,9 +8,11 @@
 #   canonical.json      the dedup map that gives vocab.json its meaning.
 #   splits.json         the fingerprinted train/test partition. Reproducibility.
 #   student.pt          ~650 KB, same order as the IRs already in git.
+#   phase4_results.json the gate results every paper number cites (2026-08-23).
 #
 # IGNORED: anything rebuildable in seconds from the above.
 
 *.onnx
 *.onnx.data
-phase4_results.json
+*.log
+!phase4_results.json

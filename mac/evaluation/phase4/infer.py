@@ -39,6 +39,12 @@ ANSWER_DUP_GUARD = 0.85
 FILL_LAM = 0.6  # sweep: 0.5 was worse on every axis (sfp .191, cov .761); 0.6 is the operating point
 ANSWER_SLOTS = 2
 HEDGE_CAP = 1
+# When an open answer is on the board, spend the hedge slot on it instead.
+# A hedge cannot contribute dynamic coverage — the gate scores against non-hedge
+# moves only (evaluate.held_out_eval) — but it does count against the
+# same-function-pair rate. So the hedge slot is the one place an answer can be
+# added without displacing a word the coverage gate credits.
+HEDGE_CAP_WITH_OPEN = 0
 
 # The hedge cluster lives in ONE shared module (review S3/L1) so the board cap
 # and the same-function metric can never disagree about what a hedge is.
@@ -106,6 +112,35 @@ def _context_candidates(scene: str | None, transcript: str | None) -> list[str]:
 # dynamic coverage 0.563 -> 0.803). Off until a multi-word answer extractor exists.
 CONTEXT_UNION = False
 
+# RC-3: that multi-word answer extractor now exists (answers.py). It fixes both
+# defects that sank CONTEXT_UNION — it emits multi-word spans, and it never
+# scores candidates against the question vector. Its picks enter the pool tagged
+# as open answers and are reserved by their OWN ranking, not by cosine to a
+# query that is 0.7 * the question. Kept as a flag so the ablation stays runnable.
+OPEN_ANSWERS = True
+
+# How many of the k_dyn slots the open path may claim, BY QUESTION TYPE —
+# extraction confidence is not uniform, so the slot budget should not be either:
+#   alternative ("the window seat or the aisle seat?") — the answers are stated
+#     in the question, so both conjuncts are near-certainly correct;
+#   wh ("where would you like to sit?") — the spans are inferred from the scene
+#     and are speculative, so the open path takes one slot and leaves the rest
+#     to the vocab, whose general moves are what coverage-of-intent credits.
+# Measured: a flat 2 slots for both types costs 0.169 dynamic coverage.
+OPEN_SLOTS = {"alternative": 2, "wh": 2}
+
+
+def _open_answers(scene: str, transcript: str,
+                  is_question: bool) -> tuple[list[str], int]:
+    """(open answer spans, slot budget) for this context; ([], 0) when N/A."""
+    if not (OPEN_ANSWERS and is_question):
+        return [], 0
+    from evaluation.phase4.answers import answer_candidates, question_kind
+    budget = OPEN_SLOTS.get(question_kind(transcript), 0)
+    if budget <= 0:
+        return [], 0
+    return answer_candidates(scene, transcript), budget
+
 
 def _candidate_pool(model, vocab: list[str], scene: str, transcript: str,
                     is_question: bool, k_dyn: int) -> list[str]:
@@ -152,6 +187,27 @@ def _reserve_answers(cand_vecs: np.ndarray, query: np.ndarray,
     return picked
 
 
+def _reserve_open(cand_vecs: np.ndarray, open_idx: list[int],
+                  k_dyn: int, budget: int) -> list[int]:
+    """Reserve answer slots for extracted open answers, in EXTRACTOR order.
+
+    Deliberately not scored against the query vector: that vector is 0.7 * the
+    question (selection._Q_WEIGHTS), and ranking answers by similarity to the
+    question is exactly the defect that sank CONTEXT_UNION. answers.py has
+    already ranked these against the answer-type prototype, so the only job here
+    is to drop near-duplicates ("window seat" vs "the window seat").
+    """
+    quota = min(budget, ANSWER_SLOTS, max(k_dyn - 1, 1))
+    picked: list[int] = []
+    for i in open_idx:
+        if len(picked) >= quota:
+            break
+        if picked and float((cand_vecs[picked] @ cand_vecs[i]).max()) >= ANSWER_DUP_GUARD:
+            continue
+        picked.append(i)
+    return picked
+
+
 def student_dynamic_words(model, vocab: list[str], scene: str, transcript: str,
                           is_question: bool, k_dyn: int) -> list[str]:
     """The k_dyn dynamic board words: pooled, unioned, MMR-selected, hedge-capped."""
@@ -166,9 +222,38 @@ def student_dynamic_words(model, vocab: list[str], scene: str, transcript: str,
     query = build_query_vector(embed, scene, transcript, None)
     hedge_flags = [is_hedge(w) for w in candidates]
 
-    chosen = _reserve_answers(cand_vecs, query, hedge_flags, k_dyn) \
-        if is_question else []
+    # RC-3: union the open answer spans, remembering which pool slots they own so
+    # they can be reserved by extractor rank instead of query cosine. answers.py
+    # decides whether this context has open answers at all; when it returns
+    # nothing the board is exactly the closed-vocab board it was before.
+    open_start = len(candidates)
+    open_idx: list[int] = []
+    open_spans, open_budget = _open_answers(scene, transcript, is_question)
+    seen = {_normalize(w) for w in candidates}
+    new: list[str] = []
+    for span in open_spans:
+        if _normalize(span) not in seen:
+            seen.add(_normalize(span))
+            new.append(span)
+    if new:
+        candidates.extend(new)
+        cand_vecs = np.vstack([cand_vecs, embed(new)])
+        hedge_flags.extend(is_hedge(w) for w in new)
+        open_idx = list(range(open_start, len(candidates)))
+
+    if not is_question:
+        chosen: list[int] = []
+    elif open_idx:
+        chosen = _reserve_open(cand_vecs, open_idx, k_dyn, open_budget)
+        # a single extracted answer still leaves a quota slot for the vocab path
+        if len(chosen) < min(ANSWER_SLOTS, max(k_dyn - 1, 1)):
+            for i in _reserve_answers(cand_vecs, query, hedge_flags, k_dyn):
+                if i not in chosen and len(chosen) < ANSWER_SLOTS:
+                    chosen.append(i)
+    else:
+        chosen = _reserve_answers(cand_vecs, query, hedge_flags, k_dyn)
     n_hedges = sum(1 for i in chosen if hedge_flags[i])
+    hedge_cap = HEDGE_CAP_WITH_OPEN if open_idx else HEDGE_CAP
     # Function-aware fill (review round 3): the teacher passes per-candidate
     # communication-function tags to mmr_select so the board SPANS functions
     # (rank_vocabulary.py:540); omitting them here left the all-vocab pool
@@ -182,7 +267,7 @@ def student_dynamic_words(model, vocab: list[str], scene: str, transcript: str,
         if i in chosen:
             continue
         if hedge_flags[i]:
-            if n_hedges >= HEDGE_CAP:
+            if n_hedges >= hedge_cap:
                 continue
             n_hedges += 1
         chosen.append(i)

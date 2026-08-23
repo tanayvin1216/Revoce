@@ -1,0 +1,59 @@
+{
+  "hardware": {
+    "cpu": "Apple M4",
+    "arch": "arm64",
+    "os": "Darwin 25.5.0",
+    "python": "3.13.6",
+    "openvino": "2026.2.1-21919-ede283a88e3-releases/2026/2",
+    "ov_devices": [
+      "CPU"
+    ],
+    "intel_hardware": false,
+    "ov_device_names": {
+      "CPU": "Apple M4"
+    }
+  },
+  "ov_device": "CPU",
+  "n": 10,
+  "model": "whisper-base.en (both int8)",
+  "rows": [
+    {
+      "clip": "bench_clip0.wav",
+      "audio_s": 2.1013125,
+      "faster_whisper": {
+        "p50_ms": 252.24212498869747,
+        "p90_ms": 266.0850374784786,
+        "min_ms": 247.9693340137601,
+        "n": 10,
+        "text": "Do you want some water or a cup of coffee?"
+      },
+      "openvino_genai": {
+        "p50_ms": 300.45068750041537,
+        "p90_ms": 311.1571704852395,
+        "min_ms": 290.12433299794793,
+        "n": 10,
+        "text": "Do you want some water or a cup of coffee?"
+      },
+      "same_text": true
+    },
+    {
+      "clip": "bench_clip1.wav",
+      "audio_s": 4.048,
+      "faster_whisper": {
+        "p50_ms": 406.967833507224,
+        "p90_ms": 509.0219955018255,
+        "min_ms": 277.56966699962504,
+        "n": 10,
+        "text": "We are going to the park after lunch, bring your jacket because it is cold."
+      },
+      "openvino_genai": {
+        "p50_ms": 402.5845830037724,
+        "p90_ms": 547.9282128100748,
+        "min_ms": 367.76466702576727,
+        "n": 10,
+        "text": "We are going to the park after lunch, bring your jacket because it is cold."
+      },
+      "same_text": true
+    }
+  ]
+}

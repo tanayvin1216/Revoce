@@ -33,19 +33,39 @@ OpenVINO **runtime** never imports transformers. Workflow: downgrade transformer
 for the one-off export, then restore (`pip install "transformers>=5.12"`); or run
 exports in a scratch venv.
 
-## Whisper (stretch, done)
+## Whisper (shipped)
 
 ```bash
-python3 -m optimum.commands.optimum_cli export openvino --model openai/whisper-base.en \
-    --task automatic-speech-recognition-with-past --weight-format int8 \
-    intel/artifacts/whisper-base.en-ov-int8
+python3 intel/export_whisper.py        # optimum-cli -> artifacts/whisper-base.en-ov-int8
+python3 intel/bench_whisper.py --n 10  # faster-whisper vs WhisperPipeline, appends to BENCHMARKS.md
+VOICELINK_TRANSCRIBER=openvino         # serve it (perception/config.py one-line swap)
 ```
 
-Smoke test on one 6.5 s clip (same audio, both int8, Apple Silicon):
-`openvino_genai.WhisperPipeline` 0.35 s vs faster-whisper 0.42 s, identical
-transcripts. **ARM pitfall (hit twice in this track):** the CPU plugin defaults to
-f16 inference — the Whisper decoder degenerates into repeated `!` tokens and runs
-8x slower. Always pass `INFERENCE_PRECISION_HINT="f32"` on ARM.
+- `intel/export_whisper.py` wraps `optimum-cli export openvino --model openai/whisper-base.en
+  --task automatic-speech-recognition-with-past --weight-format int8`. That documented
+  form works as-is with optimum-intel + transformers 5.12 (no downgrade needed); the
+  script falls back to two alternative invocations if a future release renames the task,
+  and records the winning command in `<dir>/export_invocation.json`.
+- `perception.transcriber.OpenVinoWhisperTranscriber` runs the IR through
+  `openvino_genai.WhisperPipeline` (device from `VOICELINK_OV_DEVICE`, default CPU, with
+  `INFERENCE_PRECISION_HINT=f32` on CPU). `make_transcriber` selects it for
+  `TRANSCRIBER="openvino"` and falls back to faster-whisper, then mock, if the package or
+  IR is missing. base.en is English-only, so no language/task is set on the generation
+  config (GenAI rejects it for non-multilingual models).
+- **Confidence is a proxy, not calibrated.** GenAI exposes no logprobs / no-speech
+  probability (`result.scores` is a flat 1.0 under greedy). The transcriber reports
+  avg_logprob=-0.3 and no_speech_prob=0.05 when text is produced, -10/1.0 when empty.
+  The addressed/ambient gate therefore cannot use confidence with this backend.
+- Test: `tests/test_whisper_openvino.py` (skips without openvino_genai / the IR).
+
+Measured (`bench_whisper.py`, Apple M4, ARM CPU plugin, N=10, identical transcripts):
+faster-whisper int8 p50 **252 / 407 ms** vs WhisperPipeline INT8 p50 **300 / 403 ms** on the committed 2.1 / 4.0 s clips (`intel/clips/`, n=10, quiet M4): parity on the ARM plugin. An earlier run on a loaded machine (0.68 vs 1.16 s) is superseded.
+clips. On this ARM box OpenVINO is ~1.5x SLOWER than CTranslate2 — the earlier one-off
+"0.35 vs 0.42 s" smoke number did not reproduce. The point of this backend is the Intel
+port (CPU/GPU/NPU via one env var), not ARM speed; Intel numbers pending.
+**ARM pitfall (hit twice in this track):** the CPU plugin defaults to f16 inference — the
+Whisper decoder degenerates into repeated `!` tokens and runs 8x slower. Always pass
+`INFERENCE_PRECISION_HINT="f32"` on ARM (the transcriber does).
 
 ## Honesty labels
 
