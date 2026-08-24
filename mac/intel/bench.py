@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -158,6 +159,18 @@ def main() -> int:
     # across rewrites so a head-only re-run never silently drops a board number.
     existing = BENCHMARKS_MD.read_text() if BENCHMARKS_MD.exists() else ""
     tail = existing[existing.index("\n## End-to-end"):] if "\n## End-to-end" in existing else ""
+    # Persist, always. Printing to stdout only meant a head benchmark existed
+    # nowhere but terminal scrollback, so a withdrawn row could not be refilled
+    # without re-running on that machine.
+    from intel import hardware_fingerprint
+    host = socket.gethostname().split(".")[0]
+    out_path = HERE / "artifacts" / f"head_bench_{host}.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(
+        {"hardware": hardware_fingerprint(), "n_warmup": N_WARMUP,
+         "n_iters": N_ITERS, "int8_accuracy": note, "results": rows}, indent=2))
+    print(f"wrote {out_path}")
+
     if not args.write_md:
         print(json.dumps(rows, indent=2))
         print("\n[bench] BENCHMARKS.md not touched (pass --write-md to regenerate "

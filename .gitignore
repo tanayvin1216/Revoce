@@ -43,6 +43,7 @@ AGENTS.md
 PLAN.md
 !mac/intel/artifacts/e2e_*.json
 !mac/intel/artifacts/whisper_bench_*.json
+!mac/intel/artifacts/head_bench_*.json
 !mac/intel/artifacts/int8_accuracy.json
 !mac/intel/artifacts/teacher_slice_*.jsonl
 !mac/intel/artifacts/phase4_results_*.json
