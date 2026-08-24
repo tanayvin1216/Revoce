@@ -514,6 +514,9 @@ def _pad_to_k(items: list[RankedWord], k: int) -> list[RankedWord]:
     return out[:k]
 
 
+_mmr_fallback_warned = False  # warn once per process, not per board
+
+
 def _select_dynamic(
     pool: list[dict],
     rest_idx: list[int],
@@ -552,7 +555,20 @@ def _select_dynamic(
             answer_choice = [answer_pos[i]
                              for i in mmr_select(answer_vecs, query, quota, ANSWER_LAM, None)]
         mmr_order = mmr_select(cand_vecs, query, len(rest_idx), lam, functions)
-    except Exception:
+    except Exception as exc:
+        # Degrading to coverage-order still returns a usable board (the audio path
+        # must never block), but it is NOT the MMR policy every diversity number in
+        # the papers describes. Silently swallowing this would let an eval report
+        # retention/near-dup figures for the fallback while claiming they measure
+        # MMR — the same failure that made a whole Intel benchmark run measure
+        # torch embeddings. Warn once, loudly, and keep serving.
+        global _mmr_fallback_warned
+        if not _mmr_fallback_warned:
+            _mmr_fallback_warned = True
+            print(f"[rank_vocabulary] MMR selection unavailable ({type(exc).__name__}: "
+                  f"{exc}); falling back to function-coverage order. Boards are still "
+                  f"served but diversity metrics do NOT describe the MMR policy. "
+                  f"(this message prints once)")
         mmr_order = _function_coverage_order(functions, len(rest_idx))
 
     chosen: list[int] = list(answer_choice)
