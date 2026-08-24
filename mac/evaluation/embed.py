@@ -29,16 +29,23 @@ def _backend() -> str:
     return "openvino" if os.environ.get("VOICELINK_STUDENT_BACKEND") == "openvino" else "torch"
 
 
+_ov_failed = False  # remember an OpenVINO load failure so we warn ONCE, not per call
+
+
 def _get_model():
-    global _model, _backend_loaded
+    global _model, _backend_loaded, _ov_failed
     want = _backend()
+    if want == "openvino" and _ov_failed:
+        want = "torch"  # already fell back; don't retry (and re-warn) every call
     if _model is None or _backend_loaded != want:
         if want == "openvino":
             try:
                 from intel import OpenVinoEmbedder  # torch-free
                 _model = OpenVinoEmbedder()
             except Exception as e:  # IR missing / openvino absent -> torch
-                print(f"[embed] OpenVINO MiniLM unavailable ({e}); using torch")
+                print(f"[embed] OpenVINO MiniLM unavailable ({e}); using torch "
+                      "(this message prints once)")
+                _ov_failed = True
                 want = "torch"
         if want == "torch":
             from sentence_transformers import SentenceTransformer  # heavy, lazy
@@ -99,6 +106,12 @@ def embed(texts: list[str]) -> np.ndarray:
 
 def cache_clear() -> None:
     _cache.clear()
+
+
+def reset_backend() -> None:
+    """Forget a failed OpenVINO load (e.g. after running intel/convert.py)."""
+    global _model, _backend_loaded, _ov_failed
+    _model = None; _backend_loaded = None; _ov_failed = False
 
 
 def cache_forget(texts: list[str]) -> None:
