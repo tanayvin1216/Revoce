@@ -114,7 +114,7 @@ git status
 ```
 
 **Gate — read this carefully. `git status` must show ONLY new/modified
-`e2e_*.json` and `whisper_bench_*.json` files.**
+`e2e_*.json`, `whisper_bench_*.json` and `head_bench_*.json` files.**
 
 If any of these appear as modified, the run damaged them — undo before committing:
 
@@ -126,11 +126,32 @@ Then commit and push:
 
 ```powershell
 Set-Location $Repo
-git add mac/intel/artifacts/e2e_*.json mac/intel/artifacts/whisper_bench_*.json
+git add mac/intel/artifacts/e2e_*.json mac/intel/artifacts/whisper_bench_*.json mac/intel/artifacts/head_bench_*.json
 git status
 git commit -m "core ultra: openvino embeddings, gpu and npu rows, and the fp32 ablation"
 git push origin main
 ```
+
+---
+
+## Block 6 — teacher on this machine (OPTIONAL, ~20 min, downloads ~6 GB once)
+
+Only worth doing if we want a speedup ratio measured entirely on Intel. Without
+it the ratio stays explicitly Mac-only, which is also fine — we just have to say
+so. **Skip this if you are short on time.**
+
+This is safe to run on its own: `teacher_slice.py` does NOT touch
+`teacher_data.jsonl` and does NOT retrain anything. Do not reach for `-Train`
+to get it.
+
+```powershell
+Set-Location $Repo\mac
+.\.venv\Scripts\Activate.ps1
+python intel\teacher_slice.py --n 10
+```
+
+**Gate:** writes `intel\artifacts\teacher_slice_<host>.jsonl`. Include it in
+the `git add` in Block 5 if you run it.
 
 ---
 
