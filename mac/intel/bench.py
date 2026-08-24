@@ -131,7 +131,14 @@ def main() -> int:
     import argparse
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--no-md", action="store_true",
-                    help="print the table but do not rewrite BENCHMARKS.md")
+                    help="(default) print the table but do not rewrite BENCHMARKS.md")
+    ap.add_argument("--write-md", action="store_true",
+                    help="REGENERATE BENCHMARKS.md from this run. Destructive: it "
+                         "rebuilds everything above the first '## End-to-end' and "
+                         "keeps only that tail, so any hand-written prose, a second "
+                         "machine's column, or the benchmark_app blocks are lost. "
+                         "The 2026-08-24 Core Ultra run did exactly that. Off by "
+                         "default; merge new numbers in by hand instead.")
     ap.add_argument("--skip-benchmark-app", action="store_true")
     args = ap.parse_args()
     x = np.random.default_rng(0).standard_normal((1, 769)).astype(np.float32)
@@ -151,8 +158,10 @@ def main() -> int:
     # across rewrites so a head-only re-run never silently drops a board number.
     existing = BENCHMARKS_MD.read_text() if BENCHMARKS_MD.exists() else ""
     tail = existing[existing.index("\n## End-to-end"):] if "\n## End-to-end" in existing else ""
-    if args.no_md:
+    if not args.write_md:
         print(json.dumps(rows, indent=2))
+        print("\n[bench] BENCHMARKS.md not touched (pass --write-md to regenerate "
+              "it, which discards everything above the first '## End-to-end').")
         return 0
     write_report(rows, bench_app, note)
     if tail:
