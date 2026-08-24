@@ -49,17 +49,24 @@ BACKENDS = {
 }
 
 
-def load_scenarios(n: int) -> list[dict]:
+def load_scenarios(n: int) -> tuple[list[dict], str]:
     """The Phase-4 HELD-OUT rows (same loader the eval gates use), so the latency
     figure is measured on contexts the student never trained on. Falls back to
-    v2_scenarios.jsonl when the training corpus is unavailable."""
+    v2_scenarios.jsonl when the training corpus is unavailable.
+
+    Returns (rows, source_label). The label is derived, never assumed: the written
+    JSON used to hardcode "held-out split" even when this fell back, which would
+    publish a latency number measured on the wrong scenarios under a label saying
+    otherwise."""
     try:
         from evaluation.phase4.evaluate import _held_out_rows
         rows = _held_out_rows()
+        source = "phase4 held-out split (evaluate._held_out_rows)"
     except Exception as e:
         print(f"[bench_e2e] held-out rows unavailable ({e}); using v2_scenarios")
         rows = [json.loads(l) for l in SCENARIOS.read_text().splitlines() if l.strip()]
-    return rows[:n]
+        source = f"FALLBACK v2_scenarios.jsonl — held-out rows unavailable ({e})"
+    return rows[:n], source
 
 
 def _reset_seam(env: dict[str, str]) -> None:
@@ -143,7 +150,11 @@ def main() -> int:
 
     from intel import hardware_fingerprint
     hw = hardware_fingerprint()
-    scenarios = load_scenarios(args.n)
+    scenarios, scenario_source = load_scenarios(args.n)
+    if args.backends.split(",")[0] != "torch":
+        print(f"[bench_e2e] WARNING: '{args.backends.split(',')[0]}' is first in "
+              f"--backends, so board agreement is measured against IT, not torch. "
+              f"Put torch first for a comparable Jaccard column.")
     results = []
     for name in args.backends.split(","):
         try:
@@ -159,10 +170,15 @@ def main() -> int:
     for r in ok:
         r["board_jaccard_vs_" + ok[0]["backend"]] = board_agreement(ref, r["boards"])
     out = {"hardware": hw, "n_scenarios": len(scenarios),
-           "scenario_source": "phase4 held-out split (evaluate._held_out_rows)",
+           "scenario_source": scenario_source,
+           "ov_device_requested": args.device or "CPU (default)",
            "results": [{k: v for k, v in r.items() if k != "boards"} for r in results]}
     host = socket.gethostname().split(".")[0]
-    out_path = HERE / "artifacts" / f"e2e_{host}.json"
+    # Scope the filename by device: three --device runs on one box used to write
+    # the same path, so CPU/GPU/NPU silently overwrote each other and only the
+    # last survived.
+    suffix = f"_{args.device.lower()}" if args.device else ""
+    out_path = HERE / "artifacts" / f"e2e_{host}{suffix}.json"
     out_path.parent.mkdir(exist_ok=True)
     out_path.write_text(json.dumps(out, indent=2))
     print(f"wrote {out_path}")

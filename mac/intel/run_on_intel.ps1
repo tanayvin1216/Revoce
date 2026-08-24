@@ -15,7 +15,10 @@ param(
   [string]$Device = "",          # "", CPU, GPU, NPU
   [int]$N = 84,
   [switch]$SkipWhisper,
-  [switch]$Train,                # also run the DATA + MODELLING stages here
+  [switch]$Train,                # DANGER: retrains student.pt/.onnx ON THIS BOX. The
+                                 # 2026-08-24 run used it and a later convert.py then
+                                 # exported a 59-class IR over the committed 95-class
+                                 # one. Never combine with a benchmarking run.
   [int]$TeacherRows = 10
 )
 $ErrorActionPreference = "Stop"
@@ -34,20 +37,31 @@ if (-not (Test-Path ".venv")) { & python -m venv .venv }
 & .\.venv\Scripts\Activate.ps1
 python -m pip install -q --upgrade pip
 python -m pip install -q -r requirements.txt -r requirements-intel.txt pytest
+# NOT in requirements-intel.txt on purpose (it pins transformers<5.1 and would break
+# the Mac's mlx path) -- but the MiniLM export and OpenVinoEmbedder both need it, and
+# without it convert.py's minilm step fails and the whole run silently falls back to
+# torch embeddings. On an Intel-only box there is no mlx to protect.
+python -m pip install -q "optimum-intel[openvino]" openvino-tokenizers
+python -c "import openvino_tokenizers, openvino; print('openvino_tokenizers OK for', openvino.__version__)"
 python -c "import json,sys; sys.path.insert(0,'.'); from intel import hardware_fingerprint as h; print(json.dumps(h(), indent=2))"
 
 Write-Host "== 1. artifacts (student IR committed; MiniLM + Whisper IRs regenerated, ~5 min, downloads ~0.5 GB)"
-if (-not (Test-Path "intel\artifacts\minilm-ov\openvino_model.bin")) { python intel\convert.py }
+if (-not (Test-Path "intel\artifacts\minilm-ov\openvino_model.bin")) { python intel\convert.py --skip-student }
+if (-not (Test-Path "intel\artifacts\minilm-ov\openvino_model.bin")) { throw "MiniLM IR was not built -- embeddings would silently fall back to torch. Fix the export before benchmarking." }
+$env:VOICELINK_EMBED_BACKEND = "openvino"
+$probe = python -c "import sys;sys.path.insert(0,'.');from evaluation import embed;embed.embed(['probe']);print(embed.backend_in_use())"
+if ($probe.Trim() -ne "openvino") { throw "embed backend resolved to '$probe', not openvino -- see the [embed] line above." }
+Remove-Item Env:VOICELINK_EMBED_BACKEND
 if (-not $SkipWhisper -and -not (Test-Path "intel\artifacts\whisper-base.en-ov-int8\openvino_encoder_model.xml")) { python intel\export_whisper.py }
 
 Write-Host "== 2. student head micro-benchmark"
-python intel\bench.py --skip-benchmark-app | Out-Null
+python intel\bench.py --skip-benchmark-app
 
 Write-Host "== 3. end-to-end board latency through the seam"
-python intel\bench_e2e.py --n $N
+python intel\bench_e2e.py --n $N --no-md
 if ($Device -and $Device -ne "CPU") {
   Write-Host "== 3b. head on $Device"
-  python intel\bench_e2e.py --n $N --device $Device --backends ov-head,ov-full
+  python intel\bench_e2e.py --n $N --no-md --device $Device --backends torch,ov-head,ov-full
 }
 
 if (-not $SkipWhisper) {
