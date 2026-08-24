@@ -46,6 +46,36 @@ The v3 bi-encoder results (cloud line) live in
 `mac/evaluation/phase4/phase4_v3_results.json` and `V3_BIENCODER_REPORT.md`;
 v3 is NOT the served default and its numbers are not interchangeable with v2's.
 
+## 0b. Intel hardware (2026-08-24) — Core Ultra 9 185H
+
+Source: `mac/intel/artifacts/e2e_tanishlaptop.json`, `mac/intel/BENCHMARKS.md`.
+Machine: Intel(R) Core(TM) Ultra 9 185H / Windows 11 / Python 3.14.2 /
+OpenVINO 2026.3.0. Devices seen: CPU, GPU (Arc iGPU), NPU (AI Boost).
+
+| Number | Value | Status |
+|---|---|---|
+| Board latency, torch path, 84 held-out | **18.4 ms p50 / 28.9 p90** | verified |
+| Board latency, ov-head (INT8 head, torch embed) | **17.9 / 25.1** | verified |
+| Board latency, ov-full | **18.4 / 25.2** — but `embed_backend_used` is `"torch"` | **NOT a valid ov-full measurement**; the MiniLM IR was absent so it silently duplicated ov-head |
+| Board Jaccard vs torch (OpenVINO student) | **0.915** | verified; divergence untested against FP32 |
+| Student head, torch, isolated | **0.133 ms p50** | verified |
+| Student head, OpenVINO INT8, isolated | **0.073 ms p50** | verified |
+| Student head, OpenVINO FP32, isolated | *withdrawn* | measured against a 59-class IR; re-run needed |
+| Speedup vs teacher on Intel | **not measured** | the teacher has never run on this machine; do NOT pair 18.4 ms with the Mac's 7.05 s teacher |
+| GPU / NPU board latency | **not measured** | and note `OpenVinoEmbedder` pins MiniLM to CPU, so `VOICELINK_OV_DEVICE` moves only the ~0.1 ms head |
+
+**Cross-machine claims.** The Mac and the Core Ultra differ in OS, Python and
+OpenVINO version, so absolute latencies are not a controlled comparison. The
+Core Ultra is *slower* end-to-end than the M4 (18.4 vs 9.7 ms torch), and the
+claim "2.6× faster on Intel" that appears in `docs/INTEL_REMAINING.md` is **not
+supported by any committed file** — it pairs a superseded 47.1 ms Mac figure
+with the Intel number. Do not use it.
+
+What IS controlled is the torch-vs-OpenVINO ratio within each machine, and it
+inverts: OpenVINO INT8 is **2.1× slower than torch on ARM** (0.031 vs 0.015 ms)
+and **1.8× faster on the Core Ultra** (0.073 vs 0.133 ms), same 95-class head
+both sides. That is the defensible Intel performance claim.
+
 ## 0. Re-measured later on 2026-08-23 (supersedes rows below where noted)
 
 After this inventory was built, the embedding memoisation landed (commit 55306d8) and
@@ -54,14 +84,14 @@ unchanged to four decimals; only the latency rows moved.
 
 | Number | Value (current) | Source file | Command | Run date | Status |
 |---|---|---|---|---|---|
-| Student end-to-end board latency (embed + MLP + MMR), torch path | **12.3–14.8 ms** median across three runs (IQR ~9–18 ms); 47.081 ms row below is SUPERSEDED | `mac/evaluation/phase4/phase4_results.json` `speedup` | `python3 evaluation/phase4/evaluate.py --teacher-samples 12` (quiet machine) | 2026-08-23 | verified-today |
-| Student board, fully OpenVINO path (MiniLM IR + INT8 head), 84 held-out, context evicted per round | **15.3 ms p50 / 27.4 p90**; ov-head 15.7/19.9; torch 16.8/56.6; board Jaccard vs torch 0.914 | `mac/intel/artifacts/e2e_mac.json`, `mac/intel/BENCHMARKS.md` | `python3 intel/bench_e2e.py --n 84` | 2026-08-23 | verified-today |
-| Teacher pipeline latency | **10.64 s (IQR 10.2–11.1, n=8)** and **11.68 s (IQR 11.2–16.8, n=12)** today; 6.71 s on 2026-08-17. A fourth run that overlapped the test suite gave 15.7 s and is discarded. | same | same | 2026-08-23 | verified-today (run-to-run drift is real; quote a range) |
-| Speedup, student vs teacher | **841–864× today** (file: 841.3). Against the Aug-17 teacher figure it would be ~480×. Quote as "**>480×**" or "**~850× (same-day)**" — never 142.6× (superseded) and never 900×/7 ms (bare MLP). | same, `speedup_x` | same | 2026-08-23 | verified-today |
+| Student end-to-end board latency (embed + MLP + MMR), torch path | **10.135 ms** (IQR 6.62–11.43, n=50). Supersedes the 12.3–14.8 ms and 47.081 ms rows, both of which this file previously quoted against a file that already said otherwise. | `mac/evaluation/phase4/phase4_results.json` `speedup` | `python3 evaluation/phase4/evaluate.py --teacher-samples 12` (quiet machine) | 2026-08-23 | verified-today |
+| Student board, fully OpenVINO path (MiniLM IR + INT8 head), 84 held-out, context evicted per round | **5.51 ms p50 / 9.12 p90**; ov-head 9.65/13.58; torch 9.70/26.76; board Jaccard vs torch 0.913. (The 15.3/15.7/16.8 figures previously on this row were the superseded 55306d8 run, not the committed artifact.) | `mac/intel/artifacts/e2e_mac.json`, `mac/intel/BENCHMARKS.md` | `python3 intel/bench_e2e.py --n 84` | 2026-08-23 | verified-today |
+| Teacher pipeline latency | **7.05 s (IQR 6.96–7.46, n=8)** as committed. Run-to-run drift is real (10.64 s and 11.68 s were observed on loaded machines, 15.7 s while the test suite ran); quote the committed figure and note the machine was quiet. | same | same | 2026-08-23 | verified-today (run-to-run drift is real; quote a range) |
+| Speedup, student vs teacher | **695.5×** (10.135 ms vs 7.05 s), as committed in the cited file. Quote as "**~695×**" or conservatively "**>400×**". Never 841–864× (this file's own prior mis-transcription), never 142.6× (superseded), never 900×/7 ms (bare MLP). | same, `speedup_x` | same | 2026-08-23 | verified-today |
 | Whisper base.en: OpenVINO GenAI INT8 vs faster-whisper int8, ARM plugin | **300 / 403 ms vs 252 / 407 ms p50** on the committed 2.1 s / 4.0 s clips (`mac/intel/clips/`), n=10, identical transcripts, quiet machine. An earlier same-day run (1162/1157 vs 681/795) overlapped three running agents and is discarded; the 0.35 vs 0.42 s row below is WITHDRAWN. | `mac/intel/artifacts/whisper_bench_mac.json` | `python3 intel/bench_whisper.py` | 2026-08-23 | verified-today |
 | MiniLM over OpenVINO vs torch | cosine **1.000** on all probes; **5.6 ms vs 16.0 ms** per single text | `mac/tests/test_embed_backend.py` | `pytest tests/test_embed_backend.py` | 2026-08-23 | verified-today |
 | Deictic question set (n=60, authored): open-answer fire rate / answer-on-board student / closed-only | **0.883 / 0.817 / 0.050**; "how many" 0/6 by design | `mac/evaluation/phase4/deictic_results.json` | `python3 evaluation/phase4/eval_deictic.py` | 2026-08-23 | verified-today (authored set, not independent) |
-| Full test suite | **172 passed** | `mac/tests/` | `VOICELINK_PERCEPTION=0 python3 -m pytest -q` | 2026-08-23 | verified-today |
+| Full test suite | **213 passed** | `mac/tests/` | `VOICELINK_PERCEPTION=0 python3 -m pytest -q` | 2026-08-23 | verified-today |
 ---
 
 ## 1. The table
