@@ -1,151 +1,355 @@
+<div align="center">
+
+<img width="240" alt="VoiceLink — a ten-slot AAC board, four pinned and six chosen for the moment" src="docs/figures/logo.png" />
+
 # VoiceLink
 
-A wearable AAC (augmentative and alternative communication) system that puts the
-right words on the board *at the moment the conversation needs them*.
+A wearable that senses the room and the conversation, and puts the words a
+nonverbal person needs onto their AAC board before they have to ask for them.
 
-A body-worn ESP32-S3 senses the wearer's surroundings and the conversation around
-them. A nearby computer runs all the intelligence locally. A tablet shows the AAC
-board, which re-populates in real time. Nothing leaves the machine.
+[![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![OpenVINO](https://img.shields.io/badge/OpenVINO-0071C5?style=for-the-badge&logo=intel&logoColor=white)](https://docs.openvino.ai/)
+[![ONNX](https://img.shields.io/badge/ONNX-005CED?style=for-the-badge&logo=onnx&logoColor=white)](https://onnx.ai/)
+[![Espressif](https://img.shields.io/badge/ESP32--S3-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://www.espressif.com/)
 
-Built for nonverbal and minimally-verbal people — the ones for whom a static,
-hand-programmed board is the difference between joining a conversation and
-sitting it out.
+</div>
 
-## Why
+---
 
-- ~4–5 million people in the U.S. can't reliably meet daily communication needs
-  with speech.
-- Dedicated speech-generating devices run $4,000–$12,000, with 3–18 month
-  reimbursement cycles, and 30–35% are abandoned within a year — boards that
-  don't match the user's real context are a named cause.
-- AAC users communicate at roughly 10% of conversational speed.
+## Demo
 
-VoiceLink's hardware is a ~$15 ESP32-S3, a tablet you already own, and one local
-computer. Citations for all of the above are in `docs/COMPETITION_EVIDENCE.md`.
+<div align="center">
 
-## Quickstart
+<!-- Swap VIDEO_ID for the real YouTube id once the demo is up. GitHub strips
+     <iframe>, so a thumbnail linked to the video is the way this is done. -->
+[![Watch the VoiceLink demo](https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg)](https://www.youtube.com/watch?v=VIDEO_ID)
 
-Requires Python 3.9+. Apple Silicon for the local LLM/VLM; on Intel, serve the
-student through OpenVINO instead (see `mac/intel/`).
+*Two minutes: the wearable, the board rewriting itself mid-conversation, and the classroom case.*
 
-```bash
-git clone https://github.com/tanayvin1216/VoiceLink && cd VoiceLink
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r mac/requirements-dev.txt      # runtime + test toolchain
+</div>
 
-cd mac
-VOICELINK_PERCEPTION=0 pytest tests/ -q      # 105 passed, 10 skipped
-python server.py                             # board at http://localhost:8080
+---
+
+## The problem
+
+An AAC board is a grid of tappable words, and someone has to program it in
+advance. If the word you need isn't on it, you can't say the thing you mean.
+Nobody can pre-program a board for every situation a person will walk into.
+
+Around 4–5 million people in the U.S. can't reliably meet their daily
+communication needs with speech. Dedicated speech-generating devices run
+$4,000–$12,000 with 3–18 month reimbursement cycles, and 30–35% are abandoned
+within a year — boards that don't match the user's real context are a named
+cause. AAC users communicate at roughly a tenth of conversational speed.
+Sources for all of these are in [`docs/COMPETITION_EVIDENCE.md`](docs/COMPETITION_EVIDENCE.md).
+
+## What it does
+
+The board holds ten slots. Four are pinned permanently — *yes*, *no*,
+*I need help*, *wait* — chosen as four different communicative functions, so a
+bad model output can never leave someone without them. The other six are
+selected fresh for the moment.
+
+> **Scene** — a classroom, a teacher at a whiteboard with a diagram of a plant
+> **Heard** — *"What do plants take in from the air?"*
+> **Board gains** — **carbon dioxide**, *oxygen and water*, *sun*,
+> *I am not sure*, *can you repeat that*, *I know this one*
+
+At a family meal, *"Who do you want to sit next to?"* surfaces **aunt** — a word
+that isn't in the system's fixed vocabulary at all, and reaches the board
+through the open-vocabulary path described further down.
+
+## Architecture
+
+Three devices. The wearable does no processing, and neither does the tablet —
+both reach intelligence only by asking the Mac.
+
+```mermaid
+flowchart LR
+    subgraph W["WEARABLE · ESP32-S3"]
+        direction TB
+        CAM["OV2640 camera<br/>VGA JPEG · 2000 ms"]
+        MIC["SPH0645 I²S mic<br/>16 kHz PCM · 512-sample chunks"]
+        BTN["capture button · GPIO 14<br/>recording LED"]
+    end
+
+    subgraph M["MAC · all inference, all local"]
+        direction TB
+        PERC["perception<br/>Whisper + VLM + change gate"]
+        SEAM["rank_vocabulary(scene, transcript, context)<br/><b>every model call passes here</b>"]
+        BACK["backend: PyTorch · OpenVINO<br/>selected by config flag"]
+        PERC --> SEAM --> BACK
+    end
+
+    subgraph T["TABLET · AAC board"]
+        direction TB
+        UI["10-slot board<br/>plain HTTP + WebSocket"]
+        TAP["tap log<br/>+ context snapshot"]
+    end
+
+    CAM -- "frames" --> PERC
+    MIC -- "audio" --> PERC
+    BACK -- "ranked words" --> UI
+    TAP -- "logged" --> M
+
+    classDef wear fill:#fdece4,stroke:#eb6834,color:#3a1d10
+    classDef mac fill:#e3edfa,stroke:#2a78d6,color:#0e2440
+    classDef tab fill:#e2f4ee,stroke:#1baf7a,color:#0d3325
+    class CAM,MIC,BTN wear
+    class PERC,SEAM,BACK mac
+    class UI,TAP tab
 ```
 
-No wearable on hand? `python fake_wearable.py` simulates the device stream.
-
-The board is a plain HTTP page on the same origin as its WebSocket, so any
-tablet or phone on the network can open it — deliberately no HTTPS
-mixed-content wall, no app install.
-
-## How it works
-
-Every model call that produces a board passes through **one function**:
+Every model call in the system goes through one function with a fixed signature:
 
 ```python
 rank_vocabulary(scene, transcript, context) -> ranked_words
 ```
 
-The signature is fixed. The firmware never calls a model; the web app never
-calls a model. That single seam is what lets the inference backend swap
-(Mac/MLX today, Intel/OpenVINO next) without touching the firmware, the routes,
-or the UI.
+Nothing else touches a model. That constraint is why the inference stack could
+be moved from PyTorch on Apple silicon to OpenVINO on Intel by changing a
+config flag rather than editing a route, the firmware, or a line of UI.
 
-A board is built in three steps:
+## How a board is made
 
-1. **Perception** — energy-based VAD finds complete utterances and transcribes
-   them with faster-whisper `base.en`; a cheap grayscale frame-diff detector
-   *gates* an expensive VLM call, so Qwen2.5-VL only fires when the scene
-   actually changed.
-2. **Ranking** — instead of asking for "the 7 most likely words" (which returns
-   seven paraphrases of one thing), VoiceLink over-generates candidates along
-   two axes — 9 AAC communication functions × concrete topics in play — then
-   MMR-selects for *coverage*. The board offers seven genuinely different things
-   to say. Four safety words (`yes / no / I need help / wait`, four distinct
-   communicative functions) are pinned deterministically into every board.
-3. **Logging** — every tap is written with a snapshot of the context that
-   produced the board.
+```mermaid
+flowchart TD
+    A["JPEG frame"] --> B["change gate<br/>skip the VLM if the scene hasn't moved"]
+    B -->|"scene changed"| C["Qwen2.5-VL-3B<br/>one-sentence scene description"]
+    B -->|"unchanged"| C2["reuse last description"]
+    D["16 kHz audio"] --> E["Whisper base.en<br/>local transcription"]
 
-## Measured results
+    C --> F["context vector · 769-d"]
+    C2 --> F
+    E --> F
+    G["personal context store<br/>people · events · sensory needs"] --> F
 
-Two students, both trained on the same 600-board teacher corpus, both scored by
-the same gate code on the same held-out split (n=84).
+    F --> H{"board strategy"}
 
-**v2** — 94-column classifier over a closed, frequency-floored vocabulary. This
-is what ships today.
-**v3** — open-vocabulary bi-encoder scoring (context, phrase) pairs. Opt-in via
-`VOICELINK_STUDENT_VERSION=v3`.
+    H -->|"teacher path"| I["Qwen2.5-3B-Instruct<br/>over-generate candidates<br/>9 communicative functions"]
+    H -->|"student path"| J["MiniLM embeddings<br/>384-d, L2-normalised"]
+    J --> K["distilled MLP<br/>769 → 192 → 95"]
 
-| gate | v2 | v3 | teacher | bar |
-|---|---|---|---|---|
-| distinct-functions | 4.071 | **4.690** | 4.298 | ≥90% of teacher |
-| near-duplicate rate | 0.0 | 0.0006 | 0.0006 | ≤0.08 |
-| same-function-pair | 0.1899 | **0.1378** | 0.1735 | ≤ teacher |
-| board-variety | 0.952 | 0.988 | — | ≥0.5 |
-| coverage-of-intent (dynamic) | **0.803** | 0.789 | 0.873 | ≥90% of teacher |
-| speedup (end-to-end MMR path) | 43.6 ms vs 6.8 s | — | — | ≥10× (156×) |
+    I --> L["candidate pool"]
+    K --> L
+    F --> M["open-vocabulary extractor<br/>reads answers out of the context"]
+    M --> L
 
-**Point estimates are not verdicts, and this project now says so out loud.**
-Every gate is a relative claim, so each one carries a bootstrap CI on the
-paired per-scenario margin. Under 5-fold cross-validation (n=471 scored
-scenarios rather than 71):
+    L --> N["answer quota<br/>reserved when a question was asked"]
+    N --> O["MMR selection<br/>relevant AND mutually different"]
+    O --> P["pin 4 core words"]
+    P --> Q["resolve ARASAAC pictograms"]
+    Q --> R["10-slot board → WebSocket → tablet"]
+    R --> S["tap logged with the context that produced it"]
 
-| metric | v3 margin vs bar | 95% CI | verdict |
-|---|---|---|---|
-| distinct-functions | +0.6875 | [+0.6116, +0.7631] | **PASS** |
-| same-function-pair | +0.0207 | [+0.0129, +0.0285] | **PASS** |
-| coverage-of-intent | −0.0397 | [−0.0849, +0.0057] | INCONCLUSIVE |
+    classDef sense fill:#fdece4,stroke:#eb6834,color:#3a1d10
+    classDef model fill:#e3edfa,stroke:#2a78d6,color:#0e2440
+    classDef policy fill:#f2eefc,stroke:#4a3aa7,color:#1e1740
+    classDef out fill:#e2f4ee,stroke:#1baf7a,color:#0d3325
+    class A,D,B,C2,G sense
+    class C,E,I,J,K,M model
+    class F,H,L,N,O,P policy
+    class Q,R,S out
+```
 
-What that bought us, honestly: v3's diversity advantage is the best-evidenced
-result in the whole evaluation. Its coverage number is *below* the bar once
-properly powered — the single-split figure that looked like a pass was noise
-(fold-to-fold coverage swings 10 points). And **v2's long-standing
-same-function-pair "FAIL" turned out to be statistically indistinguishable from
-passing** — the project reasoned carefully for weeks about a number that was
-inside its own error bars. That is why v2, not v3, is still the default.
+The step that matters is #4. Rather than predicting the single likeliest reply,
+the ranker over-generates across nine communicative functions and then selects
+six that are relevant *and different from each other*. A board of six
+paraphrases of one answer is a failure even if every phrase is good.
 
-The other honest results stay on the record: scaling teacher data 5× made
-teacher-agreement *worse* (0.232 → 0.165), falsifying our data-volume
-hypothesis. Write-ups in `mac/evaluation/phase4/`.
+---
 
-The benchmark corpus is synthetic and the baseline is itself an LLM prompt, so a
-high score partly measures imitation of the teacher rather than real
-communication value. No result here has been validated against a real AAC user.
-`mac/evaluation/README.md` opens with that warning.
+## Results
+
+### Selecting for spread, not for likelihood
+
+Same candidate pool, same 120 scenarios — the only thing that changes is the
+selection policy.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/diversity-dark.png">
+  <img alt="Four panels comparing top-k ranking against diverse selection: distinct functions 3.88 to 4.68, near-duplicate rate 0.0274 to 0.0004, coverage of intent 0.78 to 1.00, exact match 0.33 to 0.53" src="docs/figures/diversity.png">
+</picture>
+
+### A 3-billion-parameter teacher, replaced by a 190 KB model
+
+The teacher produces good boards and takes about seven seconds, which is
+unusable in conversation. Its boards became a training set — 600 rows, 559 after
+deduplication, 84 held out and never trained on.
+
+| | Student | Teacher |
+|---|---:|---:|
+| Board latency, end to end | **10.135 ms** | 7.05 s |
+| Functional diversity retained | 95.3% | — |
+| Measured speedup | **695×** *(n=8 teacher samples)* | — |
+
+Teacher latency drifts run to run — 7.05 s as committed, 10.6 s and 11.7 s seen
+on a loaded machine. Where a claim needs to be safe, `>400×` is the honest form.
+
+### Where the time actually goes
+
+The distilled head is about 0.1 ms of a 10 ms board. The real cost is MiniLM, a
+22M-parameter transformer sitting on the critical path.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/latency-dark.png">
+  <img alt="Board latency on Apple M4: PyTorch 9.70 ms, OpenVINO head with torch embeddings 9.65 ms, fully OpenVINO 5.51 ms — a 1.76x improvement from moving MiniLM to OpenVINO" src="docs/figures/latency.png">
+</picture>
+
+### The gates, including the two that don't pass
+
+Scored on the held-out split. The metrics are anti-gaming by construction: a
+system that returns the same excellent board every time should score badly, and
+this one is measured on whether it does.
+
+| Gate | Student | Teacher | Verdict |
+|---|---:|---:|---|
+| Distinct functions @7 | 4.095 | 4.298 | ✅ pass — 0.953 retained |
+| Near-duplicate rate | 0.000 | 0.0006 | ✅ pass |
+| Board variety | 0.952 | — | ✅ pass — 80/84 distinct |
+| Coverage of intent (dynamic) | 0.789 | 0.873 | ⚠️ **inconclusive** — 0.904×, margin +0.003 |
+| Same-function-pair rate | 0.1893 | 0.1735 | ❌ **fail** — bar is ≤ teacher |
+| Teacher word agreement | 0.067 | — | report-only |
+
+The same-function-pair gate has failed through three review rounds and is
+reported as failing. The student puts slightly more same-function words on a
+board than the teacher does; the fix that closes it drops coverage of intent
+below its own bar, and the two remain in tension.
+
+Coverage of intent clears its bar by 0.003, which the harness scores as
+inconclusive at n=71. It is written up as inconclusive, not as a pass.
+
+### Why more data made agreement worse
+
+The first student agreed with the teacher's exact word choices 23% of the time
+against a 45% target. More data made it *worse* — 16%, then 6.7% — while every
+diversity and speed gate kept passing.
+
+The cause is arithmetic. The teacher speaks an open vocabulary; the student
+picks from a closed list.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/ceiling-dark.png">
+  <img alt="Coverage against vocabulary size on a log axis: 95 words reaches 33% of the teacher's word slots, and an 8.5x larger vocabulary still only reaches 57%" src="docs/figures/ceiling.png">
+</picture>
+
+Word overlap was measuring the size of the label space, not the quality of the
+student. Adding data pulled the student toward the most frequent representable
+words, which are disproportionately hedge and filler, so agreement fell while
+the boards themselves stayed good. Coverage of intent became the gated metric
+and word agreement was demoted to report-only.
+
+The fix isn't a longer list. Concrete answers are now read straight out of the
+scene or transcript, so a word that was never in the vocabulary can still reach
+the board.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/deictic-dark.png">
+  <img alt="Answer accuracy by question type on 60 authored deictic questions: alternative and who at 100%, where 88%, colour and which 83%, count 0%; the closed vocabulary alone reaches at most 8%" src="docs/figures/deictic.png">
+</picture>
+
+Counting questions fire on 0 of 6 by design — the extractor doesn't attempt
+them. On the held-out split this path fires on only 2 of 84 rows, so it moves no
+aggregate gate; the deictic set exists to make the mechanism measurable at all.
+
+### Intel and OpenVINO
+
+The student exports to ONNX, converts to OpenVINO IR at `1.43e-6` logit parity,
+and quantizes to INT8 with NNCF calibrated on 360 real feature vectors rather
+than random noise. A vocabulary hash ships beside every artifact, so an IR built
+against a different word list fails loudly instead of quietly serving the wrong
+words.
+
+Run on a Core Ultra 9 185H, the same unmodified IR inverts by CPU vendor:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/inversion-dark.png">
+  <img alt="Student head speedup relative to PyTorch on the same machine: 0.60x on Apple M4 through the ARM CPU plugin, 2.66x on an Intel Core Ultra 9 185H" src="docs/figures/inversion.png">
+</picture>
+
+That's a within-machine ratio, so it isn't affected by the OS and version
+differences between the two hosts. Moving the embedder to OpenVINO speeds the
+whole board up 2.02× on Intel CPU, 1.85× on the Arc iGPU, and 1.76× on the Mac.
+
+INT8 is reported as a footprint result, not a speed one — 236 KB against 662 KB,
+while being marginally *slower* than FP32 on both machines.
+
+The NPU is enumerated and does not work. Both OpenVINO backends fail to compile
+against it with `Missing upper bound for one or more nodes`: the NPU compiler
+needs statically shaped graphs, and the IR carries a dynamic batch axis so one
+artifact can serve both single-board inference and batched evaluation. A
+batch-1 static export would probably compile. It hasn't been done, so it isn't
+claimed.
+
+---
+
+## Quickstart
+
+Python 3.9+. Apple silicon for the local LLM and VLM; on Intel, serve the
+student through OpenVINO instead — see [`mac/intel/`](mac/intel/).
+
+```bash
+git clone https://github.com/tanayvin1216/VoiceLink && cd VoiceLink
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r mac/requirements-dev.txt
+
+cd mac
+VOICELINK_PERCEPTION=0 pytest tests/ -q     # 213 passed
+```
+
+Bring the whole system up:
+
+```bash
+bash mac/demo.sh              # real wearable, real models
+bash mac/demo.sh --fake       # no ESP32 needed
+bash mac/demo.sh --student    # distilled student instead of the LLM
+bash mac/demo.sh --intel      # student + MiniLM + Whisper all on OpenVINO
+bash mac/demo.sh --mock       # no models at all
+```
+
+Flags combine. The board is at `http://<mac>:8080/`, served over plain HTTP on
+purpose — a tablet on the same network reaches it without the HTTPS
+mixed-content wall.
 
 ## Repo map
 
-```
-firmware/voicelink_capture/   ESP32-S3 sketch (camera + I2S mic + WS streaming)
-mac/rank_vocabulary.py        THE SEAM — every board-producing model call
-mac/server.py                 aiohttp: HTTP board + WebSocket + tap logging
-mac/perception/               VAD, Whisper, change detector, VLM scene describer
-mac/evaluation/               eval harness + phase1 / phase3 / phase4 experiments
-mac/intel/                    ONNX → OpenVINO IR → NNCF INT8 lifecycle + benchmarks
-mac/tests/                    seam, console, eval gates, Intel path, edge cases
-mac/web/index.html            the AAC board
-docs/COMPETITION_EVIDENCE.md  cited impact / innovation / Intel dossier
-```
+| Path | What's there |
+|---|---|
+| [`mac/rank_vocabulary.py`](mac/rank_vocabulary.py) | the seam — every model call |
+| [`mac/server.py`](mac/server.py) | HTTP + WebSocket, tap logging |
+| [`mac/evaluation/phase4/`](mac/evaluation/phase4/) | student, training, gates, results |
+| [`mac/intel/`](mac/intel/) | ONNX → IR conversion, NNCF quantization, benchmarks |
+| [`firmware/voicelink_capture/`](firmware/voicelink_capture/) | ESP32-S3 capture, button, LED |
+| [`docs/VERIFIED_NUMBERS.md`](docs/VERIFIED_NUMBERS.md) | every quotable figure and its source |
+| [`docs/overview/`](docs/overview/) | full technical write-up (LaTeX + PDF) |
+| [`docs/figures/make_figures.py`](docs/figures/make_figures.py) | regenerates every chart above from the committed JSON |
+| [`paper/`](paper/) | three NeurIPS 2026 workshop drafts |
+
+Every figure in this README is generated from a committed artifact. If a number
+here ever disagrees with the JSON it came from, the JSON is right — run
+`python3 docs/figures/make_figures.py` and the charts catch up.
 
 ## Privacy
 
-Architectural, not promissory: all inference is local, audio and video buffers
-are ephemeral with no persistent recording, the wearable has a hardware kill
-switch and a visible recording LED, and the personal-context store never leaves
-the device. Testing is restricted to the team until written proxy consent and
-pseudonym handling are in place — the wearable captures bystanders who did not
-consent, and that is an open problem we are not pretending to have solved.
+A body-worn camera and microphone in a room with other people is the central
+ethical problem here, and the answer is structural rather than a policy page.
 
-## Development tools
+- **Local only.** Every model runs on the Mac. No audio, video or transcript is
+  transmitted anywhere.
+- **Nothing persists.** Buffers are ephemeral; the privacy endpoint reports no
+  media artifacts on disk.
+- **A hardware kill switch.** A debounced button on GPIO 14 toggles capture on
+  the device. While paused the audio DMA still drains — so timing stays clean
+  across pause and resume — but nothing is converted or sent and no frames are
+  grabbed.
+- **A visible indicator.** An LED is lit whenever capture is active, as a signal
+  to people nearby.
+- **Pseudonymisation tooling** for the tap log, and a proxy consent template for
+  a guardian of someone who cannot consent for themselves.
 
-Developed with the help of generative AI coding assistants (Anthropic Claude,
-OpenAI Codex) for code review, test generation, and research summarization.
+Until written proxy consent and pseudonym handling are in place, the system is
+built and tested on the project team only.
 
 ## Attribution
 
