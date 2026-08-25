@@ -522,8 +522,9 @@ the torch backend on the same scenario, averaged over the 84 held-out rows.
 
 All commands run from the host server directory with perception disabled
 (\fn{VOICELINK\_PERCEPTION=0}) and need no LLM, VLM or Whisper call unless
-noted. \todo{anonymise or package the code before submission; this appendix
-currently names scripts, not a repository}
+noted. Script names are given so the
+procedure is reproducible from the description; the code will be released on
+acceptance.
 \begin{small}
 \begin{verbatim}
 python3 -m pytest -q                                   # 213 passed, 0 xfailed
@@ -561,8 +562,8 @@ Whisper \fn{base.en} INT8 via \fn{faster-whisper} (CTranslate2) or
 \fn{openvino\_genai.WhisperPipeline}.
 \item Wearable: ESP32-S3 (dual-core Xtensa LX7, 240\,MHz, 8\,MB PSRAM),
 OV2640-class camera, SPH0645 I$^2$S microphone; VGA JPEG at 2000\,ms cadence,
-16\,kHz PCM in 512-sample chunks. \todo{a bill of materials with prices does not
-exist; do not quote a device cost}
+16\,kHz PCM in 512-sample chunks. We deliberately quote no device
+cost: no bill of materials has been costed.
 \end{itemize}
 
 \end{document}
