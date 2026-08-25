@@ -56,3 +56,6 @@ mac/intel/artifacts/biencoder/
 
 # Isolated export toolchain (optimum-intel pins transformers<5.1; see mac/intel/README.md)
 .venv-export/
+
+# built PDFs
+docs/overview/*.pdf

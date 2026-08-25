@@ -1,0 +1,483 @@
+% VoiceLink — full project overview.
+% Standalone: standard article class, only widely-installed packages.
+%   pdflatex voicelink_overview.tex   (run twice for the table of contents)
+% Every number here was verified against a committed artifact on 2026-08-25.
+% The committed JSON is the authority, NOT any summary document.
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{ink}{HTML}{10161D}
+\definecolor{accent}{HTML}{0E7C86}
+\definecolor{pass}{HTML}{2F6F4E}
+\definecolor{warn}{HTML}{8A6410}
+\definecolor{fail}{HTML}{A8452E}
+\definecolor{rule}{HTML}{D8DEE5}
+
+\titleformat{\section}{\Large\bfseries\color{ink}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{ink}}{\thesubsection}{0.6em}{}
+\setlist{itemsep=2pt,topsep=4pt}
+
+\newcommand{\PASS}{\textcolor{pass}{\textbf{PASS}}}
+\newcommand{\INC}{\textcolor{warn}{\textbf{INCONCLUSIVE}}}
+\newcommand{\FAIL}{\textcolor{fail}{\textbf{FAIL}}}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+\title{\vspace{-1.5cm}\textbf{VoiceLink}\\[2pt]
+\large Wearable, context-driven vocabulary for AAC\\[6pt]
+\normalsize Full project overview}
+\author{Tanay Vinaykya}
+\date{2026-08-25}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\begin{abstract}
+\noindent People who speak through AAC boards are limited to whatever someone
+programmed in advance. VoiceLink is a body-worn device that senses the room and the
+conversation around its user and rewrites the board in about ten milliseconds, so the
+words that fit this moment are already there. This document describes the system, how
+it is evaluated, what it demonstrably does, and --- deliberately --- what it does not.
+Every figure quoted here was checked against a committed artifact rather than against a
+summary document.
+\end{abstract}
+
+\vspace{-0.3cm}
+\tableofcontents
+\vspace{0.4cm}
+
+%==============================================================================
+\section{What the system does}
+%==============================================================================
+
+An AAC board is a grid of tappable words. A conventional board is fixed: someone
+programs it ahead of time, and if the right word is not on it, the user cannot say the
+thing they mean. Programming a board for every situation a person will encounter is
+impossible in principle.
+
+VoiceLink surfaces the board's contents from context. The board holds ten slots. Four
+are pinned permanently --- \emph{yes}, \emph{no}, \emph{I need help}, \emph{wait} ---
+chosen as four distinct communicative functions so that a bad model output can never
+strand someone without them. The other six are selected per moment.
+
+The concrete demonstration is a situation no pre-programmed board would have anticipated:
+
+\begin{quote}
+\textbf{Scene:} a classroom, a teacher at a whiteboard with a diagram of a plant.\\
+\textbf{Heard:} ``What do plants take in from the air?''\\
+\textbf{Board gains:} \emph{carbon dioxide}, \emph{oxygen and water}, \emph{sun},
+\emph{I am not sure}, \emph{can you repeat that}, \emph{I know this one}.
+\end{quote}
+
+Or, at a family meal, ``Who do you want to sit next to?'' surfaces \emph{aunt} ---
+a word that is not in the system's fixed vocabulary at all, and reaches the board by a
+different mechanism described in Section~\ref{sec:ceiling}.
+
+%==============================================================================
+\section{Architecture: three devices, one seam}
+%==============================================================================
+
+\begin{itemize}
+  \item A \textbf{wearable capture device} (ESP32-S3, worn as a clip or pendant) senses
+  and streams. It performs no processing whatsoever.
+  \item A \textbf{Mac} runs all of the intelligence.
+  \item A \textbf{tablet or phone} displays the board through a web page.
+\end{itemize}
+
+The wearable talks only to the Mac. The tablet talks only to the Mac. All processing is
+local; nothing leaves the Mac in normal operation.
+
+\subsection{The seam}
+
+Every model call in the entire system passes through one function with a fixed
+signature:
+
+\begin{center}
+\code{rank\_vocabulary(scene, transcript, context) -> ranked\_words}
+\end{center}
+
+The wearable never calls a model. The web application never calls a model. They reach
+this function only through the Mac server. No model is ever wired directly into a route,
+the firmware, or the UI.
+
+This single constraint is what allowed the inference backend to be replaced --- PyTorch
+to OpenVINO, Apple silicon to Intel --- by changing a configuration flag rather than
+rewriting the system. It was not a refactor applied later; it was the first
+architectural decision, and it is the reason the Intel port exists at all.
+
+%==============================================================================
+\section{How a board is produced}
+%==============================================================================
+
+The wearable streams VGA JPEG frames at a 2000\,ms cadence and 16\,kHz PCM audio in
+512-sample chunks. Nothing is written to disk.
+
+\begin{enumerate}
+  \item \textbf{Listen.} Whisper \code{base.en} transcribes locally. A change gate skips
+  the vision model when the scene has not moved, so the camera path costs nothing while
+  the user sits still.
+  \item \textbf{Look.} A vision--language model writes a one-sentence scene description.
+  \item \textbf{Over-generate.} Rather than predicting the single likeliest reply, the
+  ranker produces candidates spanning nine communicative functions (request, reject,
+  comment, question, share-information, express-feeling, social, direct-attention,
+  clarify) plus concrete topics visible in the scene. Breadth is the objective: one of
+  the offered directions should be the one the user actually means.
+  \item \textbf{Select for spread.} Maximal marginal relevance (MMR) selects six
+  candidates that are relevant \emph{and} mutually different, so the board does not fill
+  with six paraphrases of one answer. When a question has just been asked of the user,
+  answer candidates receive a reserved quota.
+  \item \textbf{Pin and serve.} The four core words are pinned, pictogram symbols are
+  resolved from a local set, and the board is pushed to the tablet over a WebSocket.
+\end{enumerate}
+
+\paragraph{Interaction logging.} Every vocabulary tap is recorded together with a
+snapshot of the scene, transcript and context that produced the board. This data cannot
+be reconstructed retroactively, so it has been logged since the first working UI. The
+store currently holds 121 rows, all from project team members.
+
+%==============================================================================
+\section{The models}
+%==============================================================================
+
+All models run locally.
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Role} & \textbf{Model} & \textbf{Notes} \\
+\midrule
+Speech        & \code{whisper-base.en}      & faster-whisper, or INT8 via OpenVINO \\
+Scene         & \code{Qwen2.5-VL-3B}        & 4-bit; one sentence per changed scene \\
+Teacher       & \code{Qwen2.5-3B-Instruct}  & 4-bit via MLX; generates candidate boards \\
+Embeddings    & \code{all-MiniLM-L6-v2}     & 384-d, L2-normalised; torch or OpenVINO IR \\
+Student       & $769 \to 192 \to 95$ MLP    & LayerNorm, ReLU, sigmoid + BCE \\
+Selection     & MMR                         & symbolic, identical in both paths \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The selection policy is deliberately \emph{not} learned. Distillation replaces only the
+expensive candidate-generation step; the same symbolic MMR, answer quota and pinned core
+run afterwards in both the teacher and student paths. This is what makes the two
+comparable at all.
+
+%==============================================================================
+\section{Distillation}
+%==============================================================================
+
+The teacher produces good boards and takes roughly seven seconds, which is unusable in
+conversation. Its boards therefore became a training set: 600 rows, 559 after
+deduplication, split into train / validation / held-out with 84 rows never seen during
+training.
+
+The student consumes a 769-dimensional context vector --- sentence embeddings of the
+scene and transcript plus a small number of flags --- and emits a score per vocabulary
+word. Its entire job is to propose candidates quickly enough that the symbolic policy
+can run in real time.
+
+\begin{center}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Quantity} & \textbf{Value} \\
+\midrule
+Student board latency, end to end   & 10.135\,ms \\
+Teacher board latency               & 7.05\,s ($n=8$) \\
+Measured speedup                    & $695\times$ \\
+Functional diversity retained       & 95.3\,\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Caveat on the speedup.} It rests on eight teacher samples, and teacher latency
+drifts run to run: 7.05\,s as committed, with 10.64\,s and 11.68\,s observed on loaded
+machines. Where a claim must be safe, quote $>\!400\times$; quote $695\times$ only with
+the sample count attached.
+
+%==============================================================================
+\section{Evaluation}
+%==============================================================================
+
+Boards are scored on a held-out split the student never trained on. The metrics are
+anti-gaming by construction: a system that returns the same excellent board every time
+should score badly, and this one is measured on whether it does.
+
+\begin{center}
+\small\begin{tabular}{@{}lrr>{\raggedright\arraybackslash}p{4.6cm}@{}}
+\toprule
+\textbf{Gate} & \textbf{Student} & \textbf{Teacher} & \textbf{Verdict} \\
+\midrule
+Distinct functions @7            & 4.095  & 4.298  & \PASS\ (0.953 retained) \\
+Near-duplicate rate              & 0.000  & 0.0006 & \PASS\ ($\le 0.08$) \\
+Board variety                    & 0.952  & ---    & \PASS\ (80/84 distinct) \\
+Coverage of intent (dynamic)     & 0.789  & 0.873  & \INC\ ($0.904\times$, margin $+0.003$) \\
+Same-function-pair rate          & 0.1893 & 0.1735 & \FAIL\ (bar: $\le$ teacher) \\
+Teacher word agreement           & 0.067  & ---    & report-only \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Two of these are not passes, and the project reports them as such.
+
+\paragraph{The same-function-pair gate has failed through three review rounds.} The
+student places slightly more same-function words on a board than the teacher does. The
+open-answer path reaches the teacher's rate only at an aggression setting where coverage
+of intent falls below its own bar. The two are in tension and neither has been resolved.
+
+\paragraph{Coverage of intent clears its bar by 0.003.} The harness scores that margin
+inconclusive at $n=71$. The papers say inconclusive, not pass.
+
+\subsection{Where the diversity comes from}
+
+Against a likelihood-ranked baseline over the same candidate pool ($n=120$), the diverse
+selection policy roughly doubles the distinct communicative functions on a board and
+nearly eliminates near-duplicates.
+
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Metric} & \textbf{Top-$k$ baseline} & \textbf{Diverse policy} \\
+\midrule
+Distinct functions @7        & 3.875   & 4.683 \\
+Near-duplicate rate          & 0.02738 & 0.000397 \\
+Coverage of intent           & 0.775   & 1.000 \\
+Exact match to oracle word   & 0.333   & 0.525 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent That near-duplicate figure is a $69\times$ reduction: the diverse policy almost
+never puts two ways of saying the same thing on one board.
+
+%==============================================================================
+\section{The closed-vocabulary ceiling}
+\label{sec:ceiling}
+%==============================================================================
+
+The first student agreed with the teacher's exact word choices 23\,\% of the time
+against a target of 45\,\%. The obvious hypothesis was data volume. Enlarging the corpus
+made agreement \emph{worse} --- down to 16\,\%, and later 6.7\,\% --- while every
+diversity and speed gate continued to pass.
+
+The cause is arithmetic, not optimisation. The teacher speaks an open vocabulary; the
+student selects from a closed list of 95 words. Counting how much of the teacher's
+output that list can represent at all:
+
+\begin{center}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Quantity} & \textbf{Value} \\
+\midrule
+Teacher word slots representable in the vocabulary & 32.5\,\% \\
+Of those, hedge or filler                          & 49.1\,\% \\
+Rows with zero representable dynamic words         & 12.2\,\% \\
+Ceiling at $8.5\times$ the vocabulary (800 words)  & 56.6\,\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Word overlap was measuring the size of the label space, not the quality of the student.
+Adding data moved the student toward the most frequent representable words, which are
+disproportionately filler, so agreement fell while the boards themselves did not get
+worse. Coverage of intent became the gated metric and word agreement was demoted to
+report-only.
+
+\paragraph{The remedy is not a longer list.} Concrete answers are now extracted directly
+from the scene or transcript by an open-vocabulary extractor, so a word that was never in
+the vocabulary can still reach the board --- which is how \emph{aunt} appears in the
+seating example. On the held-out split this path fires on only 2 of 84 rows, so it moves
+no aggregate gate. On a purpose-built set of 60 where / who / which / colour /
+alternative questions whose answer is present in the context:
+
+\begin{center}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Deictic question set ($n=60$)} & \textbf{Value} \\
+\midrule
+Open-answer path fires                 & 88.3\,\% \\
+Correct answer placed on the board     & 81.7\,\% \\
+Closed vocabulary alone                & 1.7\,\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent``How many'' questions fire on 0 of 6 by design; counting is not attempted.
+
+%==============================================================================
+\section{Intel and OpenVINO}
+%==============================================================================
+
+The seam exists so the inference backend can move, and it has. The student exports to
+ONNX, converts to OpenVINO IR at $1.43\times10^{-6}$ logit parity, and quantizes to INT8
+with NNCF calibrated on 360 real feature vectors rather than random noise. A vocabulary
+hash ships beside every artifact, so an IR built against a different word list fails
+loudly instead of silently serving the wrong words.
+
+\subsection{The result that holds up}
+
+The same unmodified IR was run on an Intel Core Ultra 9 185H. Compared against PyTorch
+\emph{on the same machine}, the OpenVINO runtime inverts by CPU vendor:
+
+\begin{center}
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{Student head, 500 iterations} & \textbf{PyTorch} & \textbf{OpenVINO FP32} & \textbf{Result} \\
+\midrule
+Apple M4 (ARM CPU plugin) & 0.015\,ms  & 0.025\,ms  & $1.7\times$ \emph{slower} \\
+Intel Core Ultra 9 185H   & 0.1075\,ms & 0.0404\,ms & $2.7\times$ \textbf{faster} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+This is a within-machine ratio, so it is immune to the OS, Python and OpenVINO version
+differences between the two hosts. It says the toolchain is doing genuinely
+Intel-specific work, and that the ARM figures elsewhere should be read as a portability
+check rather than as deployment performance.
+
+\subsection{Where the time actually goes}
+
+The student head is roughly 0.1\,ms of a 10\,ms board. The real cost is MiniLM, a
+22M-parameter transformer on the critical path. Moving \emph{it} to OpenVINO is the
+largest single win in the project, and it reproduces on every machine measured:
+$1.76\times$ on the Mac, $2.02\times$ on Intel CPU, $1.85\times$ on the Arc iGPU.
+
+\subsection{What does not work}
+
+The NPU (Intel AI Boost) is enumerated but both OpenVINO backends fail to compile
+against it:
+
+\begin{quote}
+\footnotesize\code{Compilation failed.}\\
+\code{ZE\_RESULT\_ERROR\_INVALID\_NULL\_POINTER}\\
+\code{[NPU\_VCL] Compiler returned msg:}\\
+\code{Missing upper bound for one or more nodes.}
+\end{quote}
+
+The NPU compiler requires statically shaped graphs; the IR carries a dynamic batch axis
+so that one artifact serves both single-board inference and batched evaluation. A
+batch-1 static export would very likely compile. It has not been done, and it is not
+claimed.
+
+\subsection{Honest accounting}
+
+INT8 is a footprint result, not a speed result: 236\,KB against 662\,KB, a $2.8\times$
+reduction, while being marginally \emph{slower} than FP32 on both machines.
+
+Absolute Intel board latencies are withdrawn. That measurement session shared the machine
+with a large model download and a concurrent teacher run; the identical PyTorch
+configuration varied from 40 to 129\,ms across three runs against 18\,ms on an earlier
+quiet run. Only the within-machine ratios above are quoted.
+
+The speedup ratio against the teacher remains Mac-only. The teacher was run once on the
+Core Ultra (median 170.93\,s per board, CPU-only \code{transformers}) purely to
+demonstrate that it runs there; pairing that with the student would produce a
+$\sim$6000$\times$ figure comparing an optimised student against an unoptimised teacher,
+which is not a credible claim.
+
+%==============================================================================
+\section{Privacy}
+%==============================================================================
+
+A body-worn camera and microphone in a room containing other people is the central
+ethical problem of this project. The response is structural rather than a policy
+document.
+
+\begin{itemize}
+  \item \textbf{Local only.} Every model runs on the Mac. No audio, video or transcript
+  is transmitted anywhere.
+  \item \textbf{Nothing persists.} Buffers are ephemeral. The privacy endpoint
+  reports no media artifacts on disk, and audio and video as not persisted.
+  \item \textbf{A hardware kill switch.} A debounced physical button (GPIO 14, internal
+  pull-up, active-low, 50\,ms debounce) toggles capture on the device. While paused the
+  I2S DMA still drains, so timing stays clean across pause and resume, but nothing is
+  converted or transmitted and no frames are grabbed.
+  \item \textbf{A visible indicator.} An LED is lit whenever capture is active, as a
+  signal to people nearby.
+  \item \textbf{A software pause} that drops incoming data before it reaches any buffer.
+  \item \textbf{Pseudonymisation tooling} for the tap log, and a proxy consent template
+  for a guardian of a participant who cannot consent for themselves.
+\end{itemize}
+
+Until written proxy consent and pseudonym handling are in place, the system is built and
+tested on the project team only.
+
+%==============================================================================
+\section{Status}
+%==============================================================================
+
+\begin{center}
+\begin{tabular}{@{}lr@{}}
+\toprule
+Tests passing              & 213 \\
+Dynamic vocabulary         & 95 words \\
+Held-out scenarios         & 84 \\
+Logged taps (team only)    & 121 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Working.} The full loop runs end to end: wearable feed in, scene and
+transcript out, board through the seam, board on the tablet, tap logged with its
+context. The Intel port serves real boards through OpenVINO on both CPU and integrated
+GPU.
+
+\paragraph{Open items.}
+\begin{itemize}
+  \item The same-function-pair gate fails, and the available fix trades against coverage
+  of intent.
+  \item Coverage of intent clears its bar by a margin the harness calls inconclusive.
+  \item The NPU rejects the dynamic-shape IR; a static batch-1 export is untried.
+  \item Absolute Intel board latencies were taken on a loaded machine and are withdrawn.
+  \item The vocabulary-sweep analysis behind the ceiling result has no committed script,
+  and is computed at 94 words while the shipped vocabulary is 95.
+  \item The wearable has never been tested with a real tablet on a real network.
+  Everything above the device is proven.
+\end{itemize}
+
+\paragraph{On numbers.} The committed JSON artifact is the authority, not any summary
+document. That rule exists because the summary was wrong twice: it quoted a speedup of
+$841\times$ when its own cited file said $695.5\times$, and carried an end-to-end latency
+table that had been superseded two runs earlier.
+
+%==============================================================================
+\section{Running it}
+%==============================================================================
+
+\begin{quote}
+\code{bash mac/demo.sh}\hfill real wearable, real models\\
+\code{bash mac/demo.sh -{}-fake}\hfill no ESP32 required\\
+\code{bash mac/demo.sh -{}-student}\hfill distilled student instead of the LLM\\
+\code{bash mac/demo.sh -{}-intel}\hfill student, MiniLM and Whisper all on OpenVINO\\
+\code{bash mac/demo.sh -{}-mock}\hfill no models at all
+\end{quote}
+
+Flags combine. The board is served at \code{http://<mac>:8080/} over plain HTTP by
+design: a tablet on the same network reaches it without the HTTPS mixed-content wall.
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Path} & \textbf{Contents} \\
+\midrule
+\code{mac/rank\_vocabulary.py}        & the seam --- every model call \\
+\code{mac/server.py}                  & HTTP + WebSocket, tap logging \\
+\code{mac/evaluation/phase4/}         & student, training, gates, results \\
+\code{mac/intel/}                     & conversion, quantization, benchmarks \\
+\code{firmware/voicelink\_capture/}   & ESP32-S3 capture, button, LED \\
+\code{docs/VERIFIED\_NUMBERS.md}      & every quotable figure and its source \\
+\code{paper/}                         & the three workshop drafts \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}
