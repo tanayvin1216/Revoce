@@ -88,13 +88,20 @@ quantization or from something else.
 
 ```powershell
 Set-Location $Repo\mac
+# SAVE the INT8 baseline first -- the FP32 run writes to the SAME filename and
+# would otherwise destroy it. (It did exactly that on the 2026-08-25 run.)
+$base = Get-ChildItem intel\artifacts\e2e_*.json |
+        Where-Object { $_.Name -notmatch '_(gpu|npu|fp32|int8)\.json$' } |
+        Sort-Object LastWriteTime | Select-Object -Last 1
+Copy-Item $base.FullName intel\artifacts\e2e_int8_cpu.json
+
 Rename-Item intel\artifacts\student_int8.xml student_int8.xml.off
 python intel\bench_e2e.py --n 84 --no-md --backends torch,ov-head,ov-full
-$src = Get-ChildItem intel\artifacts\e2e_*.json |
-       Where-Object { $_.Name -notmatch '_(gpu|npu|fp32)\.json$' } |
-       Sort-Object LastWriteTime | Select-Object -Last 1
-Copy-Item $src.FullName intel\artifacts\e2e_fp32.json
+Copy-Item $base.FullName intel\artifacts\e2e_fp32.json
 Rename-Item intel\artifacts\student_int8.xml.off student_int8.xml
+
+# restore the INT8 baseline over the file the FP32 run clobbered
+Copy-Item intel\artifacts\e2e_int8_cpu.json $base.FullName -Force
 ```
 
 **Gate:** `student_int8.xml` must exist again at the end. If the middle command
@@ -126,7 +133,7 @@ Then commit and push:
 
 ```powershell
 Set-Location $Repo
-git add mac/intel/artifacts/e2e_*.json mac/intel/artifacts/whisper_bench_*.json mac/intel/artifacts/head_bench_*.json
+git add mac/intel/artifacts/e2e_*.json mac/intel/artifacts/whisper_bench_*.json mac/intel/artifacts/head_bench_*.json mac/intel/artifacts/teacher_slice_*.jsonl
 git status
 git commit -m "core ultra: openvino embeddings, gpu and npu rows, and the fp32 ablation"
 git push origin main
