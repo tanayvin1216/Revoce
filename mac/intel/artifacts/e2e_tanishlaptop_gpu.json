@@ -1,0 +1,76 @@
+{
+  "hardware": {
+    "cpu": "Intel(R) Core(TM) Ultra 9 185H",
+    "arch": "AMD64",
+    "os": "Windows 11",
+    "python": "3.14.2",
+    "openvino": "2026.3.0-22451-8a17657b995-releases/2026/3",
+    "ov_devices": [
+      "CPU",
+      "GPU",
+      "NPU"
+    ],
+    "intel_hardware": true,
+    "ov_device_names": {
+      "CPU": "Intel(R) Core(TM) Ultra 9 185H",
+      "GPU": "Intel(R) Arc(TM) Graphics (iGPU)",
+      "NPU": "Intel(R) AI Boost"
+    }
+  },
+  "n_scenarios": 84,
+  "scenario_source": "phase4 held-out split (evaluate._held_out_rows)",
+  "ov_device_requested": "GPU",
+  "results": [
+    {
+      "backend": "torch",
+      "env": {
+        "VOICELINK_STUDENT_BACKEND": "torch",
+        "VOICELINK_EMBED_BACKEND": "torch"
+      },
+      "embed_backend_used": "torch",
+      "student_runtime": "StudentRanker",
+      "ov_device": null,
+      "n": 84,
+      "repeats": 3,
+      "first_call_incl_load_s": 1.344,
+      "p50_ms": 40.06499995011836,
+      "p90_ms": 146.83408981654793,
+      "mean_ms": 61.68617618488266,
+      "board_jaccard_vs_torch": 1.0
+    },
+    {
+      "backend": "ov-head",
+      "env": {
+        "VOICELINK_STUDENT_BACKEND": "openvino",
+        "VOICELINK_EMBED_BACKEND": "torch"
+      },
+      "embed_backend_used": "torch",
+      "student_runtime": "OpenVinoStudent",
+      "ov_device": "GPU",
+      "n": 84,
+      "repeats": 3,
+      "first_call_incl_load_s": 4.615,
+      "p50_ms": 47.77990002185106,
+      "p90_ms": 121.50922997388989,
+      "mean_ms": 66.03012580077149,
+      "board_jaccard_vs_torch": 0.9197984555127412
+    },
+    {
+      "backend": "ov-full",
+      "env": {
+        "VOICELINK_STUDENT_BACKEND": "openvino",
+        "VOICELINK_EMBED_BACKEND": "openvino"
+      },
+      "embed_backend_used": "openvino",
+      "student_runtime": "OpenVinoStudent",
+      "ov_device": "GPU",
+      "n": 84,
+      "repeats": 3,
+      "first_call_incl_load_s": 1.031,
+      "p50_ms": 21.709649940021336,
+      "p90_ms": 48.2673300197348,
+      "mean_ms": 28.51632141992302,
+      "board_jaccard_vs_torch": 0.9197984555127412
+    }
+  ]
+}

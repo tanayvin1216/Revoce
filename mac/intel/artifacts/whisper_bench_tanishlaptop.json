@@ -1,0 +1,63 @@
+{
+  "hardware": {
+    "cpu": "Intel(R) Core(TM) Ultra 9 185H",
+    "arch": "AMD64",
+    "os": "Windows 11",
+    "python": "3.14.2",
+    "openvino": "2026.3.0-22451-8a17657b995-releases/2026/3",
+    "ov_devices": [
+      "CPU",
+      "GPU",
+      "NPU"
+    ],
+    "intel_hardware": true,
+    "ov_device_names": {
+      "CPU": "Intel(R) Core(TM) Ultra 9 185H",
+      "GPU": "Intel(R) Arc(TM) Graphics (iGPU)",
+      "NPU": "Intel(R) AI Boost"
+    }
+  },
+  "ov_device": "CPU",
+  "n": 10,
+  "model": "whisper-base.en (both int8)",
+  "rows": [
+    {
+      "clip": "bench_clip0.wav",
+      "audio_s": 2.1013125,
+      "faster_whisper": {
+        "p50_ms": 1280.099649913609,
+        "p90_ms": 1344.497019937262,
+        "min_ms": 1153.2062001060694,
+        "n": 10,
+        "text": "Do you want some water or a cup of coffee?"
+      },
+      "openvino_genai": {
+        "p50_ms": 1688.0707000382245,
+        "p90_ms": 2122.7928198641166,
+        "min_ms": 1363.7924999929965,
+        "n": 10,
+        "text": "Do you want some water or a cup of coffee?"
+      },
+      "same_text": true
+    },
+    {
+      "clip": "bench_clip1.wav",
+      "audio_s": 4.048,
+      "faster_whisper": {
+        "p50_ms": 2612.745949998498,
+        "p90_ms": 7354.175939946435,
+        "min_ms": 1252.1338001824915,
+        "n": 10,
+        "text": "We are going to the park after lunch, bring your jacket because it is cold."
+      },
+      "openvino_genai": {
+        "p50_ms": 1097.4861001595855,
+        "p90_ms": 2223.2493999879807,
+        "min_ms": 699.5142998639494,
+        "n": 10,
+        "text": "We are going to the park after lunch, bring your jacket because it is cold."
+      },
+      "same_text": true
+    }
+  ]
+}
