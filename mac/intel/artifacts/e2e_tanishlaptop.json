@@ -19,6 +19,7 @@
   },
   "n_scenarios": 84,
   "scenario_source": "phase4 held-out split (evaluate._held_out_rows)",
+  "ov_device_requested": "CPU (default)",
   "results": [
     {
       "backend": "torch",
@@ -31,10 +32,10 @@
       "ov_device": null,
       "n": 84,
       "repeats": 3,
-      "first_call_incl_load_s": 1.32,
-      "p50_ms": 18.367100041359663,
-      "p90_ms": 28.863640036433935,
-      "mean_ms": 20.380762304061108,
+      "first_call_incl_load_s": 1.216,
+      "p50_ms": 55.73969997931272,
+      "p90_ms": 146.062159887515,
+      "mean_ms": 77.99180714868098,
       "board_jaccard_vs_torch": 1.0
     },
     {
@@ -48,11 +49,11 @@
       "ov_device": "CPU",
       "n": 84,
       "repeats": 3,
-      "first_call_incl_load_s": 1.249,
-      "p50_ms": 17.949799948837608,
-      "p90_ms": 25.06360000697896,
-      "mean_ms": 19.11234007806458,
-      "board_jaccard_vs_torch": 0.9154694511837369
+      "first_call_incl_load_s": 0.949,
+      "p50_ms": 91.34390007238835,
+      "p90_ms": 156.0856400290504,
+      "mean_ms": 96.44702698625181,
+      "board_jaccard_vs_torch": 1.0
     },
     {
       "backend": "ov-full",
@@ -60,16 +61,16 @@
         "VOICELINK_STUDENT_BACKEND": "openvino",
         "VOICELINK_EMBED_BACKEND": "openvino"
       },
-      "embed_backend_used": "torch",
+      "embed_backend_used": "openvino",
       "student_runtime": "OpenVinoStudent",
       "ov_device": "CPU",
       "n": 84,
       "repeats": 3,
-      "first_call_incl_load_s": 1.231,
-      "p50_ms": 18.38154997676611,
-      "p90_ms": 25.172990059945736,
-      "mean_ms": 19.060071032505395,
-      "board_jaccard_vs_torch": 0.9154694511837369
+      "first_call_incl_load_s": 0.803,
+      "p50_ms": 27.62139996048063,
+      "p90_ms": 63.832699926570065,
+      "mean_ms": 34.97701865391776,
+      "board_jaccard_vs_torch": 1.0
     }
   ]
 }

@@ -1,0 +1,50 @@
+{
+  "hardware": {
+    "cpu": "Intel(R) Core(TM) Ultra 9 185H",
+    "arch": "AMD64",
+    "os": "Windows 11",
+    "python": "3.14.2",
+    "openvino": "2026.3.0-22451-8a17657b995-releases/2026/3",
+    "ov_devices": [
+      "CPU",
+      "GPU",
+      "NPU"
+    ],
+    "intel_hardware": true,
+    "ov_device_names": {
+      "CPU": "Intel(R) Core(TM) Ultra 9 185H",
+      "GPU": "Intel(R) Arc(TM) Graphics (iGPU)",
+      "NPU": "Intel(R) AI Boost"
+    }
+  },
+  "n_warmup": 50,
+  "n_iters": 500,
+  "int8_accuracy": {
+    "n_calibration_rows": 360,
+    "k_dyn": 6,
+    "max_abs_logit_delta": 1.0528192520141602,
+    "mean_abs_logit_delta": 0.22787794470787048,
+    "mean_topk_overlap": 0.9504629629629631,
+    "min_topk_overlap": 0.6666666666666666
+  },
+  "results": [
+    {
+      "name": "torch CPU (student.pt)",
+      "p50_ms": 0.10750000365078449,
+      "p90_ms": 0.1256398158147931,
+      "size_kb": 658.2080078125
+    },
+    {
+      "name": "OpenVINO FP32 IR",
+      "p50_ms": 0.040350016206502914,
+      "p90_ms": 0.052210153080523014,
+      "size_kb": 662.3828125
+    },
+    {
+      "name": "OpenVINO INT8 IR",
+      "p50_ms": 0.04259985871613026,
+      "p90_ms": 0.10555000044405466,
+      "size_kb": 235.8681640625
+    }
+  ]
+}
