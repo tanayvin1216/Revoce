@@ -277,7 +277,7 @@ mechanism safe.)
 84} rows (1 of 71 coverage-scored rows). Every before/after gate delta is
 therefore one- or two-row noise and none is reported as an improvement. What
 the numbers support is the negative claim: \emph{no gate regressed}, dynamic
-coverage-of-intent still clears its bar at $0.901\times$ the teacher, and the
+coverage-of-intent clears its bar at $0.904\times$ (margin inconclusive), and the
 previously unrepresentable probe (``who do you want to sit next to?'' $\to$
 \emph{aunt}) is now answered. A deictic-question evaluation
 set is the only way this mechanism becomes measurable. Extracted spans are by construction
@@ -391,19 +391,19 @@ directions.
 \toprule
 Metric & student & teacher & verdict \\
 \midrule
-Distinct functions @7 & 4.083 & 4.333 & PASS (retention 0.942 $\ge$ 0.90) \\
-Near-duplicate rate & 0.0006 & 0.0 & PASS ($\le$ 0.08) \\
-Same-function-pair rate & 0.1865 & 0.1684 & \textbf{FAIL} (bar: $\le$ teacher) \\
-Board variety & 0.917 & --- & PASS ($\ge$ 0.5) \\
-Dynamic coverage-of-intent ($n=71$) & 0.761 & 0.845 & PASS ($0.901\times \ge 0.90\times$) \\
-\texttt{dynamic\_overlap} & 0.056 & --- & report-only \\
-Board latency (embed + MLP + MMR) & 12--15\,ms & 6.7--11.7\,s & ${>}400\times$ \\
+Distinct functions @7 & 4.095 & 4.298 & PASS (retention 0.953 $\ge$ 0.90) \\
+Near-duplicate rate & 0.0 & 0.0006 & PASS ($\le$ 0.08) \\
+Same-function-pair rate & 0.1893 & 0.1735 & \textbf{FAIL} (bar: $\le$ teacher) \\
+Board variety & 0.952 & --- & PASS ($\ge$ 0.5) \\
+Dynamic coverage-of-intent ($n=71$) & 0.789 & 0.873 & $0.904\times$ (inconclusive) \\
+\texttt{dynamic\_overlap} & 0.067 & --- & report-only \\
+Board latency (embed + MLP + MMR) & 10.1\,ms & 7.05\,s & ${>}400\times$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 The same-function-pair gate has failed through three review rounds and is
 reported as failing. The open-answer path of \S\ref{sec:remedy} reached exact
-teacher parity on that gate (0.1684) only at full aggression, where dynamic
+teacher parity on that gate only at full aggression, where dynamic
 coverage fell to 0.690, under its bar; the two remain in tension.
 
 \section{Reproducing the counting results}

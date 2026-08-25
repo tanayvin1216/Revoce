@@ -61,11 +61,11 @@ present a wearable system that senses the conversational moment with local ASR
 and a vision--language model and composes a seven-word board through a single
 fixed-signature interface. Across 120 scenarios, diversity-first selection
 raises distinct communicative functions per board from 3.88 to 4.68, cuts the
-near-duplicate rate by $68\times$ (0.0274 $\rightarrow$ 0.0004), and raises
-coverage-of-intent from 0.81 to 1.00 against a likelihood-ranked baseline. To
+near-duplicate rate by $69\times$ (0.0274 $\rightarrow$ 0.0004), and raises
+coverage-of-intent from 0.775 to 1.00 against a likelihood-ranked baseline. To
 fit the turn window we distil the candidate generator into a small MLP and keep
-the selection policy symbolic, reducing board latency from 6.7--11.7\,s to 12--15\,ms
-(${>}400\times$) while retaining 94\% of the teacher's functional diversity. We
+the selection policy symbolic, reducing board latency from 7.05\,s to 10.1\,ms
+(${>}400\times$) while retaining 95\% of the teacher's functional diversity. We
 report a gate that still fails and an evaluation that is entirely synthetic.
 \end{abstract}
 
@@ -181,7 +181,7 @@ described cannot be deployed as described.
 We distil it, but not in the usual way. The student---a 769-dimensional MLP
 (\texttt{LayerNorm} $\rightarrow$ \texttt{Linear} $\rightarrow$ \texttt{ReLU}
 $\rightarrow$ \texttt{Dropout} $\rightarrow$ \texttt{Linear}) trained multi-label
-with sigmoid + BCE over a 94-word vocabulary---replaces only the expensive
+with sigmoid + BCE over a 95-word vocabulary---replaces only the expensive
 \emph{candidate generation}. The student's raw top-$k$ board was measured to be
 useless, producing walls of hedges and same-function filler. The fix was not more
 training: we treat the student's logits as a candidate pool
@@ -190,7 +190,7 @@ hedge cap over it. The learned component supplies relevance; the symbolic
 component supplies the diversity the raw argmax discarded.
 
 For deployment the student exports to ONNX and converts to OpenVINO IR with
-$1.4\times10^{-6}$ parity, then to NNCF INT8 at $2.7\times$ smaller with mean
+$1.4\times10^{-6}$ parity, then to NNCF INT8 at $2.8\times$ smaller with mean
 top-6 overlap 0.950 (min 0.667). An INT8 \texttt{whisper-base.en} in the same
 runtime transcribes in 0.35\,s against 0.42\,s for \texttt{faster-whisper}.
 
@@ -211,8 +211,8 @@ better except near-duplicate rate.}
 \midrule
 Distinct communicative functions per board & \textbf{4.68} & 3.88 \\
 Near-duplicate pair rate                   & \textbf{0.0004} & 0.0274 \\
-Coverage-of-intent                          & \textbf{1.00} & 0.81 \\
-Exact match to oracle word                  & \textbf{0.567} & 0.342 \\
+Coverage-of-intent                          & \textbf{1.00} & 0.775 \\
+Exact match to oracle word                  & \textbf{0.525} & 0.333 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -227,13 +227,13 @@ Exact match to oracle word                  & \textbf{0.567} & 0.342 \\
 \toprule
  & \textbf{Student} & \textbf{Teacher} & \textbf{Verdict} \\
 \midrule
-Board latency                       & \textbf{12--15\,ms} & 6.7--11.7\,s & ${>}400\times$ \\
-Distinct functions@7                & 4.083 & 4.333 & 94.2\% retained \\
-Near-duplicate rate                 & 0.0006 & 0.000 & pass \\
-Coverage-of-intent (dynamic slots)  & 0.761 & 0.845 & 90.1\% of teacher \\
-Same-function-pair rate ($\downarrow$) & 0.1865 & 0.1684 & \textbf{fail} \\
-Board variety (77/84 distinct)      & 0.917 & --- & pass \\
-Teacher word agreement (dynamic)    & 0.056 & --- & see \S\ref{sec:limits} \\
+Board latency                       & \textbf{10.1\,ms} & 7.05\,s & ${>}400\times$ \\
+Distinct functions@7                & 4.095 & 4.298 & 95.3\% retained \\
+Near-duplicate rate                 & 0.000 & 0.0006 & pass \\
+Coverage-of-intent (dynamic slots)  & 0.789 & 0.873 & 90.4\% of teacher \\
+Same-function-pair rate ($\downarrow$) & 0.1893 & 0.1735 & \textbf{fail} \\
+Board variety (80/84 distinct)      & 0.952 & --- & pass \\
+Teacher word agreement (dynamic)    & 0.067 & --- & see \S\ref{sec:limits} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -245,7 +245,7 @@ Under a turn deadline, spreading the slate across functions is not a trade
 against accuracy; on this evaluation it dominates.
 
 Table~\ref{tab:student} shows the compressed pipeline lands inside a plausible
-turn window while retaining 94\% of the teacher's functional diversity, at the
+turn window while retaining 95\% of the teacher's functional diversity, at the
 cost of one failing gate.
 
 % =====================================================================
@@ -255,7 +255,7 @@ cost of one failing gate.
 We state these prominently because several are load-bearing.
 
 \textbf{One gate fails and we are not rounding it away.} The student stacks
-slightly more same-function words than the teacher (0.1865 vs.\ 0.1684, lower is
+slightly more same-function words than the teacher (0.1893 vs.\ 0.1735, lower is
 better, bar is ``no worse than teacher''). It has been reported as failing
 through three review rounds and remains so.
 
@@ -267,8 +267,8 @@ restricted to the authors by self-imposed policy until written proxy consent and
 pseudonym handling exist. Human validation on consented interaction logs is the
 number that ultimately matters and we do not have it.
 
-\textbf{Teacher word agreement is 0.056 and this is not the failure it looks
-like.} The student picks from a fixed 94-word vocabulary, and that vocabulary can
+\textbf{Teacher word agreement is 0.067 and this is not the failure it looks
+like.} The student picks from a fixed 95-word vocabulary, and that vocabulary can
 represent only 32.5\% of the teacher's word choices---49.1\% of what it can
 represent is filler. Because the vocabulary is frequency-built and concrete
 answers are long-tail by construction, adding teacher data pushes it

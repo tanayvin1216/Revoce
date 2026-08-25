@@ -59,7 +59,7 @@ useless, and re-running the unchanged MMR over the student's logits recovered
 94\% of the teacher's functional diversity. The student exports to OpenVINO IR
 ($1.4\times10^{-6}$ logit parity) and NNCF INT8 ($2.8\times$ smaller, top-6
 overlap 0.950 mean / 0.667 min). A profile of the end-to-end path found that 71
-of 73\,ms per board was re-embedding a static 94-word vocabulary; memoising it
+of 73\,ms per board was re-embedding a static 95-word vocabulary; memoising it
 gives a 5.5\,ms p50 board on the fully-OpenVINO path. We report a diversity gate
 that still fails, an evaluation that is entirely synthetic and LLM-judged, and
 the absence of any Intel-hardware measurement.
@@ -219,7 +219,7 @@ Exact match to oracle word ($\uparrow$, diagnostic)      & \textbf{0.525} & 0.33
 \end{table}
 \footnotetext{Re-scored on 2026-08-23 with the current scorer. The committed
 result file, written in June before a word-boundary fix to the scorer, reports
-0.81 for top-$k$ (and exact match 0.567 vs.\ 0.342); the cached boards are
+0.775 for top-$k$ (and exact match 0.525 vs.\ 0.333); the cached boards are
 unchanged. We quote the current scorer throughout.}
 
 \textbf{Result.} Table~\ref{tab:selection} compares
@@ -272,7 +272,7 @@ and is reported as failing.}
 Distinct functions@7                  & 4.095  & 4.298  & $\ge$0.90 retention: pass (0.953) \\
 Near-duplicate pair rate              & 0.0006 & 0.0    & $\le$0.08: pass \\
 Same-function-pair rate ($\downarrow$) & 0.1893 & 0.1735 & $\le$ teacher: \textbf{fail} \\
-Board variety (77/84 distinct)        & 0.917  & ---    & $\ge$0.5: pass \\
+Board variety (80/84 distinct)        & 0.952  & ---    & $\ge$0.5: pass \\
 Coverage-of-intent, dynamic slots ($n{=}71$) & 0.789 & 0.873 & $\ge$0.90$\times$: pass (0.901$\times$) \\
 Coverage-of-intent, full board ($n{=}71$)     & 0.873 & 0.944 & reported only \\
 Dynamic word agreement with teacher   & 0.067  & ---    & reported only (\S\ref{sec:limits}) \\
@@ -313,10 +313,11 @@ embedding of scene and transcript, the head, and symbolic MMR selection, for
 three runtime combinations selected purely by environment flags, with the
 hardware fingerprint recorded alongside the result.
 
-\textbf{The profile that mattered.} The committed Phase-4 measurement of this
-path was 47.081\,ms per board (IQR 45.06--49.29, 50 samples) against the
-6.71\,s teacher, a $142.6\times$ speedup. Profiling the call showed that 71 of
-73\,ms per board was the MiniLM encoder re-embedding the static 94-word
+\textbf{The profile that mattered.} Before memoisation this path measured
+47.081\,ms per board (IQR 45.06--49.29, 50 samples) against a 6.71\,s teacher, a
+$142.6\times$ speedup; the committed harness now reports 10.135\,ms against
+7.05\,s ($695\times$, 8 teacher samples). Profiling the call showed that 71 of
+73\,ms per board was the MiniLM encoder re-embedding the static 95-word
 vocabulary on every call so that MMR could compare candidates. Embeddings are
 now memoised per (backend, text) and scene and transcript go through one batched
 encoder call. The benchmark evicts the context texts between rounds, so the
@@ -346,7 +347,7 @@ and 9.7\,ms on torch, from roughly 70\,ms before. Two points need care.
 First, re-running the full harness three times after memoisation gave a
 10\,ms student against a 7.1\,s teacher in the same run, i.e.\ roughly $700\times$; the teacher
 timing drifts run to run, so we quote a range, not a ratio. Second, the board the
-OpenVINO path produces is not identical to the torch board (Jaccard 0.914),
+OpenVINO path produces is not identical to the torch board (Jaccard 0.913),
 which is the expected consequence of INT8 logits reordering a candidate pool at
 the margin; whether this matters is a question for the slate metrics, not for
 parity.
@@ -373,19 +374,25 @@ written proxy consent and pseudonym handling exist. The tap log that would
 replace synthetic evaluation is being collected from the first UI version but
 currently holds 121 team-only rows and is not used for any number here.
 
-\textbf{Zero Intel-hardware measurements.} Every latency and throughput figure
-in this paper, including the OpenVINO ones, was measured on Apple ARM silicon
-through the OpenVINO ARM CPU plugin. The OpenVINO path is validated for
-correctness (parity, INT8 overlap, board Jaccard), not for speed on the
-deployment target. The benchmark scripts self-label the hardware so that a run
-on an Intel host is one command, but that run has not happened.
-\todo{replace this paragraph if Intel (Tiber / Core Ultra) numbers land before the deadline}
+\textbf{Intel hardware: ratios, not absolutes.} The same unmodified IR runs on
+an Intel Core Ultra 9 185H CPU and its Arc iGPU. There the OpenVINO runtime makes
+the student head $2.7\times$ \emph{faster} than torch (0.108 $\to$ 0.040\,ms),
+where on Apple ARM the identical conversion is $1.7\times$ \emph{slower}
+(0.015 $\to$ 0.025\,ms); the ARM figures above are therefore a portability check,
+not deployment performance. Moving the encoder to OpenVINO speeds the board up
+$\approx1.9\times$ on Intel (2.02$\times$ CPU, 1.85$\times$ iGPU) against
+$1.76\times$ on ARM. We report no absolute Intel latency: that session shared the
+machine with a large download, and the identical torch configuration varied from
+40 to 129\,ms across three runs. The NPU is enumerated but cannot compile our
+graph --- it requires static shapes and our IR carries a dynamic batch axis so one
+artifact serves both single-board and batched inference. A batch-1 static export
+is the obvious next step and is not done.
 
 \textbf{One gate fails.} Same-function-pair rate 0.1893 versus teacher 0.1735
 (Table~\ref{tab:student}).
 
 \textbf{Teacher word agreement is 0.067, and a closed vocabulary is why.} The
-student picks from 94 words, and that vocabulary can represent only 32.5\% of
+student picks from 95 words, and that vocabulary can represent only 32.5\% of
 the teacher's dynamic word choices, 49.1\% of which are hedge/filler; 12.2\% of
 rows have no representable dynamic word at all. A vocabulary $8.5\times$ larger
 (800 words) still represents only 56.6\%. This is why we gate coverage-of-intent
@@ -519,7 +526,7 @@ noted. \todo{anonymise or package the code before submission; this appendix
 currently names scripts, not a repository}
 \begin{small}
 \begin{verbatim}
-python3 -m pytest -q                                   # 144 passed, 0 xfailed
+python3 -m pytest -q                                   # 213 passed, 0 xfailed
 python3 evaluation/phase3/selftest.py --from-boards    # Table 1 (re-scores cached boards)
 python3 evaluation/phase4/evaluate.py --teacher-samples 0   # Table 2 (student side)
 python3 evaluation/phase4/evaluate.py --teacher-samples 8   # teacher latency (LLM run)
