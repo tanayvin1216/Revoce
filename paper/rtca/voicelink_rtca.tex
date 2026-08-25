@@ -279,9 +279,13 @@ why concrete answers are now read from context rather than a label space---a
 mechanism that works but currently fires on only 2 of 84 held-out rows, so its
 effect on the aggregate numbers is noise.
 
-\textbf{All measurements are on Apple ARM silicon.} The OpenVINO path is
-validated for correctness but we have no Intel-hardware timings.
-\todo{replace this sentence if Tiber numbers land before the deadline}
+\textbf{Intel timings are ratios, not absolutes.} The same IR was run
+unmodified on an Intel Core Ultra 9 185H CPU and Arc iGPU, where OpenVINO makes
+the student head $2.7\times$ faster than torch; on Apple ARM the identical
+conversion is $1.7\times$ slower, so the ARM numbers above are a portability
+check rather than deployment performance. That Intel session shared the machine
+with other work, so we report no absolute Intel latency. The NPU is enumerated
+but rejects our dynamic-shape graph.
 
 % =====================================================================
 \section{Conclusion}
@@ -310,11 +314,20 @@ leave the device.
 \section*{Use of large language models}
 % =====================================================================
 
-\todo{Required by the NeurIPS Main Track LLM policy that RTCA adopts --- write
-this before submitting. This project was developed through a documented
-AI-assisted multi-agent engineering pipeline, and LLMs are additionally a
-component of the system under study (teacher, judge). Disclose both roles
-explicitly and separately.}
+LLMs occupy two distinct roles in this work and we disclose them separately.
+
+\textbf{As components of the system under study.} A local instruction-tuned LLM
+is the teacher whose boards the student distils; a local vision--language model
+produces the scene description; a local ASR model produces the transcript; and
+an LLM judge scores coverage-of-intent. Every reported gate therefore depends on
+model outputs, and the limitations above about judge and teacher bias apply.
+
+\textbf{As engineering assistance.} The implementation, evaluation harness and
+drafts of this paper were produced with substantial AI coding assistance under a
+documented multi-agent review process. All experimental results were executed by
+the authors on the hardware described, and every number in this paper was
+verified against a committed artifact before submission. The authors take full
+responsibility for the content and for any remaining errors.
 
 % =====================================================================
 %  REFERENCES -- VERIFY EVERY ENTRY BEFORE SUBMITTING.

@@ -91,7 +91,8 @@ pre-training diagnostic, the \emph{representability ceiling}
 \label{sec:setup}
 \paragraph{Teacher.} Given a scene description (from a small VLM) and a
 transcript (from local ASR), the teacher LLM%
-\footnote{Qwen-family~\citep{qwen25vl}, run locally. \todo{confirm exact teacher model id.}}
+\footnote{\texttt{Qwen2.5-3B-Instruct} (4-bit), run locally; the scene
+describer is the VL variant of the same family~\citep{qwen25vl}.}
 proposes candidate words, and a symbolic maximal-marginal-relevance
 (MMR)~\citep{mmr1998} stage selects six dynamic words for diversity of
 communicative function. The teacher corpus is 600 rows of synthetic scenarios
@@ -123,8 +124,12 @@ Appendix~\ref{app:gates}.
 The first student (v2), trained on the authored portion of the corpus,
 reached \texttt{dynamic\_overlap} $=0.232$ against a gate of $\ge 0.45$. The
 obvious hypothesis was data volume. The corpus was enlarged with rows from
-earlier phases---logged as a $5\times$ increase in distillation data%
-\footnote{\todo{The committed corpora are 360 authored rows and a 580-row merged corpus. Reconcile the logged ``$5\times$'' multiplier against those counts (rows vs.\ augmented examples?) and state the exact factor.}}%
+earlier phases---logged at the time as a $5\times$ increase in distillation
+data%
+\footnote{That multiplier is not reconcilable against the committed corpora,
+which hold 360 authored scenarios and 600 teacher rows (559 after dedup), a
+$1.7\times$ increase in rows. We report the discrepancy rather than resolve it;
+the argument below does not depend on the exact factor.}%
 ---and the student retrained (v2.1, held-out $n=87$). Agreement fell to
 $0.165$; the diversity and speed gates all passed. A later variant with a
 richer input and MMR over logits fell further, to $0.056$, at which point
@@ -254,7 +259,7 @@ selection was changed to diversify over the logits.
 
 The model says nothing about student capacity, and assumes $f,V$ fixed as
 $n$ grows; re-tuning them changes constants, not the logarithmic shape of
-\S\ref{sec:cause}. \todo{If time permits: simulate the toy model ($f{=}3$, $V{=}94$, Zipf tail) and add a small figure of $\covv$ and filler share vs.\ $n$ to the appendix.}
+\S\ref{sec:cause}.
 
 %------------------------------------------------------------------------------
 \section{The architectural remedy, and its honest status}
@@ -418,6 +423,6 @@ coverage. The log fit is ordinary least squares of $\covv$ on $\ln V$ over the
 five finite rows. The small discrepancy between 94-word coverage in
 Table~\ref{tab:repr} (0.324, shipped vocabulary with canonical merges) and
 Table~\ref{tab:sweep} (0.309, frequency-only rebuild) is the effect of the 22
-canonical merges. \todo{Attach the counting script as supplementary material (anonymised; strip project name and paths).}
+canonical merges. The counting procedure is fully specified above and requires no model call.
 
 \end{document}
