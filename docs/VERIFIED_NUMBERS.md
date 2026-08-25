@@ -46,35 +46,49 @@ The v3 bi-encoder results (cloud line) live in
 `mac/evaluation/phase4/phase4_v3_results.json` and `V3_BIENCODER_REPORT.md`;
 v3 is NOT the served default and its numbers are not interchangeable with v2's.
 
-## 0b. Intel hardware (2026-08-24) — Core Ultra 9 185H
+## 0b. Intel hardware — Core Ultra 9 185H (final, 2026-08-25)
 
-Source: `mac/intel/artifacts/e2e_tanishlaptop.json`, `mac/intel/BENCHMARKS.md`.
-Machine: Intel(R) Core(TM) Ultra 9 185H / Windows 11 / Python 3.14.2 /
-OpenVINO 2026.3.0. Devices seen: CPU, GPU (Arc iGPU), NPU (AI Boost).
+Sources: `mac/intel/artifacts/head_bench_tanishlaptop.json`,
+`e2e_tanishlaptop{,_gpu,_npu}.json`, `teacher_slice_tanishlaptop.jsonl`,
+`whisper_bench_tanishlaptop.json`, and `mac/intel/BENCHMARKS.md`.
+Machine: Core Ultra 9 185H / Windows 11 / Python 3.14.2 / OpenVINO 2026.3.0.
+Devices enumerated: CPU, GPU (Arc iGPU), NPU (AI Boost).
+**No further Intel hardware access.** These are final.
 
-| Number | Value | Status |
+### QUOTABLE
+
+| Number | Value | Why it survives |
 |---|---|---|
-| Board latency, torch path, 84 held-out | **18.4 ms p50 / 28.9 p90** | verified |
-| Board latency, ov-head (INT8 head, torch embed) | **17.9 / 25.1** | verified |
-| Board latency, ov-full | **18.4 / 25.2** — but `embed_backend_used` is `"torch"` | **NOT a valid ov-full measurement**; the MiniLM IR was absent so it silently duplicated ov-head |
-| Board Jaccard vs torch (OpenVINO student) | **0.915** | verified; divergence untested against FP32 |
-| Student head, torch, isolated | **0.133 ms p50** | verified |
-| Student head, OpenVINO INT8, isolated | **0.073 ms p50** | verified |
-| Student head, OpenVINO FP32, isolated | *withdrawn* | measured against a 59-class IR; re-run needed |
-| Speedup vs teacher on Intel | **not measured** | the teacher has never run on this machine; do NOT pair 18.4 ms with the Mac's 7.05 s teacher |
-| GPU / NPU board latency | **not measured** | and note `OpenVinoEmbedder` pins MiniLM to CPU, so `VOICELINK_OV_DEVICE` moves only the ~0.1 ms head |
+| Student head, torch vs OpenVINO **FP32**, Intel | **0.1075 → 0.0404 ms = 2.7× faster** | within-machine ratio; 500 iters of a ~0.1 ms op; p90/p50 spread 1.17–1.29× |
+| Student head, torch vs OpenVINO **INT8**, Intel | **0.1075 → 0.0426 ms = 2.5× faster** | same |
+| Same comparison on ARM | **1.7× and 2.1× SLOWER** (0.015 → 0.025 / 0.031) | the inversion is the Intel argument |
+| INT8 size reduction | **236 KB vs 662 KB = 2.8×** | file sizes, not timing |
+| MiniLM→OpenVINO board speedup, Intel | **2.02× (CPU), 1.85× (GPU)** — quote as "~1.9×" | reproduces across two independent runs; within-run, same process |
+| Same on Apple M4 | **1.76×** (9.70 → 5.51 ms) | quiet machine |
+| Board agreement, OpenVINO head vs torch, Intel CPU | **1.000** (FP32 head) | exact reproduction |
+| Board agreement, Intel iGPU | **0.920** (INT8 head) | real precision effect on the GPU plugin |
+| Devices the student runs on | **CPU and Arc iGPU**, same unmodified IR | |
+| NPU | **enumerated but cannot compile the IR** — `Missing upper bound for one or more nodes`; the NPU compiler needs static shapes, our IR has a dynamic batch axis | documented negative result |
 
-**Cross-machine claims.** The Mac and the Core Ultra differ in OS, Python and
-OpenVINO version, so absolute latencies are not a controlled comparison. The
-Core Ultra is *slower* end-to-end than the M4 (18.4 vs 9.7 ms torch), and the
-claim "2.6× faster on Intel" that appears in `docs/INTEL_REMAINING.md` is **not
-supported by any committed file** — it pairs a superseded 47.1 ms Mac figure
-with the Intel number. Do not use it.
+### WITHDRAWN — do not quote
 
-What IS controlled is the torch-vs-OpenVINO ratio within each machine, and it
-inverts: OpenVINO INT8 is **2.1× slower than torch on ARM** (0.031 vs 0.015 ms)
-and **1.8× faster on the Core Ultra** (0.073 vs 0.133 ms), same 95-class head
-both sides. That is the defensible Intel performance claim.
+| Number | Why |
+|---|---|
+| Every **absolute** Core Ultra board latency (55.74 / 27.62 / 40.06 / 21.71 / 129.22 ms) | the run overlapped a 6 GB download and a ~28 min teacher slice; the same torch config gave 40.06, 55.74 and 129.22 ms across three runs vs 18.37 ms quiet |
+| Core Ultra Whisper (`faster_whisper` 1280 ms p50) | same loaded machine; 252 ms on the Mac for the same clip |
+| Teacher on Intel (median 170.93 s/board) | CPU-only transformers on a loaded box. Proves the teacher *runs* on Intel; must not become a ratio (it would read ~6000×) |
+| INT8-vs-FP32 board comparison on Intel CPU | the FP32 ablation overwrote the INT8 baseline (same output filename). Only the FP32 row survives |
+| "2.6× faster on Intel" | never supported by any file. The Core Ultra is *slower* end-to-end than the M4. Do not use |
+| Speedup vs teacher, measured on Intel | not measured on one machine. The speedup ratio stays **Mac-only** |
+
+### The one-line Intel claim
+
+> The same OpenVINO IR that runs on the dev Mac runs unmodified on a Core Ultra
+> 9 185H CPU and its Arc iGPU. On Intel the OpenVINO runtime makes the student
+> head **2.7× faster than torch**; on ARM the same conversion is **1.7× slower**
+> — the toolchain is doing Intel-specific work. Moving the sentence embedder to
+> OpenVINO speeds the whole board up **~1.9× on Intel** and 1.76× on the Mac.
+> The NPU is present but rejects our dynamic-shape graph.
 
 ## 0. Re-measured later on 2026-08-23 (supersedes rows below where noted)
 
