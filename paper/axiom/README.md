@@ -11,16 +11,16 @@ Research-paper track: **4 pages max excluding references and appendix**, double-
 
 | file | purpose |
 |---|---|
-| `voicelink_axiom.tex` | the paper (single file, bibliography inline) |
+| `main.tex` | the paper (single file, bibliography inline) |
 | `neurips_2026.sty` | copied from `paper/common/neurips_2026.sty`; anonymous by default |
-| `voicelink_axiom.pdf` | last local build (5 pages: body ends on p.4, refs + appendix on p.5) |
+| `main.pdf` | last local build (5 pages: body ends on p.4, refs + appendix on p.5) |
 
 ## Build
 
 ```
 cd paper/axiom
-tectonic voicelink_axiom.tex          # single pass is enough with tectonic
-# or: pdflatex voicelink_axiom.tex && pdflatex voicelink_axiom.tex
+tectonic main.tex          # single pass is enough with tectonic
+# or: pdflatex main.tex && pdflatex main.tex
 ```
 
 Check the page count after every edit: the body (everything before `References`)
@@ -53,7 +53,7 @@ print(b, np.abs(A@b-c).max(), b[1]*np.log(2))"
 - [ ] Confirm the "5x data" multiplier against the committed corpora (360 authored vs 580 merged rows) and fix the footnote in §3.
 - [ ] Confirm the exact teacher model id and replace the footnote in §2.
 - [ ] Anonymity sweep: no project name, no repo URL, no author names, no identifying file paths
-      in the body. `grep -i voicelink voicelink_axiom.tex` must return only comment lines (or nothing).
+      in the body. `grep -i voicelink main.tex` must return only comment lines (or nothing).
 - [ ] Body <= 4 pages with the **unmodified** `neurips_2026.sty` (no `\vspace` hacks, no font changes).
 - [ ] Abstract numbers match §4 tables (32.5 / 49.1 / 12.2 / 0.325 / 51 % / 55 % at 8x).
 - [ ] "Use of LLMs" paragraph present (it is, end of §8) — also fill in the NeurIPS checklist item if the workshop asks for it.
