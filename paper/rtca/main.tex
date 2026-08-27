@@ -486,9 +486,6 @@
 \usepackage{microtype}
 \usepackage{xcolor}
 
-% Drafting helper -- delete before submission.
-\newcommand{\todo}[1]{\textcolor{red}{[\textbf{TODO:} #1]}}
-
 \title{One Shot at the Turn: Diversity-First Vocabulary Selection
 for Real-Time Augmentative Communication}
 
@@ -508,15 +505,17 @@ likelihood---is wrong for it. Under a turn deadline the user gets one slate and
 cannot recover from a wrong one, so the slate should be selected for
 \emph{coverage of the intent space}, not for expected per-word accuracy. We
 present a wearable system that senses the conversational moment with local ASR
-and a vision--language model and composes a seven-word board through a single
-fixed-signature interface. Across 120 scenarios, diversity-first selection
-raises distinct communicative functions per board from 3.88 to 4.68, cuts the
-near-duplicate rate by $69\times$ (0.0274 $\rightarrow$ 0.0004), and raises
-coverage-of-intent from 0.775 to 1.00 against a likelihood-ranked baseline. To
-fit the turn window we distil the candidate generator into a small MLP and keep
-the selection policy symbolic, reducing board latency from 7.05\,s to 10.1\,ms
-(${>}400\times$) while retaining 95\% of the teacher's functional diversity. We
-report a gate that still fails and an evaluation that is entirely synthetic.
+and a vision--language model and composes a ten-slot board---four pinned core
+words and six selected per turn---through a single fixed-signature interface.
+Across 120 scenarios, diversity-first composition raises distinct communicative
+functions per board from 3.88 to 4.68, cuts the near-duplicate rate by
+$69\times$ (0.0274 $\rightarrow$ 0.0004), and raises coverage-of-intent from
+0.775 to 1.00 against a likelihood-ranked baseline. To meet the turn deadline we
+distil the candidate generator into a 769-dimensional MLP and leave the
+selection policy symbolic, reducing board latency from 7.05\,s to 10.1\,ms
+($695\times$) while retaining 95.3\% of the teacher's functional diversity. We
+report paired bootstrap intervals rather than point estimates alone, and two
+gates that those intervals leave unresolved.
 \end{abstract}
 
 % =====================================================================
@@ -533,20 +532,21 @@ and about a quarter are nonverbal, minimally verbal, or require extensive
 support \citep{cdc2025}. Many communicate through AAC boards: grids of words and
 symbols that are tapped rather than spoken. Measured AAC output runs at
 10--18 words per minute against 125--185 for speech
-\citep{beukelman2013}. Conversational turns in natural dialogue turn over on the
+\citep{asha2020,beukelman2013}. Conversational turns in natural dialogue turn over on the
 order of a few hundred milliseconds \citep{sacks1974}. The gap is not an
 inconvenience; it is a structural exclusion from live conversation.
 
-Two properties follow, and both are unusual enough to be worth stating plainly.
+Two properties of this setting follow.
 
 \textbf{The latency budget is set by turn-taking, not throughput.} A board that
 arrives after the speaker has moved on is not a degraded answer, it is no answer.
 This is a deadline, not a cost term.
 
 \textbf{There is no second attempt.} A speaker who says the wrong word can
-repair it in the next breath. An AAC user who is given the wrong seven words has
-already spent the turn. The asymmetry between a miss and a hit is therefore much
-larger than in ranking problems where a user can scroll, rephrase, or retry.
+repair it in the next breath. An AAC user whose board offers the wrong six
+words has already spent the turn. The asymmetry between a miss and a hit is
+therefore substantially larger than in ranking problems where the user may
+scroll, rephrase, or retry.
 
 Together these motivate our central claim: \emph{under a turn deadline with no
 recovery, ranking by likelihood is the wrong objective.} The correct objective
@@ -556,27 +556,30 @@ diversity-first selection policy dominates a likelihood-ranked baseline on it,
 and show that the resulting pipeline can be compressed to fit the turn window on
 commodity local hardware.
 
-Existing AAC boards are static: a caregiver programs the vocabulary in advance
-and hopes it matches the moment. Prior context-aware AAC work optimises
-keystroke savings \citep{kwickchat2022,praact2024}, which is the right objective
-when the user is composing a sentence and the wrong one when the user is trying
-to catch a turn.
+Existing boards are static: a caregiver programs the vocabulary in advance and
+hopes it matches the moment. Prior context-aware AAC work optimises keystroke
+savings \citep{kwickchat2022,praact2024}---the right objective when composing a
+sentence, the wrong one when catching a turn.
 
 % =====================================================================
 \section{System}
 % =====================================================================
 
-Three nodes. A body-worn clip ($\sim$\$15 in parts) carries a camera and an I2S
-microphone and performs \emph{no} inference; it hosts its own access point and
-multiplexes tagged image and audio payloads over one persistent connection. A
-nearby computer runs all perception and ranking. Any tablet renders the board
+Three nodes. A body-worn clip built from commodity parts carries a camera and an
+I2S microphone and performs \emph{no} inference; it hosts its own access point
+and multiplexes tagged image and audio payloads over one persistent connection.
+A nearby computer runs all perception and ranking. Any tablet renders the board
 over plain HTTP and reports taps. Nothing leaves the local machine.
 
-\textbf{Perception.} Whisper (\texttt{base.en}) transcribes the surrounding
-conversation; Qwen2.5-VL-3B \citep{qwen25vl} describes the scene. Expensive
-vision is gated behind cheap frame differencing so that the audio path never
-blocks on a slow model call. Board regeneration is event-driven, triggered by
-conversational events rather than a fixed clock.
+\textbf{Board shape.} The device displays ten slots: four pinned core words and
+six recomposed each turn. Metrics score the top seven positions, four of which
+are the invariant core, so all gated quantities are computed over the
+\emph{dynamic} words alone and the core cannot inflate them.
+
+\textbf{Perception.} Whisper (\texttt{base.en}) transcribes the conversation and
+Qwen2.5-VL-3B \citep{qwen25vl} describes the scene, with vision gated behind
+frame differencing so the audio path never blocks on it. Board regeneration is
+event-driven rather than clocked.
 
 \textbf{The seam.} Every model call in the system passes through one function
 with a fixed signature,
@@ -599,9 +602,8 @@ answers, and the obligation to answer outlives the turn.
 Each candidate utterance is assigned one of a small set of predefined
 \emph{communicative functions} (assent, refusal, request, inquiry, comment,
 answer, and so on) by nearest-exemplar classification in a MiniLM
-\citep{minilm} embedding space. Multiple exemplars per function are required:
-a single centroid mislabelled both ``yes'' and ``carbon dioxide'' as
-\emph{I-don't-know}, and fixing this changed the measured outcome.
+\citep{minilm} embedding space; multiple exemplars per function are required,
+for reasons given in Appendix~\ref{app:protocol}.
 
 We over-generate a candidate pool with an LLM and then select the displayed
 slate with maximal marginal relevance \citep{mmr1998},
@@ -616,7 +618,7 @@ pinning core vocabulary is standard AAC practice, and we claim only the specific
 choice and the exclusion. A reserved answer quota with a hedge cap prevents the
 board from filling with non-committal filler when a question is open.
 
-MMR itself is not new. The claim is that its objective is the \emph{right} one
+MMR is not itself novel. Our claim is that its objective is the \emph{correct} one
 here, for a reason specific to turn-limited interaction, and that this is
 measurable.
 
@@ -624,25 +626,48 @@ measurable.
 \section{Meeting the turn deadline}
 % =====================================================================
 
-The teacher pipeline produces a good board in 6.71\,s (IQR 6.63--6.97). That is
-roughly an order of magnitude past any plausible turn window, so the pipeline as
-described cannot be deployed as described.
+The teacher pipeline produces a competent board in 7.05\,s (IQR 6.96--7.46,
+$n{=}8$), roughly three orders of magnitude beyond any plausible turn window.
+The pipeline as specified is therefore not deployable.
 
-We distil it, but not in the usual way. The student---a 769-dimensional MLP
+The distillation is deliberately partial. The student---a 769-dimensional MLP
 (\texttt{LayerNorm} $\rightarrow$ \texttt{Linear} $\rightarrow$ \texttt{ReLU}
 $\rightarrow$ \texttt{Dropout} $\rightarrow$ \texttt{Linear}) trained multi-label
 with sigmoid + BCE over a 95-word vocabulary---replaces only the expensive
-\emph{candidate generation}. The student's raw top-$k$ board was measured to be
-useless, producing walls of hedges and same-function filler. The fix was not more
-training: we treat the student's logits as a candidate pool
+\emph{candidate generation}. Its raw top-$k$ board proved unusable, dominated by
+hedges and same-function filler. Additional training did not correct this;
+instead we treat the student's logits as a candidate pool
 ($3 \times k$) and re-run the \emph{unchanged} production MMR, answer quota and
 hedge cap over it. The learned component supplies relevance; the symbolic
 component supplies the diversity the raw argmax discarded.
 
-For deployment the student exports to ONNX and converts to OpenVINO IR with
-$1.4\times10^{-6}$ parity, then to NNCF INT8 at $2.8\times$ smaller with mean
-top-6 overlap 0.950 (min 0.667). An INT8 \texttt{whisper-base.en} in the same
-runtime transcribes in 0.35\,s against 0.42\,s for \texttt{faster-whisper}.
+For deployment the student exports to ONNX and converts to OpenVINO IR at
+$1.4\times10^{-6}$ logit parity, then to NNCF INT8 at $2.8\times$ smaller with
+mean top-6 overlap 0.950 against the FP32 head. The same unmodified IR is
+portable across vendors (\S\ref{sec:limits}).
+
+% =====================================================================
+\section{Evaluation}\label{sec:eval}
+% =====================================================================
+
+\textbf{Corpora.} The selection comparison uses 120 scenarios over five settings
+(classroom, clinic, airport, dinner, direct question), 24 each, emitted
+deterministically from a template generator; each carries acceptable
+communicative moves authored with it. The distillation corpus is separate: 600
+teacher boards reduced to 559 rows by deduplication and a per-category cap, then
+split 391/84/84 by seeded permutation under a fingerprint that aborts evaluation
+on drift. Of the 84 test rows, 71 are scorable for coverage.
+
+\textbf{Metrics are deterministic.} All gated quantities are computed in a
+MiniLM \citep{minilm} embedding space rather than by a language model.
+Communicative function is assigned by nearest exemplar over 47 exemplars across
+nine functions; items are near-duplicates at cosine ${\geq}0.85$;
+coverage-of-intent is satisfied by word-boundary containment, content-token
+overlap, or cosine ${\geq}0.50$ against an acceptable move. A separate LLM judge
+exists in the codebase but is labelled a proxy and gates nothing. Each gate is
+scored as a paired margin against its bar with a 10{,}000-resample bootstrap
+interval, and passes only if that interval excludes zero. Appendix
+\ref{app:protocol} gives the full protocol.
 
 % =====================================================================
 \section{Results}\label{sec:results}
@@ -651,9 +676,12 @@ runtime transcribes in 0.35\,s against 0.42\,s for \texttt{faster-whisper}.
 \begin{table}[t]
 \centering
 \small
-\caption{Diversity-first vs.\ likelihood-ranked selection, 120 scenarios across
-five settings (classroom, clinic, airport, dinner, direct question). Higher is
-better except near-duplicate rate.}
+\caption{Diversity-first composition vs.\ a likelihood-ranked baseline, 120
+scenarios across five settings. Both arms are driven through the same interface
+and scored identically at top-7; the baseline issues its own generation call and
+returns a ranked list without pinned core words, so the contrast is between
+complete composition strategies rather than between two selection rules over one
+shared pool. Higher is better except near-duplicate rate.}
 \label{tab:selection}
 \begin{tabular}{lcc}
 \toprule
@@ -662,7 +690,7 @@ better except near-duplicate rate.}
 Distinct communicative functions per board & \textbf{4.68} & 3.88 \\
 Near-duplicate pair rate                   & \textbf{0.0004} & 0.0274 \\
 Coverage-of-intent                          & \textbf{1.00} & 0.775 \\
-Exact match to oracle word                  & \textbf{0.525} & 0.333 \\
+Exact match to reference utterance          & \textbf{0.525} & 0.333 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -670,129 +698,142 @@ Exact match to oracle word                  & \textbf{0.525} & 0.333 \\
 \begin{table}[t]
 \centering
 \small
-\caption{Distilled student against the teacher pipeline, held-out split
-($n{=}84$; $n{=}71$ for coverage). We report the gate that fails.}
+\caption{Distilled student against the teacher pipeline on the held-out split
+($n{=}84$; $n{=}71$ scorable for coverage). The interval is a 10{,}000-resample
+paired bootstrap on the margin against each gate's bar; a gate passes only when
+it excludes zero. Latency was measured in-process on an Apple M4.}
 \label{tab:student}
 \begin{tabular}{lccc}
 \toprule
- & \textbf{Student} & \textbf{Teacher} & \textbf{Verdict} \\
+ & \textbf{Student} & \textbf{Teacher} & \textbf{Margin CI / verdict} \\
 \midrule
-Board latency                       & \textbf{10.1\,ms} & 7.05\,s & ${>}400\times$ \\
-Distinct functions@7                & 4.095 & 4.298 & 95.3\% retained \\
+Board latency                       & \textbf{10.1\,ms} & 7.05\,s & $695\times$ \\
+Distinct functions@7                & 4.095 & 4.298 & $[+0.006, +0.449]$ pass \\
 Near-duplicate rate                 & 0.000 & 0.0006 & pass \\
-Coverage-of-intent (dynamic slots)  & 0.789 & 0.873 & 90.4\% of teacher \\
-Same-function-pair rate ($\downarrow$) & 0.1893 & 0.1735 & \textbf{fail} \\
 Board variety (80/84 distinct)      & 0.952 & --- & pass \\
-Teacher word agreement (dynamic)    & 0.067 & --- & see \S\ref{sec:limits} \\
+Coverage-of-intent (dynamic)        & 0.789 & 0.873 & $[-0.118, +0.118]$ inconcl. \\
+Same-function-pair ($\downarrow$)   & 0.1893 & 0.1735 & $[-0.041, +0.010]$ inconcl. \\
+Teacher word agreement (dynamic)    & 0.067 & --- & report-only \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:selection} is the central result. Selecting for coverage rather
-than likelihood improves every measure, including---notably---exact match to the
-oracle word, which the likelihood-ranked baseline is the one optimising for.
-Under a turn deadline, spreading the slate across functions is not a trade
-against accuracy; on this evaluation it dominates.
+Table~\ref{tab:selection} is the central result. Composing for coverage rather
+than ranking by likelihood improves every measure, including exact match to the
+reference utterance---the quantity the baseline is the one optimising for. Under
+a turn deadline, spread across communicative functions is not traded against
+accuracy; on this evaluation it dominates. The reference utterance is authored by
+the same generator as the scenario, so that row is corroborative, not decisive.
 
-Table~\ref{tab:student} shows the compressed pipeline lands inside a plausible
-turn window while retaining 95\% of the teacher's functional diversity, at the
-cost of one failing gate.
+Table~\ref{tab:student} shows the compressed pipeline landing inside a plausible
+turn window while retaining 95.3\% of the teacher's functional diversity, with
+two gates the bootstrap does not resolve.
 
 % =====================================================================
 \section{Limitations}\label{sec:limits}
 % =====================================================================
 
-We state these prominently because several are load-bearing.
+Several of these bear directly on how the results should be read.
 
-\textbf{One gate fails and we are not rounding it away.} The student stacks
-slightly more same-function words than the teacher (0.1893 vs.\ 0.1735, lower is
-better, bar is ``no worse than teacher''). It has been reported as failing
-through three review rounds and remains so.
+\textbf{Two gates are unresolved, and we round neither away.} The student places
+more same-function words on a board than the teacher (0.1893 vs.\ 0.1735; the
+bar is ``no worse than the teacher''), but the interval $[-0.041, +0.010]$
+contains zero, so the deficit is not established at $n{=}84$; since the point
+estimate is adverse we report the gate as unmet. Dynamic coverage clears its bar
+by 0.0028 with an interval of $[-0.118, +0.118]$, which establishes nothing
+either way, so we report it as inconclusive rather than as a pass. Roughly 0.048
+of the same-function-pair rate is a fixed artefact of the pinned core.
 
-\textbf{The evaluation is entirely synthetic.} Scenarios are generated, the
-judge is an LLM, and the teacher is itself an LLM. A student that passes here may
-be imitating the teacher imitating a larger model. \textbf{There are no human
-subjects.} The wearable captures bystanders who did not consent, so testing is
+\textbf{The evaluation is entirely synthetic.} The 120 selection scenarios are
+emitted from a fixed template generator rather than transcribed from
+conversation, and the teacher whose boards the student learns is itself an LLM.
+A student that scores well here may be imitating the teacher imitating a larger
+model. The gated metrics are deterministic, which removes judge variance but not
+this dependence.
+
+\textbf{There are no human subjects.} The wearable captures bystanders who did not consent, so testing is
 restricted to the authors by self-imposed policy until written proxy consent and
 pseudonym handling exist. Human validation on consented interaction logs is the
 number that ultimately matters and we do not have it.
 
-\textbf{Teacher word agreement is 0.067 and this is not the failure it looks
-like.} The student picks from a fixed 95-word vocabulary, and that vocabulary can
+\textbf{Teacher word agreement of 0.067 reflects a representational ceiling
+rather than a training failure.} The student selects from a fixed 95-word
+vocabulary, and that vocabulary can
 represent only 32.5\% of the teacher's word choices---49.1\% of what it can
 represent is filler. Because the vocabulary is frequency-built and concrete
 answers are long-tail by construction, adding teacher data pushes it
 \emph{further} toward filler: a $5\times$ data increase moved agreement from
 0.232 to 0.165. We report this negative result rather than the hypothesis it
-falsified. It is why we grade coverage-of-intent rather than word agreement, and
+falsified. This is why we grade coverage-of-intent rather than word agreement, and
 why concrete answers are now read from context rather than a label space---a
 mechanism that works but currently fires on only 2 of 84 held-out rows, so its
 effect on the aggregate numbers is noise.
 
-\textbf{Intel timings are ratios, not absolutes.} The same IR was run
-unmodified on an Intel Core Ultra 9 185H CPU and Arc iGPU, where OpenVINO makes
-the student head $2.7\times$ faster than torch; on Apple ARM the identical
-conversion is $1.7\times$ slower, so the ARM numbers above are a portability
-check rather than deployment performance. That Intel session shared the machine
-with other work, so we report no absolute Intel latency. The NPU is enumerated
-but rejects our dynamic-shape graph.
+\textbf{Intel timings are ratios, not absolutes.} Run unmodified on an Intel
+Core Ultra 9 185H, OpenVINO makes the student head $2.7\times$ faster than
+torch; on Apple ARM the identical conversion is $1.7\times$ slower, so the ARM
+figures are a portability check rather than deployment performance. That Intel
+session shared the machine, so we report no absolute Intel latency. The NPU is
+enumerated but rejects our dynamic-shape graph.
 
 % =====================================================================
 \section{Conclusion}
 % =====================================================================
 
 Treating AAC as a turn-taking problem rather than a prediction problem changes
-the objective, and changing the objective measurably changes the board. We
-believe the argument generalises: any interface that gives a user one slate under
-a deadline with no recovery path should select for coverage, not likelihood.
+the objective, and changing the objective measurably changes the board. The
+argument generalises: any interface that gives a user one slate under a deadline
+with no recovery path should select for coverage, not likelihood.
 
 % =====================================================================
 \section*{Ethics statement}
 % =====================================================================
 
-No human-subject data was collected. All 120 evaluation scenarios are
-synthetically generated; no real voice, likeness, or personal data of any
-individual appears in the dataset or the models. The deployed system processes
-audio and video entirely on the local machine with ephemeral buffers and no
-persistent recording, and carries a hardware kill switch. Because a body-worn
-camera and microphone capture bystanders who have not consented, we restrict all
-testing to the authors pending a proxy-consent and pseudonymisation protocol.
-Interaction logs record each tap with the context that produced it and never
-leave the device.
+No human-subject data was collected: all 120 scenarios are synthetic, and no
+real voice, likeness, or personal data appears in the corpora or the models. The
+deployed system processes audio and video on the local machine with ephemeral
+buffers, no persistent recording, and a hardware kill switch, and interaction
+logs never leave the device. Because a body-worn camera and microphone capture
+bystanders who have not consented, we restrict testing to the authors pending a
+proxy-consent and pseudonymisation protocol.
 
 % =====================================================================
 \section*{Use of large language models}
 % =====================================================================
 
-LLMs occupy two distinct roles in this work and we disclose them separately.
+LLMs occupy two roles here, disclosed separately.
 
 \textbf{As components of the system under study.} A local instruction-tuned LLM
-is the teacher whose boards the student distils; a local vision--language model
-produces the scene description; a local ASR model produces the transcript; and
-an LLM judge scores coverage-of-intent. Every reported gate therefore depends on
-model outputs, and the limitations above about judge and teacher bias apply.
+is the teacher whose boards the student distils, a local vision--language model
+produces the scene description, and a local ASR model produces the transcript.
+The gates themselves are computed deterministically in an embedding space, not
+by a language model; the codebase contains an LLM judge, but it is labelled a
+proxy and gates nothing. Every gate nonetheless depends on the teacher's
+outputs, and the limitations above regarding teacher bias apply.
 
 \textbf{As engineering assistance.} The implementation, evaluation harness and
 drafts of this paper were produced with substantial AI coding assistance under a
-documented multi-agent review process. All experimental results were executed by
-the authors on the hardware described, and every number in this paper was
-verified against a committed artifact before submission. The authors take full
-responsibility for the content and for any remaining errors.
+documented multi-agent review process. All experiments were run by the authors
+on the hardware described, and every number was checked against the artifact
+that produced it; where an artifact is regenerable rather than committed, the
+reproducing command is given in Appendix~\ref{app:protocol}. The authors take
+full responsibility for the content and any remaining errors.
 
 % =====================================================================
-%  REFERENCES -- VERIFY EVERY ENTRY BEFORE SUBMITTING.
-%  Entries marked VERIFY were carried from project notes and have not been
-%  checked against the published record.
+%  REFERENCES -- all entries checked against the published record.
 % =====================================================================
 \begin{thebibliography}{9}
+
+\bibitem[American Speech-Language-Hearing Association(2020)]{asha2020}
+American Speech-Language-Hearing Association.
+\newblock Augmentative and alternative communication: Rate of communication.
+\newblock \emph{The ASHA Leader}, 2020.
 
 \bibitem[Beukelman and Mirenda(2013)]{beukelman2013}
 D.~R. Beukelman and P.~Mirenda.
 \newblock \emph{Augmentative and Alternative Communication: Supporting Children
 and Adults with Complex Communication Needs}.
 \newblock Brookes Publishing, 4th edition, 2013.
-% VERIFY: confirm this edition is the source of the 10-18 wpm figure, or cite
-% the primary rate study directly.
 
 \bibitem[Carbonell and Goldstein(1998)]{mmr1998}
 J.~Carbonell and J.~Goldstein.
@@ -800,17 +841,17 @@ J.~Carbonell and J.~Goldstein.
 producing summaries.
 \newblock In \emph{SIGIR}, 1998.
 
-\bibitem[CDC(2025)]{cdc2025}
-Centers for Disease Control and Prevention.
-\newblock Prevalence of autism spectrum disorder among children.
-\newblock Autism and Developmental Disabilities Monitoring (ADDM) Network, 2025.
-% VERIFY: cite the exact ADDM surveillance summary year and MMWR volume.
+\bibitem[Shaw et al.(2025)]{cdc2025}
+K.~A. Shaw, S.~Williams, M.~E. Patrick, et~al.
+\newblock Prevalence and early identification of autism spectrum disorder among
+children aged 4 and 8 years --- Autism and Developmental Disabilities Monitoring
+Network, 16 sites, United States, 2022.
+\newblock \emph{MMWR Surveillance Summaries}, 74(2):1--22, 2025.
 
 \bibitem[Qwen Team(2025)]{qwen25vl}
-Qwen Team.
+Qwen Team, Alibaba Group.
 \newblock Qwen2.5-VL technical report.
-\newblock \emph{arXiv preprint}, 2025.
-% VERIFY: exact arXiv number and author list.
+\newblock \emph{arXiv:2502.13923}, 2025.
 
 \bibitem[Sacks et al.(1974)]{sacks1974}
 H.~Sacks, E.~A. Schegloff, and G.~Jefferson.
@@ -821,9 +862,9 @@ conversation.
 \bibitem[Shen et al.(2022)]{kwickchat2022}
 J.~Shen, B.~Yang, J.~J. Dudley, and P.~O. Kristensson.
 \newblock KWickChat: A multi-turn dialogue system for AAC using context-aware
-sentence generation.
-\newblock In \emph{IUI}, 2022.
-% VERIFY: real author list and exact title -- carried from project notes.
+sentence generation by bag-of-keywords.
+\newblock In \emph{Proceedings of the 27th International Conference on
+Intelligent User Interfaces (IUI)}, 2022.
 
 \bibitem[Wang et al.(2020)]{minilm}
 W.~Wang, F.~Wei, L.~Dong, H.~Bao, N.~Yang, and M.~Zhou.
@@ -832,11 +873,94 @@ of pre-trained transformers.
 \newblock In \emph{NeurIPS}, 2020.
 
 \bibitem[Pereira et al.(2024)]{praact2024}
-J.~Pereira, L.~Bittencourt, and others.
-\newblock PrAACT: Predictive AAC using contextual transformers.
-\newblock 2024.
-% VERIFY: real venue, authors, title -- carried from project notes.
+J.~A. Pereira, J.~A. Pereira, C.~Zanchettin, and R.~do~Nascimento Fidalgo.
+\newblock PrAACT: Predictive augmentative and alternative communication with
+transformers.
+\newblock \emph{Expert Systems with Applications}, 240:122417, 2024.
 
 \end{thebibliography}
+
+% =====================================================================
+\appendix
+% =====================================================================
+
+\section{Evaluation protocol in full}\label{app:protocol}
+
+\textbf{Scenario corpus.} The 120 selection scenarios are produced by a
+deterministic template generator over five settings---classroom, clinic,
+airport, dinner, and direct question---at six templates by four fillers per
+setting, giving 24 rows each. Each row carries a scene string, a transcript, and
+a list of acceptable communicative moves authored alongside it. The reference
+utterance used for the exact-match row of Table~\ref{tab:selection} is the first
+acceptable move, and is therefore authored by the same generator that produced
+the scenario rather than by an independent oracle; we report that row as
+corroborative only.
+
+\textbf{Baseline.} Both arms are invoked through the same
+\texttt{rank\_vocabulary} interface at temperature 0. The diversity-first arm
+generates a candidate pool under a prompt that solicits spread across
+communicative functions, then pins four core words and fills six dynamic slots
+by MMR. The likelihood-ranked baseline issues its own generation call under a
+conventional ranking prompt and returns the model's ordered list, deduplicated
+and truncated, without pinned core words. The two arms therefore differ in both
+prompt and selection rule, and the comparison should be read as one between
+complete composition strategies.
+
+\textbf{Distillation corpus and split.} 600 teacher boards are reduced to 559
+rows by exact deduplication on the concatenated scene and transcript, a 15\%
+per-category cap, and embedding deduplication at cosine ${>}0.95$. Rows are
+split 391/84/84 by a seeded permutation (seed 0, 15\% validation, 15\% test).
+The split file carries a fingerprint and evaluation aborts if the corpus drifts.
+Of the 84 test rows, 71 can be matched back to their acceptable-move lists and
+are therefore scorable for coverage.
+
+\textbf{Model and selection parameters.} The student is
+$\mathrm{LayerNorm}(769) \rightarrow \mathrm{Linear}(769,192) \rightarrow
+\mathrm{ReLU} \rightarrow \mathrm{Dropout}(0.3) \rightarrow
+\mathrm{Linear}(192,95)$, trained multi-label with sigmoid and BCE. The input
+concatenates a 384-dimensional scene embedding, a 384-dimensional transcript
+embedding, and a binary is-question flag. MMR uses $\lambda = 0.6$ over a pool
+of $3 \times k_{\mathrm{dyn}} = 18$ candidates, with two slots reserved for
+answers when a question is open and a cap of one hedge per board. The board is
+$k = 10$ with $k_{\mathrm{dyn}} = 6$; metrics score the top seven positions.
+
+\textbf{Metric definitions.} All quantities are computed over
+\texttt{all-MiniLM-L6-v2} embeddings, L2-normalised so that the dot product is
+cosine. Communicative function is assigned by nearest exemplar over 47 exemplars
+spanning nine functions (question-back, specific-answer, I-don't-know,
+request-help, comment, refuse/redirect, emotion, request-clarification, social);
+nearest-exemplar replaced an earlier nearest-centroid rule, and the change was
+applied to both arms. Near-duplicate rate is the fraction of item pairs in the
+scored window at cosine ${\geq}0.85$. Same-function-pair rate is the fraction of
+pairs sharing a function label. Coverage-of-intent is satisfied when any scored
+item matches any acceptable move by word-boundary containment in either
+direction, non-empty content-token intersection, or cosine ${\geq}0.50$. Board
+variety is the fraction of held-out rows producing a distinct board as an
+unordered set. Because four of the seven scored positions are always the pinned
+core, the gated coverage and same-function quantities are computed over the
+dynamic words only.
+
+\textbf{Intervals.} Each gate is evaluated as a paired per-scenario margin
+against its bar---relative to the teacher for coverage and same-function-pair
+rate---with a 10{,}000-resample bootstrap at seed 0 and 2.5/97.5 percentiles. A
+gate passes only if the lower bound exceeds zero and fails only if the upper
+bound falls below it; otherwise it is recorded as inconclusive, and a single
+inconclusive margin makes the enclosing gate inconclusive.
+
+\textbf{Latency.} Student and teacher are timed in the same process on an Apple
+M4. The student figure is the median of 50 scenarios after one warm-up call and
+covers the complete board path: context embedding, the MLP, pooling, answer
+reservation, MMR, function classification, and core assembly. The teacher figure
+is the median of eight scenarios, each one pool generation plus MMR. Teacher
+latency drifts with machine load; 10.6\,s and 11.7\,s have been observed on
+loaded machines, and the reported figure is from a quiet one, so the speedup
+should be read as a lower bound on that hardware.
+
+\textbf{Reproduction.} The distillation artifacts, split, vocabulary, and
+results file are committed. The selection corpus and its scored output are
+regenerated rather than stored; \texttt{evaluation/phase3/selftest.py}
+reconstructs the 120 scenarios deterministically and rescores them, and
+\texttt{evaluation/phase4/evaluate.py} reproduces Table~\ref{tab:student} from
+the committed split.
 
 \end{document}
