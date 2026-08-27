@@ -1,0 +1,36 @@
+# VoiceLink system architecture — three devices, one seam.
+# Render: d2 --layout elk --theme 0 architecture.d2 architecture.svg
+#         d2 --layout elk --theme 200 architecture.d2 architecture-dark.svg
+
+direction: right
+
+vars: {
+  d2-config: {
+    pad: 16
+  }
+}
+
+wearable: "WEARABLE\nESP32-S3, body-worn" {
+  camera: "OV2640 camera\nVGA JPEG, every 2 s"
+  mic: "SPH0645 I²S mic\n16 kHz PCM"
+  kill: "capture button + LED\nhardware kill switch"
+}
+
+mac: "MAC\nall inference, all local" {
+  perception: "perception\nWhisper · VLM · change gate"
+  seam: "rank_vocabulary(scene, transcript, context)\nthe seam — every model call passes here" {
+    style.bold: true
+  }
+  backend: "backend\nPyTorch ⇄ OpenVINO, config flag"
+  perception -> seam -> backend
+}
+
+tablet: "TABLET\nAAC board in a browser" {
+  board: "10-slot board\nplain HTTP + WebSocket"
+  taplog: "tap log + context snapshot\nstored on the Mac"
+  board -> taplog: taps
+}
+
+wearable.camera -> mac.perception: frames
+wearable.mic -> mac.perception: audio
+mac.backend -> tablet.board: ranked words
