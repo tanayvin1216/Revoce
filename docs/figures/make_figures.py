@@ -113,42 +113,50 @@ def fig_ceiling(t, dark):
 # =============================================================================
 def fig_diversity(t, dark):
     d = json.load(open(P3 / "selftest_results.json"))["overall"]
+    tk, dv = d["topk"], d["diverse"]
+    # (panel title, top-k, diverse, value format, improvement line, lower-is-better)
     panels = [
-        ("Distinct functions on a board", d["topk"]["distinct_functions"],
-         d["diverse"]["distinct_functions"], "{:.2f}", None),
-        ("Near-duplicate rate", d["topk"]["near_dup"],
-         d["diverse"]["near_dup"], "{:.4f}", "69× fewer"),
-        ("Coverage of intent", d["topk"]["coverage_of_intent"],
-         d["diverse"]["coverage_of_intent"], "{:.2f}", None),
-        ("Exact match to oracle word", d["topk"]["exact_match"],
-         d["diverse"]["exact_match"], "{:.2f}", None),
+        ("Distinct functions on a board", tk["distinct_functions"],
+         dv["distinct_functions"], "{:.2f}",
+         f"+{dv['distinct_functions'] - tk['distinct_functions']:.2f} functions", False),
+        ("Near-duplicate rate", tk["near_dup"], dv["near_dup"], "{:.4f}",
+         f"{tk['near_dup'] / dv['near_dup']:.0f}× fewer", True),
+        ("Coverage of intent", tk["coverage_of_intent"],
+         dv["coverage_of_intent"], "{:.2f}",
+         f"+{dv['coverage_of_intent'] - tk['coverage_of_intent']:.2f}", False),
+        ("Exact match to oracle word", tk["exact_match"],
+         dv["exact_match"], "{:.2f}",
+         f"+{dv['exact_match'] - tk['exact_match']:.2f}", False),
     ]
     style(t)
-    fig, axes = plt.subplots(1, 4, figsize=(11.4, 3.3))
-    for ax, (name, base, div, fmt, note) in zip(axes, panels):
-        bars = ax.bar([0, 1], [base, div], width=.56,
-                      color=[t["muted"], t["s1"]], zorder=3)
-        for r in bars:
-            r.set_linewidth(2); r.set_edgecolor(t["surface"])
+    fig, axes = plt.subplots(1, 4, figsize=(11.6, 1.95))
+    fig.subplots_adjust(wspace=.55)
+    for ax, (name, base, div, fmt, note, lower) in zip(axes, panels):
         top = max(base, div) or 1
-        for x, v in ((0, base), (1, div)):
-            ax.text(x, v + top * .06, fmt.format(v), ha="center", fontsize=9,
-                    fontweight="600", color=t["primary"])
-        if note:
-            ax.text(.5, top * .58, note, ha="center", fontsize=8.6,
-                    color=t["s1"], fontweight="600", transform=ax.transData)
-        ax.set_xticks([0, 1]); ax.set_xticklabels(["top-k", "diverse"], fontsize=8.6)
-        ax.set_ylim(0, top * 1.30); ax.set_yticks([])
+        ax.barh([1], [base], height=.58, color=t["muted"], zorder=3)
+        ax.barh([0], [div], height=.58, color=t["s1"], zorder=3)
+        for y, v in ((1, base), (0, div)):
+            ax.text((v + top * .045) if v else top * .045, y, fmt.format(v),
+                    va="center", ha="left", fontsize=9.2, fontweight="600",
+                    color=t["primary"])
+        ax.set_xlim(0, top * 1.42)
+        ax.set_ylim(-.62, 1.62)
+        ax.set_yticks([1, 0])
+        ax.set_yticklabels(["top-k", "diverse"], fontsize=8.8)
+        ax.set_xticks([])
         ax.grid(False)
-        ax.spines["left"].set_visible(False)
-        ax.set_title(name, loc="left", fontsize=9.2, color=t["primary"],
-                     fontweight="600", pad=8)
+        for s in ax.spines.values():
+            s.set_visible(False)
+        ax.text(0, 1.26, name, transform=ax.transAxes, fontsize=9.6,
+                fontweight="600", color=t["primary"], va="bottom")
+        ax.text(0, 1.05, note, transform=ax.transAxes, fontsize=8.5,
+                color=t["s1"], fontweight="600", va="bottom")
     fig.suptitle("Selecting for spread beats ranking by likelihood",
-                 x=.008, y=1.10, ha="left", fontsize=11.5, fontweight="600",
+                 x=.005, y=1.56, ha="left", fontsize=12.5, fontweight="600",
                  color=t["primary"])
-    fig.text(.008, 1.015, "Same candidate pool, 120 scenarios — only the selection "
+    fig.text(.005, 1.40, "Same candidate pool, 120 scenarios — only the selection "
              "policy differs. Independent scales per panel.",
-             ha="left", fontsize=8.6, color=t["secondary"])
+             ha="left", fontsize=8.8, color=t["secondary"])
     save(fig, "diversity", dark)
 
 

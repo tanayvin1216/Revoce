@@ -51,10 +51,41 @@ through the open-vocabulary path described further down.
 Three devices. The wearable does no processing, and neither does the tablet —
 both reach intelligence only by asking the Mac.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/architecture-dark.svg">
-  <img alt="Three devices: the wearable streams frames and audio to the Mac; the Mac runs perception, the rank_vocabulary seam and the model backend; the tablet shows the 10-slot board and logs taps" src="docs/figures/architecture.svg">
-</picture>
+```mermaid
+flowchart LR
+    subgraph W["WEARABLE · ESP32-S3"]
+        direction TB
+        CAM["OV2640 camera<br/>VGA JPEG · 2000 ms"]
+        MIC["SPH0645 I²S mic<br/>16 kHz PCM · 512-sample chunks"]
+        BTN["capture button · GPIO 14<br/>recording LED"]
+    end
+
+    subgraph M["MAC · all inference, all local"]
+        direction TB
+        PERC["perception<br/>Whisper + VLM + change gate"]
+        SEAM["rank_vocabulary(scene, transcript, context)<br/><b>every model call passes here</b>"]
+        BACK["backend: PyTorch · OpenVINO<br/>selected by config flag"]
+        PERC --> SEAM --> BACK
+    end
+
+    subgraph T["TABLET · AAC board"]
+        direction TB
+        UI["10-slot board<br/>plain HTTP + WebSocket"]
+        TAP["tap log<br/>+ context snapshot"]
+    end
+
+    CAM -- "frames" --> PERC
+    MIC -- "audio" --> PERC
+    BACK -- "ranked words" --> UI
+    TAP -- "logged" --> M
+
+    classDef wear fill:#fdece4,stroke:#eb6834,color:#3a1d10
+    classDef mac fill:#e3edfa,stroke:#2a78d6,color:#0e2440
+    classDef tab fill:#e2f4ee,stroke:#1baf7a,color:#0d3325
+    class CAM,MIC,BTN wear
+    class PERC,SEAM,BACK mac
+    class UI,TAP tab
+```
 
 Every model call in the system goes through one function with a fixed signature:
 
@@ -68,10 +99,45 @@ config flag rather than editing a route, the firmware, or a line of UI.
 
 ## How a board is made
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/pipeline-dark.svg">
-  <img alt="Perceive: camera frames pass a change gate into Qwen2.5-VL, audio goes through Whisper, and the personal context store joins them into a 769-d context vector. Generate: a teacher LLM, a distilled student and an open-vocabulary extractor produce candidates. Select: answer quota, MMR, then four pinned core words, out to the board and the tap log" src="docs/figures/pipeline.svg">
-</picture>
+```mermaid
+flowchart TD
+    A["JPEG frame"] --> B["change gate<br/>skip the VLM if the scene hasn't moved"]
+    B -->|"scene changed"| C["Qwen2.5-VL-3B<br/>one-sentence scene description"]
+    B -->|"unchanged"| C2["reuse last description"]
+    D["16 kHz audio"] --> E["Whisper base.en<br/>local transcription"]
+
+    C --> F["context vector · 769-d"]
+    C2 --> F
+    E --> F
+    G["personal context store<br/>people · events · sensory needs"] --> F
+
+    F --> H{"board strategy"}
+
+    H -->|"teacher path"| I["Qwen2.5-3B-Instruct<br/>over-generate candidates<br/>9 communicative functions"]
+    H -->|"student path"| J["MiniLM embeddings<br/>384-d, L2-normalised"]
+    J --> K["distilled MLP<br/>769 → 192 → 95"]
+
+    I --> L["candidate pool"]
+    K --> L
+    F --> M["open-vocabulary extractor<br/>reads answers out of the context"]
+    M --> L
+
+    L --> N["answer quota<br/>reserved when a question was asked"]
+    N --> O["MMR selection<br/>relevant AND mutually different"]
+    O --> P["pin 4 core words"]
+    P --> Q["resolve ARASAAC pictograms"]
+    Q --> R["10-slot board → WebSocket → tablet"]
+    R --> S["tap logged with the context that produced it"]
+
+    classDef sense fill:#fdece4,stroke:#eb6834,color:#3a1d10
+    classDef model fill:#e3edfa,stroke:#2a78d6,color:#0e2440
+    classDef policy fill:#f2eefc,stroke:#4a3aa7,color:#1e1740
+    classDef out fill:#e2f4ee,stroke:#1baf7a,color:#0d3325
+    class A,D,B,C2,G sense
+    class C,E,I,J,K,M model
+    class F,H,L,N,O,P policy
+    class Q,R,S out
+```
 
 The step that matters is the selection stage. Rather than predicting the single likeliest reply,
 the ranker over-generates across nine communicative functions and then selects
@@ -220,13 +286,12 @@ mixed-content wall.
 | [`firmware/voicelink_capture/`](firmware/voicelink_capture/) | ESP32-S3 capture, button, LED |
 | [`docs/VERIFIED_NUMBERS.md`](docs/VERIFIED_NUMBERS.md) | every quotable figure and its source |
 | [`docs/overview/`](docs/overview/) | full technical write-up (LaTeX + PDF) |
-| [`docs/figures/`](docs/figures/) | `make_figures.py` regenerates every chart from the committed JSON; the `.d2` files are the diagram sources |
+| [`docs/figures/make_figures.py`](docs/figures/make_figures.py) | regenerates every chart above from the committed JSON |
 | [`paper/`](paper/) | three NeurIPS 2026 workshop drafts |
 
-Every figure in this README is generated from a committed source. If a number
+Every figure in this README is generated from a committed artifact. If a number
 here ever disagrees with the JSON it came from, the JSON is right — run
-`python3 docs/figures/make_figures.py` and the charts catch up. The diagrams
-rebuild with [`d2`](https://d2lang.com): `d2 --layout elk --theme 0 <name>.d2 <name>.svg`.
+`python3 docs/figures/make_figures.py` and the charts catch up.
 
 ## Privacy
 
