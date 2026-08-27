@@ -4,13 +4,13 @@ NeurIPS 2026 Workshop on On-Device Intelligence: Foundation Models under
 Real-World Constraints (Sydney). **Papers track.**
 
 ## Files
-- `voicelink_odi.tex` — the draft (5 pages main text + references + appendix, one pdf)
+- `main.tex` — the draft (5 pages main text + references + appendix, one pdf)
 - `neurips_2026.sty` — copied from `paper/common/neurips_2026.sty`
 
 ## To build
 ```
 cd paper/odi
-pdflatex voicelink_odi.tex   # run twice (footnote / table refs)
+tectonic main.tex   # or pdflatex twice (footnote / table refs)
 ```
 Figures are pulled by relative path from `../../mac/evaluation/phase3/figures/`,
 so build from inside `paper/odi/` with the repo checkout intact.
