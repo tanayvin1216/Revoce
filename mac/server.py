@@ -192,7 +192,6 @@ async def _get_scene_describer(state: dict):
     standalone simulator: image -> real VLM -> seam -> board.
     """
     if state.get("scene_describer") is None:
-        import perception.config as perception_config
         from perception.scene_describer import make_scene_describer
         state["scene_describer"] = await asyncio.to_thread(
             make_scene_describer, perception_config
