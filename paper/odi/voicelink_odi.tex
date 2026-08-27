@@ -520,8 +520,9 @@ the torch backend on the same scenario, averaged over the 84 held-out rows.
 
 \section{Reproduction}\label{app:repro}
 
+% ANON: env vars renamed VOICELINK_* -> SYSTEM_* for double-blind review; restore at camera-ready.
 All commands run from the host server directory with perception disabled
-(\fn{VOICELINK\_PERCEPTION=0}) and need no LLM, VLM or Whisper call unless
+(\fn{SYSTEM\_PERCEPTION=0}) and need no LLM, VLM or Whisper call unless
 noted. Script names are given so the
 procedure is reproducible from the description; the code will be released on
 acceptance.
@@ -540,8 +541,8 @@ python3 intel/bench_whisper.py --n 10                  # Whisper comparison
 \end{small}
 Phase-4 training configuration hash: \fn{8151a7e34afd}; split fingerprint:
 \fn{ab51f7fba4c9c39e}; vocabulary: 94 entries with 22 canonical merges.
-Runtime selection: \fn{VOICELINK\_STUDENT\_BACKEND=torch|openvino},
-\fn{VOICELINK\_EMBED\_BACKEND=torch|openvino}, \fn{VOICELINK\_OV\_DEVICE=CPU|GPU|NPU}.
+Runtime selection: \fn{SYSTEM\_STUDENT\_BACKEND=torch|openvino},
+\fn{SYSTEM\_EMBED\_BACKEND=torch|openvino}, \fn{SYSTEM\_OV\_DEVICE=CPU|GPU|NPU}.
 
 \section{Hardware and software fingerprint}\label{app:hw}
 
