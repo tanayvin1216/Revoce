@@ -17,20 +17,6 @@ nonverbal person needs onto their AAC board before they have to ask for them.
 
 ---
 
-## Demo
-
-<div align="center">
-
-<!-- Swap VIDEO_ID for the real YouTube id once the demo is up. GitHub strips
-     <iframe>, so a thumbnail linked to the video is the way this is done. -->
-[![Watch the VoiceLink demo](https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg)](https://www.youtube.com/watch?v=VIDEO_ID)
-
-*Two minutes: the wearable, the board rewriting itself mid-conversation, and the classroom case.*
-
-</div>
-
----
-
 ## The problem
 
 An AAC board is a grid of tappable words, and someone has to program it in
@@ -65,41 +51,10 @@ through the open-vocabulary path described further down.
 Three devices. The wearable does no processing, and neither does the tablet —
 both reach intelligence only by asking the Mac.
 
-```mermaid
-flowchart LR
-    subgraph W["WEARABLE · ESP32-S3"]
-        direction TB
-        CAM["OV2640 camera<br/>VGA JPEG · 2000 ms"]
-        MIC["SPH0645 I²S mic<br/>16 kHz PCM · 512-sample chunks"]
-        BTN["capture button · GPIO 14<br/>recording LED"]
-    end
-
-    subgraph M["MAC · all inference, all local"]
-        direction TB
-        PERC["perception<br/>Whisper + VLM + change gate"]
-        SEAM["rank_vocabulary(scene, transcript, context)<br/><b>every model call passes here</b>"]
-        BACK["backend: PyTorch · OpenVINO<br/>selected by config flag"]
-        PERC --> SEAM --> BACK
-    end
-
-    subgraph T["TABLET · AAC board"]
-        direction TB
-        UI["10-slot board<br/>plain HTTP + WebSocket"]
-        TAP["tap log<br/>+ context snapshot"]
-    end
-
-    CAM -- "frames" --> PERC
-    MIC -- "audio" --> PERC
-    BACK -- "ranked words" --> UI
-    TAP -- "logged" --> M
-
-    classDef wear fill:#fdece4,stroke:#eb6834,color:#3a1d10
-    classDef mac fill:#e3edfa,stroke:#2a78d6,color:#0e2440
-    classDef tab fill:#e2f4ee,stroke:#1baf7a,color:#0d3325
-    class CAM,MIC,BTN wear
-    class PERC,SEAM,BACK mac
-    class UI,TAP tab
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/architecture-dark.svg">
+  <img alt="Three devices: the wearable streams frames and audio to the Mac; the Mac runs perception, the rank_vocabulary seam and the model backend; the tablet shows the 10-slot board and logs taps" src="docs/figures/architecture.svg">
+</picture>
 
 Every model call in the system goes through one function with a fixed signature:
 
@@ -113,47 +68,12 @@ config flag rather than editing a route, the firmware, or a line of UI.
 
 ## How a board is made
 
-```mermaid
-flowchart TD
-    A["JPEG frame"] --> B["change gate<br/>skip the VLM if the scene hasn't moved"]
-    B -->|"scene changed"| C["Qwen2.5-VL-3B<br/>one-sentence scene description"]
-    B -->|"unchanged"| C2["reuse last description"]
-    D["16 kHz audio"] --> E["Whisper base.en<br/>local transcription"]
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/pipeline-dark.svg">
+  <img alt="Perceive: camera frames pass a change gate into Qwen2.5-VL, audio goes through Whisper, and the personal context store joins them into a 769-d context vector. Generate: a teacher LLM, a distilled student and an open-vocabulary extractor produce candidates. Select: answer quota, MMR, then four pinned core words, out to the board and the tap log" src="docs/figures/pipeline.svg">
+</picture>
 
-    C --> F["context vector · 769-d"]
-    C2 --> F
-    E --> F
-    G["personal context store<br/>people · events · sensory needs"] --> F
-
-    F --> H{"board strategy"}
-
-    H -->|"teacher path"| I["Qwen2.5-3B-Instruct<br/>over-generate candidates<br/>9 communicative functions"]
-    H -->|"student path"| J["MiniLM embeddings<br/>384-d, L2-normalised"]
-    J --> K["distilled MLP<br/>769 → 192 → 95"]
-
-    I --> L["candidate pool"]
-    K --> L
-    F --> M["open-vocabulary extractor<br/>reads answers out of the context"]
-    M --> L
-
-    L --> N["answer quota<br/>reserved when a question was asked"]
-    N --> O["MMR selection<br/>relevant AND mutually different"]
-    O --> P["pin 4 core words"]
-    P --> Q["resolve ARASAAC pictograms"]
-    Q --> R["10-slot board → WebSocket → tablet"]
-    R --> S["tap logged with the context that produced it"]
-
-    classDef sense fill:#fdece4,stroke:#eb6834,color:#3a1d10
-    classDef model fill:#e3edfa,stroke:#2a78d6,color:#0e2440
-    classDef policy fill:#f2eefc,stroke:#4a3aa7,color:#1e1740
-    classDef out fill:#e2f4ee,stroke:#1baf7a,color:#0d3325
-    class A,D,B,C2,G sense
-    class C,E,I,J,K,M model
-    class F,H,L,N,O,P policy
-    class Q,R,S out
-```
-
-The step that matters is #4. Rather than predicting the single likeliest reply,
+The step that matters is the selection stage. Rather than predicting the single likeliest reply,
 the ranker over-generates across nine communicative functions and then selects
 six that are relevant *and different from each other*. A board of six
 paraphrases of one answer is a failure even if every phrase is good.
@@ -186,16 +106,8 @@ deduplication, 84 held out and never trained on.
 
 Teacher latency drifts run to run — 7.05 s as committed, 10.6 s and 11.7 s seen
 on a loaded machine. Where a claim needs to be safe, `>400×` is the honest form.
-
-### Where the time actually goes
-
-The distilled head is about 0.1 ms of a 10 ms board. The real cost is MiniLM, a
-22M-parameter transformer sitting on the critical path.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/latency-dark.png">
-  <img alt="Board latency on Apple M4: PyTorch 9.70 ms, OpenVINO head with torch embeddings 9.65 ms, fully OpenVINO 5.51 ms — a 1.76x improvement from moving MiniLM to OpenVINO" src="docs/figures/latency.png">
-</picture>
+Of the 10 ms board, the distilled head is about 0.1 ms; the real cost is MiniLM,
+a 22M-parameter transformer sitting on the critical path.
 
 ### The gates, including the two that don't pass
 
@@ -213,12 +125,10 @@ this one is measured on whether it does.
 | Teacher word agreement | 0.067 | — | report-only |
 
 The same-function-pair gate has failed through three review rounds and is
-reported as failing. The student puts slightly more same-function words on a
-board than the teacher does; the fix that closes it drops coverage of intent
-below its own bar, and the two remain in tension.
-
-Coverage of intent clears its bar by 0.003, which the harness scores as
-inconclusive at n=71. It is written up as inconclusive, not as a pass.
+reported as failing — the fix that closes it drops coverage of intent below its
+own bar, and the two remain in tension. Coverage of intent clears its bar by
+0.003, which the harness scores as inconclusive at n=71, and it is written up
+as inconclusive, not as a pass.
 
 ### Why more data made agreement worse
 
@@ -235,23 +145,14 @@ picks from a closed list.
 </picture>
 
 Word overlap was measuring the size of the label space, not the quality of the
-student. Adding data pulled the student toward the most frequent representable
-words, which are disproportionately hedge and filler, so agreement fell while
-the boards themselves stayed good. Coverage of intent became the gated metric
-and word agreement was demoted to report-only.
-
-The fix isn't a longer list. Concrete answers are now read straight out of the
-scene or transcript, so a word that was never in the vocabulary can still reach
-the board.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/deictic-dark.png">
-  <img alt="Answer accuracy by question type on 60 authored deictic questions: alternative and who at 100%, where 88%, colour and which 83%, count 0%; the closed vocabulary alone reaches at most 8%" src="docs/figures/deictic.png">
-</picture>
-
-Counting questions fire on 0 of 6 by design — the extractor doesn't attempt
-them. On the held-out split this path fires on only 2 of 84 rows, so it moves no
-aggregate gate; the deictic set exists to make the mechanism measurable at all.
+student. Coverage of intent became the gated metric and word agreement was
+demoted to report-only. The fix isn't a longer list: concrete answers are now
+read straight out of the scene or transcript by the open-vocabulary extractor,
+so a word that was never in the vocabulary — *aunt*, at that family meal — can
+still reach the board. On 60 authored deictic questions it answers 100% of
+*who* and alternative questions against at most 8% for the closed vocabulary
+alone; the full breakdown is in
+[`docs/overview/`](docs/overview/).
 
 ### Intel and OpenVINO
 
@@ -272,15 +173,11 @@ That's a within-machine ratio, so it isn't affected by the OS and version
 differences between the two hosts. Moving the embedder to OpenVINO speeds the
 whole board up 2.02× on Intel CPU, 1.85× on the Arc iGPU, and 1.76× on the Mac.
 
-INT8 is reported as a footprint result, not a speed one — 236 KB against 662 KB,
-while being marginally *slower* than FP32 on both machines.
-
-The NPU is enumerated and does not work. Both OpenVINO backends fail to compile
-against it with `Missing upper bound for one or more nodes`: the NPU compiler
-needs statically shaped graphs, and the IR carries a dynamic batch axis so one
-artifact can serve both single-board inference and batched evaluation. A
-batch-1 static export would probably compile. It hasn't been done, so it isn't
-claimed.
+Two honest footnotes: INT8 is a footprint result, not a speed one — 236 KB
+against 662 KB, marginally *slower* than FP32 on both machines. And the NPU
+does not work: it needs statically shaped graphs and the IR carries a dynamic
+batch axis. A batch-1 static export would probably compile; it hasn't been
+done, so it isn't claimed.
 
 ---
 
@@ -323,12 +220,13 @@ mixed-content wall.
 | [`firmware/voicelink_capture/`](firmware/voicelink_capture/) | ESP32-S3 capture, button, LED |
 | [`docs/VERIFIED_NUMBERS.md`](docs/VERIFIED_NUMBERS.md) | every quotable figure and its source |
 | [`docs/overview/`](docs/overview/) | full technical write-up (LaTeX + PDF) |
-| [`docs/figures/make_figures.py`](docs/figures/make_figures.py) | regenerates every chart above from the committed JSON |
+| [`docs/figures/`](docs/figures/) | `make_figures.py` regenerates every chart from the committed JSON; the `.d2` files are the diagram sources |
 | [`paper/`](paper/) | three NeurIPS 2026 workshop drafts |
 
-Every figure in this README is generated from a committed artifact. If a number
+Every figure in this README is generated from a committed source. If a number
 here ever disagrees with the JSON it came from, the JSON is right — run
-`python3 docs/figures/make_figures.py` and the charts catch up.
+`python3 docs/figures/make_figures.py` and the charts catch up. The diagrams
+rebuild with [`d2`](https://d2lang.com): `d2 --layout elk --theme 0 <name>.d2 <name>.svg`.
 
 ## Privacy
 
