@@ -329,7 +329,7 @@ the symbolic component supplies diversity.
 reproduce the teacher's *output*. Here the teacher's output is a *set* whose value is
 its internal structure, and the finding is that a small student cannot learn that
 structure but *can* learn the pointwise relevance the structure is built from — so you
-distil half the pipeline and keep the other half symbolic. Related to but distinct
+distill half the pipeline and keep the other half symbolic. Related to but distinct
 from "learning to rank then re-ranking": the re-ranker here is not learned, it is the
 teacher's own deterministic policy, reused verbatim.
 
