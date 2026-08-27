@@ -1,12 +1,12 @@
 # RTCA 2026 short-paper draft — build notes
 
 ## Files
-- `voicelink_rtca.tex` — the draft (short-paper track, 4pp)
+- `main.tex` — the draft (short-paper track, 4pp)
 
 ## To build
 1. Download the **NeurIPS 2026 author kit** and put `neurips_2026.sty`
    in this directory.
-2. `pdflatex voicelink_rtca.tex` (run twice)
+2. `pdflatex main.tex` (run twice)
 
 Without the `.sty` it still compiles in a fallback 1-inch-margin layout so you
 can draft — but **the page count will be wrong**. Only check the 4-page limit
