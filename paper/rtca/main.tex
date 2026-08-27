@@ -495,179 +495,182 @@ for Real-Time Augmentative Communication}
 \maketitle
 
 \begin{abstract}
-People who cannot speak converse through augmentative and alternative
-communication (AAC) boards at roughly 10--18 words per minute, against
-125--185 for speech. The resulting asymmetry is not merely slow: by the time a
-response is composed, the conversational turn has usually closed. We argue that
-this makes AAC a real-time turn-taking problem rather than a text-prediction
-problem, and that the standard objective---rank candidate words by
-likelihood---is wrong for it. Under a turn deadline the user gets one slate and
-cannot recover from a wrong one, so the slate should be selected for
-\emph{coverage of the intent space}, not for expected per-word accuracy. We
-present a wearable system that senses the conversational moment with local ASR
-and a vision--language model and composes a ten-slot board---four pinned core
-words and six selected per turn---through a single fixed-signature interface.
-Across 120 scenarios, diversity-first composition raises distinct communicative
-functions per board from 3.88 to 4.68, cuts the near-duplicate rate by
-$69\times$ (0.0274 $\rightarrow$ 0.0004), and raises coverage-of-intent from
-0.775 to 1.00 against a likelihood-ranked baseline. To meet the turn deadline we
-distil the candidate generator into a 769-dimensional MLP and leave the
-selection policy symbolic, reducing board latency from 7.05\,s to 10.1\,ms
-($695\times$) while retaining 95.3\% of the teacher's functional diversity. We
-report paired bootstrap intervals rather than point estimates alone, and two
-gates that those intervals leave unresolved.
+Augmentative and alternative communication (AAC) boards sustain output rates of
+10--18 words per minute against 125--185 for natural speech, while turns in
+natural dialogue transfer on the order of a few hundred milliseconds. The
+consequence is structural exclusion from live conversation: by the time a
+response is composed, the turn has closed. We argue that AAC is therefore a
+real-time turn-taking problem rather than a text-prediction problem, and that
+ranking candidate words by likelihood is misaligned with it. A user under a turn
+deadline receives a single slate and cannot recover from an unsuitable one, so
+that slate should maximise coverage of the intent space rather than expected
+per-word accuracy. We present a wearable system that senses the conversational
+moment using local ASR and a 3B-parameter vision--language model and composes a
+ten-slot board, four pinned core words and six selected per turn. Across 120
+scenarios spanning five settings,
+diversity-first composition raises distinct communicative functions per board
+from 3.88 to 4.68, reduces the near-duplicate pair rate 69-fold to 0.0004, and
+raises coverage-of-intent from 0.775 to 1.00 against a likelihood-ranked
+baseline. To meet the turn deadline we distil the candidate
+generator into a 769-dimensional multilayer perceptron and retain a symbolic
+selection policy, reducing board latency from 7.05\,s to 10.1\,ms, a factor of
+695, while preserving 95.3\% of the teacher's functional diversity on 84
+held-out rows. Every gate is reported with a 10{,}000-resample paired bootstrap interval; two
+of six remain unresolved at this sample size.
 \end{abstract}
 
 % =====================================================================
 \section{Introduction}
 % =====================================================================
 
-Work on real-time conversational agents generally asks how a \emph{machine} can
-respond inside a human turn-taking window. We study the mirrored problem: a
-human who cannot produce speech, and a machine whose job is to get that human's
-response out before the window closes.
+Research on real-time conversational agents typically asks how a \emph{machine}
+may respond within a human turn-taking window. This work addresses the mirrored
+problem: a human who cannot produce speech, and a machine whose task is to
+deliver that human's response before the window closes.
 
-Roughly 1 in 31 eight-year-olds in the United States is identified with autism,
-and about a quarter are nonverbal, minimally verbal, or require extensive
-support \citep{cdc2025}. Many communicate through AAC boards: grids of words and
-symbols that are tapped rather than spoken. Measured AAC output runs at
-10--18 words per minute against 125--185 for speech
-\citep{asha2020,beukelman2013}. Conversational turns in natural dialogue turn over on the
-order of a few hundred milliseconds \citep{sacks1974}. The gap is not an
-inconvenience; it is a structural exclusion from live conversation.
+Approximately 1 in 31 eight-year-old children in the United States is identified
+with autism spectrum disorder, of whom roughly one quarter are nonverbal,
+minimally verbal, or require extensive support \citep{cdc2025}. Many communicate
+through AAC boards: grids of words and symbols selected by touch rather than
+spoken. Measured AAC output ranges from 10 to 18 words per minute against 125 to
+185 for natural speech \citep{asha2020,beukelman2013}, while conversational turns
+transfer on the order of a few hundred milliseconds \citep{sacks1974}. The
+resulting gap constitutes not an inconvenience but a structural exclusion from
+live conversation.
 
-Two properties of this setting follow.
+Two properties distinguish this setting from conventional ranking problems.
+\textbf{The latency budget is set by turn-taking, not by throughput.} A board
+that arrives after the speaker has moved on is not a degraded answer; it is no
+answer. The constraint is a deadline rather than a cost term.
 
-\textbf{The latency budget is set by turn-taking, not throughput.} A board that
-arrives after the speaker has moved on is not a degraded answer, it is no answer.
-This is a deadline, not a cost term.
+\textbf{No second attempt is available.} A speaking partner who produces the
+wrong word repairs it in the following breath, whereas an AAC user whose board
+offers six unsuitable dynamic words has already expended the turn. The asymmetry
+between a miss and a hit is therefore far larger than in ranking problems that
+permit scrolling, rephrasing, or retry.
 
-\textbf{There is no second attempt.} A speaker who says the wrong word can
-repair it in the next breath. An AAC user whose board offers the wrong six
-words has already spent the turn. The asymmetry between a miss and a hit is
-therefore substantially larger than in ranking problems where the user may
-scroll, rephrase, or retry.
+These properties motivate the central claim of this work: \emph{under a turn
+deadline admitting no recovery, ranking by likelihood is the wrong objective.}
+The appropriate objective is to cover the space of communicative acts the user
+might plausibly intend. We formalise this as communicative-function coverage,
+demonstrate that a diversity-first policy dominates a likelihood-ranked baseline
+on all four reported measures, and compress the resulting pipeline by a factor of
+695 to fit the turn window on commodity hardware.
 
-Together these motivate our central claim: \emph{under a turn deadline with no
-recovery, ranking by likelihood is the wrong objective.} The correct objective
-is to cover the space of things the user might plausibly want to do with the
-turn. We formalise this as communicative-function coverage, show that a
-diversity-first selection policy dominates a likelihood-ranked baseline on it,
-and show that the resulting pipeline can be compressed to fit the turn window on
-commodity local hardware.
-
-Existing boards are static: a caregiver programs the vocabulary in advance and
-hopes it matches the moment. Prior context-aware AAC work optimises keystroke
-savings \citep{kwickchat2022,praact2024}---the right objective when composing a
-sentence, the wrong one when catching a turn.
+Deployed AAC boards are static: a caregiver fixes the vocabulary hours or years
+before use. Prior context-aware AAC work optimises keystroke savings
+\citep{kwickchat2022,praact2024}, an appropriate objective while composing a
+sentence and an inappropriate one while holding a turn.
 
 % =====================================================================
 \section{System}
 % =====================================================================
 
-Three nodes. A body-worn clip built from commodity parts carries a camera and an
-I2S microphone and performs \emph{no} inference; it hosts its own access point
-and multiplexes tagged image and audio payloads over one persistent connection.
-A nearby computer runs all perception and ranking. Any tablet renders the board
-over plain HTTP and reports taps. Nothing leaves the local machine.
+The system comprises three nodes. A body-worn clip of commodity parts carries a
+camera and an I2S microphone and performs \emph{no} inference; it hosts its own
+access point and multiplexes tagged image and audio payloads over one persistent
+connection. A local compute node runs all perception and ranking, and any tablet
+renders the board over plain HTTP and reports selections. No data leaves the
+local machine.
 
 \textbf{Board shape.} The device displays ten slots: four pinned core words and
 six recomposed each turn. Metrics score the top seven positions, four of which
-are the invariant core, so all gated quantities are computed over the
-\emph{dynamic} words alone and the core cannot inflate them.
+are the invariant core, leaving three dynamic positions in the scored window;
+gated quantities are computed over those dynamic words alone, so the pinned core
+cannot inflate them.
 
 \textbf{Perception.} Whisper (\texttt{base.en}) transcribes the conversation and
-Qwen2.5-VL-3B \citep{qwen25vl} describes the scene, with vision gated behind
-frame differencing so the audio path never blocks on it. Board regeneration is
-event-driven rather than clocked.
+Qwen2.5-VL-3B \citep{qwen25vl} describes the scene, the vision path gated behind
+frame differencing so the audio path never blocks on a model call. Board
+regeneration is event-driven rather than clocked.
 
-\textbf{The seam.} Every model call in the system passes through one function
-with a fixed signature,
-\texttt{rank\_vocabulary(scene, transcript, context)}. The firmware never calls
-a model; the tablet never calls a model. This is an engineering constraint
-rather than a research contribution, but it is what allows the inference backend
-to be swapped---PyTorch to OpenVINO---by configuration flag, and it is what
-makes the latency numbers in \S\ref{sec:results} attributable to a single
-replaceable component.
+\textbf{The seam.} Every model call passes through one function of fixed
+signature, \texttt{rank\_vocabulary(scene, transcript, context)}; neither the
+firmware nor the tablet calls a model. This permits the inference backend to be
+exchanged, PyTorch for OpenVINO, by configuration flag, and renders the latency
+of \S\ref{sec:results} attributable to one replaceable component.
 
-\textbf{Held obligation.} When a question is detected, the system latches an
-``active question'' state with a time-to-live, consumed on tap. This exists
-precisely because of the asymmetry above: the turn may close before the user
-answers, and the obligation to answer outlives the turn.
+\textbf{Held obligation.} On detecting a question the system latches an
+active-question state with a time-to-live, consumed on selection: the turn may
+close before the user answers, but the obligation to answer outlives it.
 
 % =====================================================================
 \section{Selecting for coverage rather than likelihood}
 % =====================================================================
 
-Each candidate utterance is assigned one of a small set of predefined
-\emph{communicative functions} (assent, refusal, request, inquiry, comment,
-answer, and so on) by nearest-exemplar classification in a MiniLM
-\citep{minilm} embedding space; multiple exemplars per function are required,
-for reasons given in Appendix~\ref{app:protocol}.
+Each candidate utterance is assigned one of nine \emph{communicative functions}
+(question-back, specific-answer, I-don't-know, request-help, comment, refuse or
+redirect, emotion, request-clarification, social) by nearest-exemplar
+classification over 47 exemplars in a MiniLM \citep{minilm} embedding space;
+multiple exemplars per function are required, for the reason given in
+Appendix~\ref{app:protocol}.
 
-We over-generate a candidate pool with an LLM and then select the displayed
-slate with maximal marginal relevance \citep{mmr1998},
+We over-generate a candidate pool with an LLM and select the displayed slate by
+maximal marginal relevance \citep{mmr1998},
 \begin{equation}
 s^{*} = \arg\max_{s \in C \setminus S}
 \Big[\lambda\,\mathrm{rel}(s, c) - (1-\lambda)\max_{s' \in S}\mathrm{sim}(s, s')\Big],
 \end{equation}
-with function labels feeding the tie-break. Four core words
-(\emph{yes}, \emph{no}, \emph{I need help}, \emph{wait}) are deterministically
-pinned, excluded from the learned label space, and re-attached at inference;
-pinning core vocabulary is standard AAC practice, and we claim only the specific
-choice and the exclusion. A reserved answer quota with a hedge cap prevents the
-board from filling with non-committal filler when a question is open.
-
-MMR is not itself novel. Our claim is that its objective is the \emph{correct} one
-here, for a reason specific to turn-limited interaction, and that this is
-measurable.
+with $\lambda = 0.6$ and function labels resolving ties within a 0.02 window.
+Four core words (\emph{yes}, \emph{no}, \emph{I need help}, \emph{wait}), chosen
+as four distinct communicative functions, are deterministically pinned, excluded
+from the learned label space, and re-attached at inference; pinning core
+vocabulary is standard AAC practice, and we claim only the specific choice and
+the exclusion. A reserved quota of two answer slots and a cap of one hedge per
+board prevent the board from filling with non-committal filler while a question
+remains open. MMR is not itself novel; the contribution is the claim that its
+objective is the \emph{correct} one here, for a reason specific to turn-limited
+interaction, together with a measurement establishing it.
 
 % =====================================================================
 \section{Meeting the turn deadline}
 % =====================================================================
 
 The teacher pipeline produces a competent board in 7.05\,s (IQR 6.96--7.46,
-$n{=}8$), roughly three orders of magnitude beyond any plausible turn window.
-The pipeline as specified is therefore not deployable.
+$n{=}8$), approximately three orders of magnitude beyond any plausible turn
+window. The pipeline as specified is therefore not deployable.
 
-The distillation is deliberately partial. The student---a 769-dimensional MLP
-(\texttt{LayerNorm} $\rightarrow$ \texttt{Linear} $\rightarrow$ \texttt{ReLU}
-$\rightarrow$ \texttt{Dropout} $\rightarrow$ \texttt{Linear}) trained multi-label
-with sigmoid + BCE over a 95-word vocabulary---replaces only the expensive
-\emph{candidate generation}. Its raw top-$k$ board proved unusable, dominated by
-hedges and same-function filler. Additional training did not correct this;
-instead we treat the student's logits as a candidate pool
-($3 \times k$) and re-run the \emph{unchanged} production MMR, answer quota and
-hedge cap over it. The learned component supplies relevance; the symbolic
-component supplies the diversity the raw argmax discarded.
+The distillation is deliberately partial. The student, a 769-dimensional MLP
+comprising $\mathrm{LayerNorm} \rightarrow \mathrm{Linear}(769,192) \rightarrow
+\mathrm{ReLU} \rightarrow \mathrm{Dropout}(0.3) \rightarrow
+\mathrm{Linear}(192,95)$ trained multi-label with sigmoid and binary
+cross-entropy, replaces only the expensive candidate-generation stage. Its raw
+top-$k$ board proved unusable, dominated by hedges and same-function filler, and
+additional training did not correct this. We instead treat the student's logits
+as a candidate pool of $3 \times k_{\mathrm{dyn}} = 18$ items and re-run the
+\emph{unchanged} production MMR, answer quota, and hedge cap over it: the learned
+component supplies relevance, the symbolic component the diversity that the raw
+argmax discards.
 
-For deployment the student exports to ONNX and converts to OpenVINO IR at
-$1.4\times10^{-6}$ logit parity, then to NNCF INT8 at $2.8\times$ smaller with
-mean top-6 overlap 0.950 against the FP32 head. The same unmodified IR is
-portable across vendors (\S\ref{sec:limits}).
+For deployment the student exports to ONNX at opset 17 and converts to OpenVINO
+IR at $1.4\times10^{-6}$ maximum logit divergence, then to NNCF INT8 calibrated
+on 360 real feature vectors, yielding a $2.8\times$ footprint reduction at a mean
+top-6 overlap of 0.950 (minimum 0.667) against the FP32 head. The same unmodified
+IR is portable across vendors (\S\ref{sec:limits}).
 
 % =====================================================================
 \section{Evaluation}\label{sec:eval}
 % =====================================================================
 
-\textbf{Corpora.} The selection comparison uses 120 scenarios over five settings
-(classroom, clinic, airport, dinner, direct question), 24 each, emitted
-deterministically from a template generator; each carries acceptable
-communicative moves authored with it. The distillation corpus is separate: 600
-teacher boards reduced to 559 rows by deduplication and a per-category cap, then
-split 391/84/84 by seeded permutation under a fingerprint that aborts evaluation
-on drift. Of the 84 test rows, 71 are scorable for coverage.
+\textbf{Corpora.} The selection comparison uses 120 scenarios spanning five
+settings (classroom, clinic, airport, dinner, direct question) at 24 each,
+emitted deterministically from a template generator with acceptable communicative
+moves authored alongside each. The distillation corpus is separate:
+600 teacher boards reduced to 559 rows by exact deduplication, a 15\%
+per-category cap, and embedding deduplication at cosine ${>}0.95$, then split
+391/84/84 by seeded permutation under a fingerprint that aborts on drift; 71 of
+the 84 test rows are scorable for coverage.
 
 \textbf{Metrics are deterministic.} All gated quantities are computed in a
-MiniLM \citep{minilm} embedding space rather than by a language model.
-Communicative function is assigned by nearest exemplar over 47 exemplars across
-nine functions; items are near-duplicates at cosine ${\geq}0.85$;
-coverage-of-intent is satisfied by word-boundary containment, content-token
-overlap, or cosine ${\geq}0.50$ against an acceptable move. A separate LLM judge
-exists in the codebase but is labelled a proxy and gates nothing. Each gate is
-scored as a paired margin against its bar with a 10{,}000-resample bootstrap
-interval, and passes only if that interval excludes zero. Appendix
-\ref{app:protocol} gives the full protocol.
+MiniLM \citep{minilm} embedding space rather than by a language model. Items
+count as near-duplicates at cosine ${\geq}0.85$; coverage-of-intent is satisfied
+by word-boundary containment in either direction, content-token intersection, or
+cosine ${\geq}0.50$ against an acceptable move. An LLM judge exists in the
+codebase but is labelled a proxy and gates nothing. Each gate is scored as a
+paired per-scenario margin against its bar with a 10{,}000-resample bootstrap
+interval at seed 0, passing only when that interval excludes zero in its favour
+and failing only when it excludes zero against; otherwise it is recorded as
+inconclusive. Appendix \ref{app:protocol} gives the full protocol.
 
 % =====================================================================
 \section{Results}\label{sec:results}
@@ -676,21 +679,21 @@ interval, and passes only if that interval excludes zero. Appendix
 \begin{table}[t]
 \centering
 \small
-\caption{Diversity-first composition vs.\ a likelihood-ranked baseline, 120
-scenarios across five settings. Both arms are driven through the same interface
-and scored identically at top-7; the baseline issues its own generation call and
-returns a ranked list without pinned core words, so the contrast is between
-complete composition strategies rather than between two selection rules over one
-shared pool. Higher is better except near-duplicate rate.}
+\caption{Diversity-first composition against a likelihood-ranked baseline, 120
+scenarios across five settings, both driven through the same interface and
+scored at top-7. The baseline issues its own generation call and returns a
+ranked list without pinned core words, so the contrast is between complete
+composition strategies, not two selection rules over one pool. Higher is better
+except the near-duplicate rate.}
 \label{tab:selection}
-\begin{tabular}{lcc}
+\begin{tabular}{lccc}
 \toprule
- & \textbf{Diversity-first} & \textbf{Top-$k$} \\
+ & \textbf{Diversity-first} & \textbf{Top-$k$} & \textbf{Ratio} \\
 \midrule
-Distinct communicative functions per board & \textbf{4.68} & 3.88 \\
-Near-duplicate pair rate                   & \textbf{0.0004} & 0.0274 \\
-Coverage-of-intent                          & \textbf{1.00} & 0.775 \\
-Exact match to reference utterance          & \textbf{0.525} & 0.333 \\
+Distinct communicative functions per board & \textbf{4.68} & 3.88 & $1.21\times$ \\
+Near-duplicate pair rate                   & \textbf{0.0004} & 0.0274 & $69\times$ \\
+Coverage-of-intent                         & \textbf{1.00} & 0.775 & $1.29\times$ \\
+Exact match to reference utterance         & \textbf{0.525} & 0.333 & $1.58\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -698,10 +701,10 @@ Exact match to reference utterance          & \textbf{0.525} & 0.333 \\
 \begin{table}[t]
 \centering
 \small
-\caption{Distilled student against the teacher pipeline on the held-out split
-($n{=}84$; $n{=}71$ scorable for coverage). The interval is a 10{,}000-resample
-paired bootstrap on the margin against each gate's bar; a gate passes only when
-it excludes zero. Latency was measured in-process on an Apple M4.}
+\caption{Distilled student against the teacher on the held-out split ($n{=}84$;
+$n{=}71$ scorable for coverage). The interval is a 10{,}000-resample paired
+bootstrap on the margin against each gate's bar. Latency measured in-process on
+an Apple M4.}
 \label{tab:student}
 \begin{tabular}{lccc}
 \toprule
@@ -718,81 +721,77 @@ Teacher word agreement (dynamic)    & 0.067 & --- & report-only \\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:selection} is the central result. Composing for coverage rather
-than ranking by likelihood improves every measure, including exact match to the
-reference utterance---the quantity the baseline is the one optimising for. Under
-a turn deadline, spread across communicative functions is not traded against
-accuracy; on this evaluation it dominates. The reference utterance is authored by
-the same generator as the scenario, so that row is corroborative, not decisive.
+Table~\ref{tab:selection} reports the central result. Composing for coverage
+rather than ranking by likelihood improves all four measures, including exact
+match to the reference utterance, the quantity the baseline is the one optimising
+for. Under a turn deadline, spread across communicative functions is therefore
+not traded against accuracy; on this evaluation it dominates. That reference
+utterance shares a generator with the scenario, so the row is corroborative
+rather than decisive.
 
-Table~\ref{tab:student} shows the compressed pipeline landing inside a plausible
-turn window while retaining 95.3\% of the teacher's functional diversity, with
-two gates the bootstrap does not resolve.
+Table~\ref{tab:student} reports the compressed pipeline, which lands inside a
+plausible turn window at 10.1\,ms while preserving 95.3\% of the teacher's
+functional diversity and producing 80 distinct boards across 84 held-out rows.
+Four of six gates pass; two remain unresolved at this sample size.
 
 % =====================================================================
 \section{Limitations}\label{sec:limits}
 % =====================================================================
 
-Several of these bear directly on how the results should be read.
-
 \textbf{Two gates are unresolved, and we round neither away.} The student places
-more same-function words on a board than the teacher (0.1893 vs.\ 0.1735; the
-bar is ``no worse than the teacher''), but the interval $[-0.041, +0.010]$
-contains zero, so the deficit is not established at $n{=}84$; since the point
-estimate is adverse we report the gate as unmet. Dynamic coverage clears its bar
-by 0.0028 with an interval of $[-0.118, +0.118]$, which establishes nothing
-either way, so we report it as inconclusive rather than as a pass. Roughly 0.048
-of the same-function-pair rate is a fixed artefact of the pinned core.
+more same-function words on a board than the teacher (0.1893 against 0.1735,
+where the bar is no worse than the teacher), but the interval $[-0.041, +0.010]$
+contains zero, so the deficit is not established at $n{=}84$; because the point
+estimate is adverse we report the gate as unmet. Dynamic coverage-of-intent
+clears its bar by 0.0028 with an interval of $[-0.118, +0.118]$, so we report it
+as inconclusive rather than a pass. Approximately 0.048 of every board's
+same-function-pair rate is a fixed artefact of pinned core words.
 
-\textbf{The evaluation is entirely synthetic.} The 120 selection scenarios are
-emitted from a fixed template generator rather than transcribed from
-conversation, and the teacher whose boards the student learns is itself an LLM.
-A student that scores well here may be imitating the teacher imitating a larger
-model. The gated metrics are deterministic, which removes judge variance but not
-this dependence.
+\textbf{The evaluation is entirely synthetic.} The 120 scenarios are emitted from
+a template generator rather than transcribed from conversation, and the teacher
+whose boards the student learns is itself an LLM, so a student scoring well here
+may be imitating the teacher imitating a larger model. The deterministic metrics
+remove judge variance but not this dependence.
 
-\textbf{There are no human subjects.} The wearable captures bystanders who did not consent, so testing is
-restricted to the authors by self-imposed policy until written proxy consent and
-pseudonym handling exist. Human validation on consented interaction logs is the
-number that ultimately matters and we do not have it.
+\textbf{There are no human subjects.} The wearable captures bystanders who have
+not consented, so testing is restricted to the authors by self-imposed policy
+until proxy consent and pseudonym handling are in place. Validation on consented
+interaction logs is the measurement that ultimately matters, and we lack it.
 
 \textbf{Teacher word agreement of 0.067 reflects a representational ceiling
-rather than a training failure.} The student selects from a fixed 95-word
-vocabulary, and that vocabulary can
-represent only 32.5\% of the teacher's word choices---49.1\% of what it can
-represent is filler. Because the vocabulary is frequency-built and concrete
-answers are long-tail by construction, adding teacher data pushes it
-\emph{further} toward filler: a $5\times$ data increase moved agreement from
-0.232 to 0.165. We report this negative result rather than the hypothesis it
-falsified. This is why we grade coverage-of-intent rather than word agreement, and
-why concrete answers are now read from context rather than a label space---a
-mechanism that works but currently fires on only 2 of 84 held-out rows, so its
-effect on the aggregate numbers is noise.
+rather than a training failure.} The fixed 95-word vocabulary represents only
+32.5\% of the teacher's word choices, and 49.1\% of what it can represent is
+filler. Because the vocabulary is frequency-built while concrete answers are
+long-tail, additional teacher data drives it \emph{further} toward filler: a
+$5\times$ increase in training data moved agreement from 0.232 to 0.165. We
+report this negative result rather than the hypothesis it falsified. It is why we
+gate on coverage-of-intent, and why concrete answers are now extracted from
+context rather than a closed label space; that path fires on 2 of 84 held-out
+rows, so its aggregate effect is indistinguishable from noise.
 
-\textbf{Intel timings are ratios, not absolutes.} Run unmodified on an Intel
-Core Ultra 9 185H, OpenVINO makes the student head $2.7\times$ faster than
-torch; on Apple ARM the identical conversion is $1.7\times$ slower, so the ARM
-figures are a portability check rather than deployment performance. That Intel
-session shared the machine, so we report no absolute Intel latency. The NPU is
-enumerated but rejects our dynamic-shape graph.
+\textbf{Intel measurements are ratios, not absolutes.} Run unmodified on an Intel
+Core Ultra 9 185H, OpenVINO renders the student head $2.7\times$ faster than
+PyTorch, while on Apple ARM the identical conversion is $1.7\times$ slower. That
+session shared the machine, so we report no absolute Intel latency, and the NPU
+is enumerated but rejects the dynamic-shape graph.
 
 % =====================================================================
 \section{Conclusion}
 % =====================================================================
 
 Treating AAC as a turn-taking problem rather than a prediction problem changes
-the objective, and changing the objective measurably changes the board. The
-argument generalises: any interface that gives a user one slate under a deadline
-with no recovery path should select for coverage, not likelihood.
+the objective, and changing the objective measurably changes the board. Any
+interface presenting a single slate under a deadline, with no recovery path,
+should compose it for coverage rather than likelihood.
 
 % =====================================================================
 \section*{Ethics statement}
 % =====================================================================
 
-No human-subject data was collected: all 120 scenarios are synthetic, and no
-real voice, likeness, or personal data appears in the corpora or the models. The
+No human-subject data was collected. All 120 scenarios are synthetic, and no real
+voice, likeness, or personal data appears in the corpora or the models. The
 deployed system processes audio and video on the local machine with ephemeral
-buffers, no persistent recording, and a hardware kill switch, and interaction
+buffers, no persistent recording, and a hardware capture switch, and interaction
 logs never leave the device. Because a body-worn camera and microphone capture
 bystanders who have not consented, we restrict testing to the authors pending a
 proxy-consent and pseudonymisation protocol.
@@ -801,23 +800,24 @@ proxy-consent and pseudonymisation protocol.
 \section*{Use of large language models}
 % =====================================================================
 
-LLMs occupy two roles here, disclosed separately.
+LLMs occupy two roles in this work, disclosed separately.
 
 \textbf{As components of the system under study.} A local instruction-tuned LLM
-is the teacher whose boards the student distils, a local vision--language model
-produces the scene description, and a local ASR model produces the transcript.
-The gates themselves are computed deterministically in an embedding space, not
-by a language model; the codebase contains an LLM judge, but it is labelled a
-proxy and gates nothing. Every gate nonetheless depends on the teacher's
-outputs, and the limitations above regarding teacher bias apply.
+serves as the teacher whose boards the student distils, a local vision--language
+model produces the scene description, and a local ASR model produces the
+transcript. The gates themselves are computed deterministically in an embedding
+space rather than by a language model; the codebase contains an LLM judge, but it
+is labelled a proxy and gates nothing. Every gate nonetheless depends on the
+teacher's outputs, and the limitations stated above regarding teacher bias apply.
 
-\textbf{As engineering assistance.} The implementation, evaluation harness and
-drafts of this paper were produced with substantial AI coding assistance under a
-documented multi-agent review process. All experiments were run by the authors
-on the hardware described, and every number was checked against the artifact
-that produced it; where an artifact is regenerable rather than committed, the
-reproducing command is given in Appendix~\ref{app:protocol}. The authors take
-full responsibility for the content and any remaining errors.
+\textbf{As engineering assistance.} The implementation, the evaluation harness,
+and drafts of this paper were produced with substantial AI coding assistance
+under a documented multi-agent review process. All experiments were executed by
+the authors on the hardware described, and every reported figure was checked
+against the artifact that produced it; where an artifact is regenerable rather
+than committed, the reproducing command appears in Appendix~\ref{app:protocol}.
+The authors take full responsibility for the content and for any remaining
+errors.
 
 % =====================================================================
 %  REFERENCES -- all entries checked against the published record.
