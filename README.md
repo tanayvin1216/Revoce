@@ -175,6 +175,31 @@ on a loaded machine. Where a claim needs to be safe, `>400×` is the honest form
 Of the 10 ms board, the distilled head is about 0.1 ms; the real cost is MiniLM,
 a 22M-parameter transformer sitting on the critical path.
 
+What the student actually is — MiniLM does the reading, a tiny MLP does the
+scoring, and the teacher's own selection policy still does the choosing:
+
+```mermaid
+flowchart TD
+    A["scene sentence"] --> C
+    B["transcript"] --> C
+    C["MiniLM encoder<br/>all-MiniLM-L6-v2 · frozen · embeddings memoised"]
+    C --> D["769-d input vector<br/>384 scene ‖ 384 transcript ‖ 1 is_question"]
+    Q["is_question flag"] --> D
+    D --> E["LayerNorm → Linear 769→192 → ReLU → Dropout 0.3"]
+    E --> F["Linear 192→95<br/>logits over the 95-word dynamic vocabulary"]
+    F --> G["MMR + answer quota + hedge cap<br/>the unchanged symbolic selection policy"]
+    G --> H["10-slot board · 4 pinned core + 6 dynamic"]
+
+    classDef sense fill:#fdece4,stroke:#eb6834,color:#3a1d10
+    classDef model fill:#e3edfa,stroke:#2a78d6,color:#0e2440
+    classDef policy fill:#f2eefc,stroke:#4a3aa7,color:#1e1740
+    classDef out fill:#e2f4ee,stroke:#1baf7a,color:#0d3325
+    class A,B,Q sense
+    class C,D,E,F model
+    class G policy
+    class H out
+```
+
 ### The gates, including the two that don't pass
 
 Scored on the held-out split. The metrics are anti-gaming by construction: a
