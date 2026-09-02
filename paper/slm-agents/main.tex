@@ -1,0 +1,867 @@
+% ---------------------------------------------------------------------
+% The NeurIPS 2026 style file is embedded below so this single file
+% compiles anywhere (Overleaf included) with no separate upload.
+% ---------------------------------------------------------------------
+\begin{filecontents*}[overwrite]{neurips_2026.sty}
+% partial rewrite of the LaTeX2e package for submissions to the
+% Conference on Neural Information Processing Systems (NeurIPS):
+%
+% - uses more LaTeX conventions
+% - line numbers at submission time replaced with aligned numbers from
+%   lineno package
+% - \nipsfinalcopy replaced with [final] package option
+% - automatically loads times package for authors
+% - loads natbib automatically; this can be suppressed with the
+%   [nonatbib] package option
+% - adds foot line to first page identifying the conference
+% - adds preprint option for submission to e.g. arXiv
+% - conference acronym modified
+% - update foot line to display the track name
+%
+% Roman Garnett (garnett@wustl.edu) and the many authors of
+% nips15submit_e.sty, including MK and drstrip@sandia
+%
+% last revision: January 2026
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{neurips_2026}[2026-01-29 NeurIPS 2026 submission/camera-ready style file]
+
+% declare final option, which creates camera-ready copy
+\newif\if@neuripsfinal\@neuripsfinalfalse
+\DeclareOption{final}{
+  \@neuripsfinaltrue
+  \@anonymousfalse
+}
+
+% declare nonatbib option, which does not load natbib in case of
+% package clash (users can pass options to natbib via
+% \PassOptionsToPackage)
+\newif\if@natbib\@natbibtrue
+\DeclareOption{nonatbib}{
+  \@natbibfalse
+}
+
+% declare preprint option, which creates a preprint version ready for
+% upload to, e.g., arXiv
+\newif\if@preprint\@preprintfalse
+\DeclareOption{preprint}{
+  \@preprinttrue
+  \@anonymousfalse
+}
+
+% determine the track of the paper in camera-ready mode
+\newif\if@main\@maintrue
+\DeclareOption{main}{
+  \@maintrue
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear).}
+}
+\newif\if@position\@positionfalse
+\DeclareOption{position}{
+  \@positiontrue
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Position Paper Track.}
+}
+\newif\if@eandd\@eanddfalse
+\DeclareOption{eandd}{
+  \@eanddtrue
+\if@neuripsfinal\@anonymousfalse\else\if@preprint\@anonymousfalse\else\@anonymoustrue\fi\fi
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Track on Evaluations and Datasets.} 
+}
+\newif\if@creativeai\@creativeaifalse
+\DeclareOption{creativeai}{
+  \@creativeaitrue
+  \@anonymousfalse
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Creative AI Track.}
+}
+\newif\if@education\@educationfalse
+\DeclareOption{education}{
+  \@educationtrue
+  \@anonymousfalse
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Education Track.}
+}
+
+% For anonymous or non-anonymous
+\newif\if@anonymous\@anonymoustrue
+
+% For workshop papers
+\newcommand{\@workshoptitle}{}
+\newcommand{\workshoptitle}[1]{\renewcommand{\@workshoptitle}{#1}}
+
+\newif\if@workshop\@workshopfalse
+\DeclareOption{sglblindworkshop}{
+  \@workshoptrue
+  \@anonymousfalse
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Workshop: \@workshoptitle.}
+}
+\DeclareOption{dblblindworkshop}{
+  \@workshoptrue
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Workshop: \@workshoptitle.}
+}
+\DeclareOption{nonanonymous}{
+  \@anonymousfalse
+}
+
+\ProcessOptions\relax
+
+% fonts
+\renewcommand{\rmdefault}{ptm}
+\renewcommand{\sfdefault}{phv}
+
+% change this every year for notice string at bottom
+\newcommand{\@neuripsordinal}{40th}
+\newcommand{\@neuripsyear}{2026}
+\newcommand{\@neuripslocation}{Sydney}
+
+% acknowledgments
+\usepackage{environ}
+\newcommand{\acksection}{\section*{Acknowledgments and Disclosure of Funding}}
+\NewEnviron{ack}{%
+  \acksection
+  \BODY
+}
+
+
+% load natbib unless told otherwise
+\if@natbib
+  \RequirePackage{natbib}
+\fi
+
+
+
+
+
+% set page geometry
+\usepackage[verbose=true,letterpaper]{geometry}
+\AtBeginDocument{
+  \newgeometry{
+    textheight=9in,
+    textwidth=5.5in,
+    top=1in,
+    headheight=12pt,
+    headsep=25pt,
+    footskip=30pt
+  }
+  \@ifpackageloaded{fullpage}
+    {\PackageWarning{neurips_2026}{fullpage package not allowed! Overwriting formatting.}}
+    {}
+}
+
+\widowpenalty=10000
+\clubpenalty=10000
+\flushbottom
+\sloppy
+
+
+% font sizes with reduced leading
+\renewcommand{\normalsize}{%
+  \@setfontsize\normalsize\@xpt\@xipt
+  \abovedisplayskip      7\p@ \@plus 2\p@ \@minus 5\p@
+  \abovedisplayshortskip \z@ \@plus 3\p@
+  \belowdisplayskip      \abovedisplayskip
+  \belowdisplayshortskip 4\p@ \@plus 3\p@ \@minus 3\p@
+}
+\normalsize
+\renewcommand{\small}{%
+  \@setfontsize\small\@ixpt\@xpt
+  \abovedisplayskip      6\p@ \@plus 1.5\p@ \@minus 4\p@
+  \abovedisplayshortskip \z@  \@plus 2\p@
+  \belowdisplayskip      \abovedisplayskip
+  \belowdisplayshortskip 3\p@ \@plus 2\p@   \@minus 2\p@
+}
+\renewcommand{\footnotesize}{\@setfontsize\footnotesize\@ixpt\@xpt}
+\renewcommand{\scriptsize}{\@setfontsize\scriptsize\@viipt\@viiipt}
+\renewcommand{\tiny}{\@setfontsize\tiny\@vipt\@viipt}
+\renewcommand{\large}{\@setfontsize\large\@xiipt{14}}
+\renewcommand{\Large}{\@setfontsize\Large\@xivpt{16}}
+\renewcommand{\LARGE}{\@setfontsize\LARGE\@xviipt{20}}
+\renewcommand{\huge}{\@setfontsize\huge\@xxpt{23}}
+\renewcommand{\Huge}{\@setfontsize\Huge\@xxvpt{28}}
+
+
+% Force \tiny to be no smaller than 6pt
+\renewcommand{\tiny}{\fontsize{6pt}{7pt}\selectfont}
+
+% Force \scriptsize to be no smaller than 7pt
+\renewcommand{\scriptsize}{\fontsize{7pt}{8pt}\selectfont}
+
+% Force \footnotesize to be no smaller than 8pt
+\renewcommand{\footnotesize}{\fontsize{8pt}{9.5pt}\selectfont}
+
+% sections with less space
+\providecommand{\section}{}
+\renewcommand{\section}{%
+  \@startsection{section}{1}{\z@}%
+                {-2.0ex \@plus -0.5ex \@minus -0.2ex}%
+                { 1.5ex \@plus  0.3ex \@minus  0.2ex}%
+                {\large\bf\raggedright}%
+}
+\providecommand{\subsection}{}
+\renewcommand{\subsection}{%
+  \@startsection{subsection}{2}{\z@}%
+                {-1.8ex \@plus -0.5ex \@minus -0.2ex}%
+                { 0.8ex \@plus  0.2ex}%
+                {\normalsize\bf\raggedright}%
+}
+\providecommand{\subsubsection}{}
+\renewcommand{\subsubsection}{%
+  \@startsection{subsubsection}{3}{\z@}%
+                {-1.5ex \@plus -0.5ex \@minus -0.2ex}%
+                { 0.5ex \@plus  0.2ex}%
+                {\normalsize\bf\raggedright}%
+}
+\providecommand{\paragraph}{}
+\renewcommand{\paragraph}{%
+  \@startsection{paragraph}{4}{\z@}%
+                {1.5ex \@plus 0.5ex \@minus 0.2ex}%
+                {-1em}%
+                {\normalsize\bf}%
+}
+\providecommand{\subparagraph}{}
+\renewcommand{\subparagraph}{%
+  \@startsection{subparagraph}{5}{\z@}%
+                {1.5ex \@plus 0.5ex \@minus 0.2ex}%
+                {-1em}%
+                {\normalsize\bf}%
+}
+\providecommand{\subsubsubsection}{}
+\renewcommand{\subsubsubsection}{%
+  \vskip5pt{\noindent\normalsize\rm\raggedright}%
+}
+
+% float placement
+\renewcommand{\topfraction      }{0.85}
+\renewcommand{\bottomfraction   }{0.4}
+\renewcommand{\textfraction     }{0.1}
+\renewcommand{\floatpagefraction}{0.7}
+
+\newlength{\@neuripsabovecaptionskip}\setlength{\@neuripsabovecaptionskip}{7\p@}
+\newlength{\@neuripsbelowcaptionskip}\setlength{\@neuripsbelowcaptionskip}{\z@}
+
+\setlength{\abovecaptionskip}{\@neuripsabovecaptionskip}
+\setlength{\belowcaptionskip}{\@neuripsbelowcaptionskip}
+
+% swap above/belowcaptionskip lengths for tables
+\renewenvironment{table}
+  {\setlength{\abovecaptionskip}{\@neuripsbelowcaptionskip}%
+   \setlength{\belowcaptionskip}{\@neuripsabovecaptionskip}%
+   \@float{table}}
+  {\end@float}
+
+% footnote formatting
+\setlength{\footnotesep }{6.65\p@}
+\setlength{\skip\footins}{9\p@ \@plus 4\p@ \@minus 2\p@}
+\renewcommand{\footnoterule}{\kern-3\p@ \hrule width 12pc \kern 2.6\p@}
+\setcounter{footnote}{0}
+
+% paragraph formatting
+\setlength{\parindent}{\z@}
+\setlength{\parskip  }{5.5\p@}
+
+% list formatting
+\setlength{\topsep       }{4\p@ \@plus 1\p@   \@minus 2\p@}
+\setlength{\partopsep    }{1\p@ \@plus 0.5\p@ \@minus 0.5\p@}
+\setlength{\itemsep      }{2\p@ \@plus 1\p@   \@minus 0.5\p@}
+\setlength{\parsep       }{2\p@ \@plus 1\p@   \@minus 0.5\p@}
+\setlength{\leftmargin   }{3pc}
+\setlength{\leftmargini  }{\leftmargin}
+\setlength{\leftmarginii }{2em}
+\setlength{\leftmarginiii}{1.5em}
+\setlength{\leftmarginiv }{1.0em}
+\setlength{\leftmarginv  }{0.5em}
+\def\@listi  {\leftmargin\leftmargini}
+\def\@listii {\leftmargin\leftmarginii
+              \labelwidth\leftmarginii
+              \advance\labelwidth-\labelsep
+              \topsep  2\p@ \@plus 1\p@    \@minus 0.5\p@
+              \parsep  1\p@ \@plus 0.5\p@ \@minus 0.5\p@
+              \itemsep \parsep}
+\def\@listiii{\leftmargin\leftmarginiii
+              \labelwidth\leftmarginiii
+              \advance\labelwidth-\labelsep
+              \topsep    1\p@ \@plus 0.5\p@ \@minus 0.5\p@
+              \parsep    \z@
+              \partopsep 0.5\p@ \@plus 0\p@ \@minus 0.5\p@
+              \itemsep \topsep}
+\def\@listiv {\leftmargin\leftmarginiv
+              \labelwidth\leftmarginiv
+              \advance\labelwidth-\labelsep}
+\def\@listv  {\leftmargin\leftmarginv
+              \labelwidth\leftmarginv
+              \advance\labelwidth-\labelsep}
+\def\@listvi {\leftmargin\leftmarginvi
+              \labelwidth\leftmarginvi
+              \advance\labelwidth-\labelsep}
+
+% create title
+\providecommand{\maketitle}{}
+\renewcommand{\maketitle}{%
+  \par
+  \begingroup
+    \renewcommand{\thefootnote}{\fnsymbol{footnote}}
+    % for perfect author name centering
+    \renewcommand{\@makefnmark}{\hbox to \z@{$^{\@thefnmark}$\hss}}
+    % The footnote-mark was overlapping the footnote-text,
+    % added the following to fix this problem               (MK)
+    \long\def\@makefntext##1{%
+      \parindent 1em\noindent
+      \hbox to 1.8em{\hss $\m@th ^{\@thefnmark}$}##1
+    }
+    \thispagestyle{empty}
+    \@maketitle
+    \@thanks
+    \@notice
+  \endgroup
+  \let\maketitle\relax
+  \let\thanks\relax
+}
+
+% rules for title box at top of first page
+\newcommand{\@toptitlebar}{
+  \hrule height 4\p@
+  \vskip 0.25in
+  \vskip -\parskip%
+}
+\newcommand{\@bottomtitlebar}{
+  \vskip 0.29in
+  \vskip -\parskip
+  \hrule height 1\p@
+  \vskip 0.09in%
+}
+
+% create title (includes both anonymized and non-anonymized versions)
+\providecommand{\@maketitle}{}
+\renewcommand{\@maketitle}{%
+  \vbox{%
+    \hsize\textwidth
+    \linewidth\hsize
+    \vskip 0.1in
+    \@toptitlebar
+    \centering
+    {\LARGE\bf \@title\par}
+    \@bottomtitlebar
+    \if@anonymous
+      \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}
+        Anonymous Author(s) \\
+        Affiliation \\
+        Address \\
+        \texttt{email} \\
+      \end{tabular}%
+    \else
+      \def\And{%
+        \end{tabular}\hfil\linebreak[0]\hfil%
+        \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\ignorespaces%
+      }
+      \def\AND{%
+        \end{tabular}\hfil\linebreak[4]\hfil%
+        \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\ignorespaces%
+      }
+      \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\@author\end{tabular}%
+    \fi
+    \vskip 0.3in \@minus 0.1in
+  }
+}
+
+% add conference notice to bottom of first page
+\newcommand{\ftype@noticebox}{8}
+\newcommand{\@notice}{%
+  % give a bit of extra room back to authors on first page
+  \enlargethispage{2\baselineskip}%
+  \@float{noticebox}[b]%
+    \footnotesize\@noticestring%
+  \end@float%
+}
+
+% abstract styling
+\renewenvironment{abstract}%
+{%
+  \vskip 0.075in%
+  \centerline%
+  {\large\bf Abstract}%
+  \vspace{0.5ex}%
+  \begin{quote}%
+}
+{
+  \par%
+  \end{quote}%
+  \vskip 1ex%
+}
+
+% For the paper checklist
+\newcommand{\answerYes}[1][]{\textcolor{blue}{[Yes]#1}}
+\newcommand{\answerNo}[1][]{\textcolor{orange}{[No]#1}}
+\newcommand{\answerNA}[1][]{\textcolor{gray}{[N/A]#1}}
+\newcommand{\answerTODO}[1][]{\textcolor{red}{\bf [TODO]}}
+\newcommand{\justificationTODO}[1][]{\textcolor{red}{\bf [TODO]}}
+
+% handle tweaks for camera-ready copy vs. submission copy
+\if@preprint
+  \newcommand{\@noticestring}{%
+    Preprint.%
+  }
+\else
+  \if@neuripsfinal
+    \newcommand{\@noticestring}{
+      \@trackname
+    }
+  \else
+    \newcommand{\@noticestring}{%
+      Submitted to \@neuripsordinal\/ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Do not distribute.%
+    }
+
+    % hide the acknowledgements
+    \NewEnviron{hide}{}
+    \let\ack\hide
+    \let\endack\endhide
+
+    % line numbers for submission
+    \RequirePackage{lineno}
+    \linenumbers
+
+    % fix incompatibilities between lineno and amsmath, if required, by
+    % transparently wrapping linenomath environments around amsmath
+    % environments
+    \AtBeginDocument{%
+      \@ifpackageloaded{amsmath}{%
+        \newcommand*\patchAmsMathEnvironmentForLineno[1]{%
+          \expandafter\let\csname old#1\expandafter\endcsname\csname #1\endcsname
+          \expandafter\let\csname oldend#1\expandafter\endcsname\csname end#1\endcsname
+          \renewenvironment{#1}%
+                          {\linenomath\csname old#1\endcsname}%
+                          {\csname oldend#1\endcsname\endlinenomath}%
+        }%
+        \newcommand*\patchBothAmsMathEnvironmentsForLineno[1]{%
+          \patchAmsMathEnvironmentForLineno{#1}%
+          \patchAmsMathEnvironmentForLineno{#1*}%
+        }%
+        \patchBothAmsMathEnvironmentsForLineno{equation}%
+        \patchBothAmsMathEnvironmentsForLineno{align}%
+        \patchBothAmsMathEnvironmentsForLineno{flalign}%
+        \patchBothAmsMathEnvironmentsForLineno{alignat}%
+        \patchBothAmsMathEnvironmentsForLineno{gather}%
+        \patchBothAmsMathEnvironmentsForLineno{multline}%
+      }
+      {}
+    }
+  \fi
+\fi
+
+
+\endinput
+\end{filecontents*}
+% =====================================================================
+%  SLM-Agents @ NeurIPS 2026 -- long-paper track (<= 6 content pages;
+%  references and appendix excluded per the NeurIPS workshop template).
+%  DOUBLE-BLIND. No author names, project name, repo URLs, or identifying
+%  file paths in the body.  See README.md for the submission checklist.
+%
+%  BUILD:  tectonic main.tex
+%  All numbers come from docs/VERIFIED_NUMBERS.md sections 0a and I.
+% =====================================================================
+
+\documentclass{article}
+\usepackage[dblblindworkshop]{neurips_2026}            % anonymous by default; [final] for camera-ready
+\workshoptitle{SLM-Agents: SLMs for Agentic Systems}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{xcolor}
+
+% Drafting helper -- every \todo must be resolved or deleted before submission.
+\newcommand{\todo}[1]{\textcolor{red}{[\textbf{TODO:} #1]}}
+
+\title{Function Survives Distillation, Lexis Does Not:\\What a Small Student Keeps from an LLM Vocabulary Ranker}
+
+\author{Anonymous Author(s)\\Affiliation\\\texttt{email}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Agentic systems that must act within a conversational turn on-device often
+replace an LLM component with a small distilled student. The usual question,
+``how closely does the student agree with the teacher?'', has, we show, two
+answers that point in opposite directions. In a real-time assistive-communication
+agent, an LLM ranks candidate words for a ten-slot communication board; a
+769-dimensional MLP student over sentence embeddings replaces it at
+${\sim}10$\,ms against the teacher's 7\,s. On 84 held-out contexts the student
+reproduces the teacher's \emph{communicative-function} structure almost
+exactly---per-board function-set agreement 0.678 (95\,\% CI 0.650--0.707),
+distinct-functions retention 0.953---while sharing almost none of the
+teacher's \emph{words}: per-board word-set agreement 0.032 (0.015--0.052) and
+6.7\,\% overlap on the teacher's non-pinned words. A per-function breakdown
+shows the two functions the student under-serves fail for different reasons,
+both invisible to aggregate metrics: epistemic hedges (``I'm not sure'') are
+fully representable but are capped by a symbolic selection policy, whereas
+feeling statements are long-tail (38 distinct phrases in 42 slots, 14
+representable) and are lost in the label space. We argue that this
+function/lexis split is the natural decomposition for SLM-based agents---a
+student for \emph{what kind} of move to offer, a symbolic policy for
+\emph{which} to show, and an open, context-reading path for the specific
+words---and that agent evaluations should report the two agreements
+separately, since a word-overlap metric would call this student a failure and
+a function metric would call it near-perfect, and both are true.
+\end{abstract}
+
+%------------------------------------------------------------------------------
+\section{Introduction}
+Small language models and small task-specific students are how agentic
+systems reach the latency, memory and privacy budgets of the edge. The recipe
+is familiar: an LLM produces the behaviour, a student learns to imitate it,
+and the student ships~\citep{hinton2015}. The recipe raises a question that is
+asked far more often than it is answered carefully: \emph{what, exactly, did
+the student keep?}
+
+The default answer is a single agreement score---top-$k$ overlap, exact match,
+a judge's preference. For generation-like tasks this single number hides a
+distinction that matters to an agent: the \emph{function} of an output (an
+answer, a refusal, a request for clarification) and its \emph{lexical form}
+(the particular words) are different things, are learned at different rates,
+and fail for different reasons. We measure them separately in one deployed
+setting and find that they disagree by an order of magnitude.
+
+Our setting is an assistive-communication agent for non-speaking users. A
+wearable senses the conversation around the user; the agent must place ten
+words on a touch board within the time a conversational turn stays open.
+The teacher is an LLM pipeline; the student is a two-layer MLP over sentence
+embeddings with a 94-way output head that runs in about ten milliseconds. The
+student passes its diversity gate (it keeps 95\,\% of the teacher's distinct
+communicative functions) and its speed gate, and it agrees with the teacher's
+word choices 6.7\,\% of the time. Both numbers were known. What was not known
+is \emph{which} functions transfer, whether the low lexical agreement is
+uniform or concentrated, and whether the two losses that do exist come from
+the student, its label space, or the selection policy around it.
+
+\paragraph{Contributions.} (1)~A per-function transfer analysis over the
+teacher's own communicative-function taxonomy (\S\ref{sec:method}), showing
+function-set agreement of 0.678 against word-set agreement of 0.032 on the
+same boards (\S\ref{sec:results}). (2)~A diagnosis of the two under-served
+functions with two distinct causes---symbolic policy versus label space---that
+no aggregate metric distinguishes (\S\ref{sec:causes}). (3)~A design argument
+for SLM-based agents that follows from the split: student for function,
+symbolic policy for selection, open context-reading path for lexis
+(\S\ref{sec:discussion}), and a corresponding evaluation recommendation.
+
+%------------------------------------------------------------------------------
+\section{The agent and its student}
+\label{sec:setting}
+\paragraph{Task.} Given a one-sentence scene description (from a small
+vision--language model~\citep{qwen25vl}) and the last utterance of the
+conversation (from local ASR), compose a ten-slot communication board: four
+pinned safety words (\emph{yes}, \emph{no}, \emph{I need help}, \emph{wait})
+and six \emph{dynamic} words chosen for the moment. The board is judged on its
+top-7 visible window. The system is fully local; nothing leaves the host.
+
+\paragraph{Teacher.} A locally run 3B-parameter instruction-tuned LLM proposes
+candidate phrases; a symbolic maximal-marginal-relevance (MMR)
+stage~\citep{mmr1998} selects six for diversity of communicative function.
+The teacher corpus is 600 synthetic scenarios (559 after deduplication and a
+per-category cap), split 391/84/84 with a fingerprint guard on the held-out
+partition. All results below are on the 84 held-out rows.
+
+\paragraph{Student.} Input is a 769-d vector: 384-d MiniLM~\citep{minilm}
+embeddings of the scene and of the transcript plus an \texttt{is\_question}
+bit. The network is LayerNorm $\to$ Linear($769{\to}192$) $\to$ ReLU $\to$
+Dropout(0.3) $\to$ Linear($192{\to}94$). The 94 labels are the teacher's
+dynamic words with frequency $\ge3$, embedding-deduplicated at cosine 0.80.
+Crucially, the student's logits are \emph{not} the board: they form a
+candidate pool over which the teacher's own MMR selection is re-run, with a
+symbolic cap of one epistemic hedge per board and a reserve of two answer
+slots when the partner asked a question. An earlier version that showed the
+student's raw argmax was measured useless (a wall of hedges); the symbolic
+policy is what made the student usable, and we return to this in
+\S\ref{sec:causes}.
+
+\paragraph{Gates.} The committed student's held-out gates are reproduced in
+Appendix~\ref{app:gates}: distinct-functions retention 0.953, near-duplicate
+rate 0.0, dynamic coverage-of-intent $0.904\times$ the teacher's, board
+latency 10.1\,ms against the teacher's 7.05\,s (${>}400\times$). One gate,
+same-function-pair rate, fails (0.189 vs 0.174) and is reported as failing.
+
+%------------------------------------------------------------------------------
+\section{Two axes of agreement}
+\label{sec:method}
+We use the instruments the gates already use, applied identically to both
+arms, and add nothing that requires a model call beyond the sentence embedder.
+
+\paragraph{Function labels.} The teacher's evaluation taxonomy names nine
+communicative functions an AAC board should be able to launch:
+\emph{question-back}, \emph{specific-answer}, \emph{I-don't-know},
+\emph{request-help}, \emph{comment}, \emph{refuse/redirect}, \emph{emotion},
+\emph{request-clarification}, \emph{social}. Each function is anchored by a
+few short first-person exemplars; a board item is labelled by its nearest
+exemplar in MiniLM space (max over exemplars, not a centroid). The labeller is
+blind to which items are pinned, so the four core words are labelled like any
+other; this is exactly how the diversity gate counts.
+
+\paragraph{Per-board agreement.} For a held-out context with teacher board $T$
+and student board $S$, let $F(\cdot)$ be the \emph{set} of function labels in
+the top-7 window and $W(\cdot)$ the set of lower-cased dynamic (non-pinned)
+words in it. We report the paired Jaccard indices
+$J_F = |F(S)\cap F(T)|/|F(S)\cup F(T)|$ and $J_W$ analogously, averaged over
+the 84 rows, with 10\,000-resample bootstrap intervals. $J_F$ asks whether the
+student offers the same \emph{kinds} of move; $J_W$ asks whether it offers the
+same words.
+
+\paragraph{Per-function transfer.} For each function $f$: \emph{presence}, the
+fraction of boards whose top-7 contains at least one item labelled $f$
+(teacher and student), and their ratio, \emph{retention}; \emph{slots}, the
+mean number of top-7 items labelled $f$; and \emph{lexical overlap}, the
+fraction of the teacher's dynamic top-7 items labelled $f$ that appear
+anywhere on the student's ten-word board---the per-function analogue of the
+gate's \texttt{dynamic\_overlap}, which uses the same lenient lookup. The
+presence margin (student minus teacher) gets a paired bootstrap interval, the
+same construction the gates use, so a per-function loss is only claimed when
+its interval excludes zero.
+
+%------------------------------------------------------------------------------
+\section{Results}
+\label{sec:results}
+\begin{table}[t]
+\centering
+\small
+\caption{Per-function transfer on the 84 held-out boards (top-7 window).
+Presence is the fraction of boards containing the function; retention is
+student/teacher presence; the interval is the 95\,\% paired bootstrap CI on
+the presence margin (student $-$ teacher). Slots are mean items per board.
+Lexical overlap is the fraction of the teacher's dynamic items of that
+function that appear anywhere on the student's board, with the teacher item
+count in parentheses. Three functions sit at 1.000 in both arms because a
+pinned core word classifies into them.}
+\label{tab:perfn}
+\begin{tabular}{@{}lrrrcrrr@{}}
+\toprule
+ & \multicolumn{2}{c}{Presence} & & & \multicolumn{2}{c}{Slots/board} & Lexical \\
+\cmidrule(lr){2-3}\cmidrule(lr){6-7}
+Function & teacher & student & Retention & Margin CI & teacher & student & overlap (n) \\
+\midrule
+question-back           & 0.036 & 0.131 & 3.67 & $[+0.02, +0.18]$ & 0.04 & 0.13 & 0.333 (3) \\
+specific-answer         & 0.262 & 0.309 & 1.18 & $[-0.08, +0.18]$ & 0.31 & 0.36 & 0.077 (26) \\
+I-don't-know            & 0.417 & 0.155 & \textbf{0.37} & $[\mathbf{-0.39}, \mathbf{-0.13}]$ & 0.48 & 0.15 & 0.075 (40) \\
+request-help$^\ast$     & 1.000 & 1.000 & 1.00 & --- & 1.46 & 1.64 & 0.077 (39) \\
+comment$^\ast$          & 1.000 & 1.000 & 1.00 & --- & 2.65 & 2.79 & 0.055 (55) \\
+refuse/redirect$^\ast$  & 1.000 & 1.000 & 1.00 & --- & 1.31 & 1.42 & 0.038 (26) \\
+emotion                 & 0.381 & 0.167 & \textbf{0.44} & $[\mathbf{-0.35}, \mathbf{-0.08}]$ & 0.50 & 0.18 & 0.024 (42) \\
+request-clarification   & 0.012 & 0.095 & 8.00 & $[+0.04, +0.14]$ & 0.01 & 0.10 & 0.000 (1) \\
+social                  & 0.191 & 0.238 & 1.25 & $[-0.06, +0.17]$ & 0.24 & 0.24 & 0.150 (20) \\
+\midrule
+\multicolumn{8}{@{}l@{}}{\footnotesize $^\ast$ presence forced to 1.000 in both arms by a pinned core word (\emph{I need help}; \emph{yes}/\emph{wait}; \emph{no}).}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\caption{The same 84 boards, aggregated on the two axes. Function agreement
+and lexical agreement differ by a factor of about twenty.}
+\label{tab:axes}
+\begin{tabular}{@{}llr@{}}
+\toprule
+Axis & Metric & Value \\
+\midrule
+Function & per-board function-set Jaccard $J_F$ & 0.678 [0.650, 0.707] \\
+Function & distinct-functions@7, student / teacher & 4.095 / 4.298 (retention 0.953) \\
+Lexis    & per-board dynamic word-set Jaccard $J_W$ & 0.032 [0.015, 0.052] \\
+Lexis    & teacher dynamic top-7 words found on the student board & 0.067 \\
+Lexis    & full top-7 overlap (inflated by the four pinned words) & 0.594 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Function transfers; lexis does not.} Table~\ref{tab:axes} is the
+headline. On the same boards, the student shares two-thirds of the teacher's
+function set ($J_F=0.678$) and three per cent of its dynamic words
+($J_W=0.032$). The aggregate diversity gate (retention 0.953) and the aggregate
+agreement number (0.067) were both already known; the per-board Jaccard pair
+makes the contrast paired and interval-bounded, and shows that it is not an
+artefact of averaging: the intervals do not come within an order of magnitude
+of each other.
+
+\paragraph{Lexical overlap is uniformly low.} Table~\ref{tab:perfn}, last
+column, shows that the 6.7\,\% is not one function dragging down an otherwise
+faithful student. Of the 252 dynamic items the teacher placed in its top-7
+windows, no function with more than three items exceeds 0.15 overlap;
+\emph{comment}, the largest cell (55 items), is at 0.055, and \emph{emotion}
+at 0.024. The student is offering the same kinds of move with different
+words almost everywhere.
+
+\paragraph{Two functions are lost; the rest are kept.} Six of nine functions
+have a presence margin whose interval includes zero or is pinned at 1.000 by a
+core word. Two are reliably under-served: \emph{I-don't-know} (presence 0.417
+$\to$ 0.155, CI $[-0.39,-0.13]$) and \emph{emotion} (0.381 $\to$ 0.167, CI
+$[-0.35,-0.08]$). Two are nominally gained (\emph{question-back},
+\emph{request-clarification}), but the teacher placed 3 and 1 items in those
+cells respectively, so we make no claim that the student is ``better'' there.
+
+%------------------------------------------------------------------------------
+\section{Two losses, two causes}
+\label{sec:causes}
+The two under-served functions look identical in Table~\ref{tab:perfn}:
+similar teacher presence, similar drop, similar lexical overlap. Reading the
+teacher's actual words for each shows that they fail for different reasons.
+
+\paragraph{\emph{I-don't-know}: the label space has the words; the policy
+withholds them.} The teacher's 40 \emph{I-don't-know} items are 15 distinct
+phrases, dominated by ``I am not sure'' (16) and its variants; 35 of the 40
+are representable in the student's 94-label space (9 directly, 26 through the
+deduplication map that merges the variants). The student can emit them, and
+its raw logits do: the earlier ``hedge wall'' was precisely this cluster
+crowding the board. The symbolic policy around the student caps the hedge
+cluster at one phrase per board and, when the partner asked a question,
+reserves two slots for non-hedge answers. The student's hedge logits rarely win
+the one slot that remains. The loss of this function is therefore a
+\emph{design decision made in the symbolic layer}, taken because a board that
+says ``I'm not sure'' three ways offers the user nothing; it is not a failure
+of distillation, and retraining the student would not (and should not) recover
+it.
+
+\paragraph{\emph{Emotion}: the label space does not have the words.} The
+teacher's 42 \emph{emotion} items are 38 distinct phrases (``I slept well'',
+``not ready'', ``I'm enjoying the music''); only 14 are representable. Feeling
+statements are situation-specific and therefore long-tail, and a
+frequency-built label set cannot hold a phrase that occurs once. Here the loss
+\emph{is} a distillation failure, of the kind a companion analysis
+(anonymised) attributes to a representability ceiling of closed label spaces;
+the student concentrates what emotion mass it has on the few representable
+phrases (``I'm not hungry'' $\times$5, ``I'm feeling a bit anxious'' $\times$4).
+No policy change can recover this; only a path that reads the specific phrase
+from the context can.
+
+\paragraph{Why this matters.} An aggregate agreement metric reports one number
+for both. A per-function view separates a loss that should be \emph{kept}
+(the policy is doing its job) from a loss that should be \emph{fixed} (the
+label space is too small)---and points each at the right component.
+
+%------------------------------------------------------------------------------
+\section{Discussion: a decomposition for SLM-based agents}
+\label{sec:discussion}
+\paragraph{Student for function, policy for selection, open path for lexis.}
+The measurements support a three-way split of the teacher's job. The
+distilled student is good at the part that generalises across contexts: which
+\emph{kinds} of move belong on this board. It is bad at the part that does not
+generalise: the specific phrase this scene calls for. The symbolic policy is
+the right owner of decisions that are about the \emph{board} rather than about
+any word---diversity, hedge caps, answer quotas---because they are cheap,
+inspectable, and, as \S\ref{sec:causes} shows, they shape function presence
+more than the student's weights do. What remains, the long tail of specific
+words, cannot come from any fixed label space and must be read from the
+context at inference time; in this system an open path extracts candidate
+spans from the scene and question for deictic and alternative questions, and
+the student's board is otherwise unchanged. The split is not a compromise: it
+puts each part of the behaviour where it is learnable.
+
+\paragraph{Evaluate the two axes separately.} Had we reported only word
+overlap, this student would have been rejected at 6.7\,\%. Had we reported
+only function retention, it would have been accepted at 95\,\% and shipped
+with a missing \emph{emotion} function nobody had noticed. We recommend that
+evaluations of distilled agent components report (i) a function-level
+agreement against a task taxonomy and (ii) a lexical agreement, both paired
+and interval-bounded, and (iii) a per-function breakdown with the teacher's
+base rates, since two of our nine cells were too small to support any claim.
+The taxonomy need not be ours; it needs to be the one the agent's own quality
+gates already use, so that the analysis and the gates cannot disagree.
+
+\paragraph{Relation to compression.} Nothing here depends on the student being
+an MLP. A small language model trained to imitate the teacher's boards would
+face the same question, and we would expect the same answer for the same
+reason: function is a low-entropy signal that is consistent across the corpus,
+lexis is a high-entropy signal that is mostly one-off. Any student that has
+to ration capacity by frequency will keep the first and lose the second.
+
+%------------------------------------------------------------------------------
+\section{Limitations}
+All evaluation is on \textbf{synthetic scenarios}; the teacher is an LLM and
+the coverage-of-intent judge used by the gates is an LLM, so a student that
+passes here may be imitating the teacher imitating an LLM. The function
+labeller is an embedding nearest-exemplar classifier, applied identically to
+both arms but not validated against human labels. Single domain (board
+composition), single teacher, single student architecture, held-out $n=84$;
+two of nine taxonomy cells have teacher base rates of 3 and 1 items, and we
+draw no conclusion from them. No human subjects and no human interaction
+data; testing was on the development team under a self-imposed consent
+policy. The per-function counts are exact and reproducible from committed
+files with no model call beyond the sentence embedder.
+
+\paragraph{Use of LLMs.} (1)~The distillation teacher and the
+coverage-of-intent judge are LLMs (\S\ref{sec:setting}); they are objects of
+study, not sources of claims. (2)~The system and analysis scripts were
+developed with AI-assisted coding tools; every number here was recomputed from
+committed files. (3)~An LLM assisted with drafting and editing; the authors
+take responsibility for all content.
+
+%------------------------------------------------------------------------------
+\begin{thebibliography}{9}
+
+\bibitem[Carbonell and Goldstein(1998)]{mmr1998}
+J.~Carbonell and J.~Goldstein.
+\newblock The use of MMR, diversity-based reranking for reordering documents and
+producing summaries.
+\newblock In \emph{SIGIR}, 1998.
+
+\bibitem[Hinton et al.(2015)]{hinton2015}
+G.~Hinton, O.~Vinyals, and J.~Dean.
+\newblock Distilling the knowledge in a neural network.
+\newblock \emph{arXiv preprint arXiv:1503.02531}, 2015.
+
+\bibitem[Qwen Team(2025)]{qwen25vl}
+Qwen Team.
+\newblock Qwen2.5-VL technical report.
+\newblock \emph{arXiv preprint}, 2025.
+% VERIFY: exact arXiv number and author list.
+
+\bibitem[Wang et al.(2020)]{minilm}
+W.~Wang, F.~Wei, L.~Dong, H.~Bao, N.~Yang, and M.~Zhou.
+\newblock MiniLM: Deep self-attention distillation for task-agnostic compression
+of pre-trained transformers.
+\newblock In \emph{NeurIPS}, 2020.
+
+\end{thebibliography}
+
+%------------------------------------------------------------------------------
+\appendix
+\section{Gates for the committed student}
+\label{app:gates}
+Held-out $n=84$, same split and same checkpoint as the main text. Not the
+subject of this paper; included so the reader can see that a student can pass
+diversity and speed gates while agreeing with the teacher on almost no words.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+Metric & student & teacher & verdict \\
+\midrule
+Distinct functions @7 & 4.095 & 4.298 & PASS (retention 0.953 $\ge$ 0.90) \\
+Near-duplicate rate & 0.0 & 0.0006 & PASS ($\le$ 0.08) \\
+Same-function-pair rate & 0.1893 & 0.1735 & \textbf{FAIL} (bar: $\le$ teacher) \\
+Board variety & 0.952 & --- & PASS ($\ge$ 0.5) \\
+Dynamic coverage-of-intent ($n=71$) & 0.789 & 0.873 & $0.904\times$ (inconclusive) \\
+\texttt{dynamic\_overlap} & 0.067 & --- & report-only \\
+Board latency (embed + MLP + MMR) & 10.1\,ms & 7.05\,s & ${>}400\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Reproducing the breakdown}
+\label{app:repro}
+The analysis is one script over the held-out rows. For each row the student
+board is built by the production path (embed, MLP, MMR with hedge cap and
+answer reserve) and paired with the teacher's cached board; both top-7 windows
+are labelled by the nearest-exemplar classifier; presence, slots, lexical
+overlap and the two Jaccard indices are accumulated as defined in
+\S\ref{sec:method}; the presence margins and Jaccard means get 10\,000-resample
+bootstrap intervals with a fixed seed. The overall rows reproduce the
+committed gate values (retention 0.953, \texttt{dynamic\_overlap} 0.067, full
+overlap 0.594) exactly, which anchors the breakdown to the gates. The
+representability counts in \S\ref{sec:causes} are membership tests of the
+teacher's lower-cased items against the label list and its deduplication map.
+The script and a unit test on synthetic boards will be released with the
+camera-ready.
+
+\end{document}
