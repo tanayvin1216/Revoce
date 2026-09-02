@@ -397,6 +397,39 @@ def gates_for(student: str = "v2", split_key: str = "test") -> dict:
     }
 
 
+def latency_for(students: Sequence[str] = ("v2", "v3"), n: int = 50,
+                warmup: int = 3, repeats: int = 3) -> dict:
+    """Board latency per student with the bench_e2e.py discipline: vocabulary /
+    bank embeddings stay memoised (static on a device), the scene and
+    transcript embeddings of every board are evicted before each round so
+    each board pays for its own context encoding. n held-out rows, p50/p90
+    over n*repeats boards, both students in the SAME process and run so the
+    ratio survives machine load even when the absolute numbers do not."""
+    import os
+    import time
+    from evaluation import embed as em
+    out = {"n": n, "repeats": repeats, "warmup": warmup,
+           "load_avg_1m": os.getloadavg()[0]}
+    for st in students:
+        board, held, meta = board_builder(st)
+        rows = held[:n]
+        ctx_texts = [r.get("scene", "") for r in rows] + [r.get("transcript", "") for r in rows]
+        for r in rows[:warmup]:
+            board(r)
+        lat = []
+        for _ in range(repeats):
+            em.cache_forget(ctx_texts)
+            for r in rows:
+                t0 = time.perf_counter()
+                board(r)
+                lat.append((time.perf_counter() - t0) * 1000.0)
+        out[st] = {"p50_ms": round(float(np.percentile(lat, 50)), 3),
+                   "p90_ms": round(float(np.percentile(lat, 90)), 3),
+                   "mean_ms": round(float(np.mean(lat)), 3),
+                   "boards_timed": len(lat)}
+    return out
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--split", default="test")
@@ -404,6 +437,9 @@ def main() -> int:
     p.add_argument("--out", default=None,
                    help="output JSON (default function_transfer.json for v2, "
                         "function_transfer_<student>.json otherwise)")
+    p.add_argument("--latency", action="store_true",
+                   help="time v2 and v3 boards (bench_e2e discipline) and write "
+                        "function_transfer_latency.json")
     p.add_argument("--gates", action="store_true",
                    help="score this student with the unchanged Phase-4 gate code "
                         "and write function_transfer_gates_<student>.json")
@@ -414,6 +450,13 @@ def main() -> int:
     if args.out is None:
         args.out = str(OUT if args.student == "v2"
                        else HERE / f"function_transfer_{args.student}.json")
+    if args.latency:
+        res = latency_for()
+        res["generated"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        out = HERE / "function_transfer_latency.json"
+        out.write_text(json.dumps(res, indent=2))
+        print(json.dumps(res, indent=2))
+        return 0
     if args.gates:
         g = gates_for(args.student, args.split)
         out = HERE / f"function_transfer_gates_{args.student}.json"

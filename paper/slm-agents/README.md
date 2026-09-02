@@ -1,4 +1,4 @@
-# SLM-Agents 2026 paper — "Function Survives Distillation, Lexis Does Not"
+# SLM-Agents 2026 paper — "Function Is Inherited, Lexis Is Lost"
 
 NeurIPS 2026 Workshop **SLM-Agents: 1st Workshop on SLMs for Agentic Systems** (Paris).
 Long-paper track: **up to 6 content pages** (NeurIPS workshop template; references and
@@ -25,7 +25,7 @@ cd paper/slm-agents
 tectonic main.tex
 ```
 
-Body (everything before References) currently ends on page 5 of 6; check the page count after every edit.
+The PDF is 7 pages: the body (everything before References) ends on page 5, within the 6-content-page limit; References and the appendix run to page 7. Check after every edit.
 
 ## Where the numbers come from
 
@@ -50,6 +50,8 @@ values (retention 0.953, dynamic_overlap 0.067, full overlap 0.594) exactly. Uni
 | Table 2 (presence / CI / lexical overlap, v2 and v3) | §I per-function rows (v2), §I.2 (v3) |
 | Table 3 (slot confusion for emotion and I-dont-know, v2 and v3) | §I.2 confusion rows |
 | Prior board words; random board definition | §I.2 preamble |
+| v3 bank size 1 959 | §I.2 bank-size row |
+| v3 ≈ 1.4× v2 board time (loaded-machine ratio, Appendix A) | §I.2 latency row — do NOT quote a v3 absolute until re-timed quietly |
 | 35 of 40 I-dont-know items representable; 38 distinct emotion phrases, 14 representable; "I'm not hungry" ×5, "I'm feeling a bit anxious" ×4 | §I "where the two lost functions' teacher words live" (`function_transfer.py --words`) |
 | Appendix gate table (0.953, 0.0/0.0006, 0.1893/0.1735, 0.952, 0.789/0.873, 0.067, 10.1 ms / 7.05 s) | §0a |
 
