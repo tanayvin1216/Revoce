@@ -454,7 +454,7 @@
 %  file paths in the body.  See README.md for the submission checklist.
 %
 %  BUILD:  tectonic main.tex
-%  All numbers come from docs/VERIFIED_NUMBERS.md sections 0a and I.
+%  All numbers come from docs/VERIFIED_NUMBERS.md sections 0a, I and I.2.
 % =====================================================================
 
 \documentclass{article}
@@ -470,9 +470,8 @@
 \usepackage{amssymb}
 \usepackage{graphicx}
 \usepackage{microtype}
-\usepackage{xcolor}
 
-\title{Function Survives Distillation, Lexis Does Not:\\What a Small Student Keeps from an LLM Vocabulary Ranker}
+\title{Function Survives Distillation, Lexis Does Not:\\Measuring What a Small Student Keeps from an SLM Vocabulary Ranker}
 
 \author{Anonymous Author(s)\\Affiliation\\\texttt{email}}
 
@@ -480,143 +479,174 @@
 \maketitle
 
 \begin{abstract}
-Agentic systems that must act within a conversational turn on-device often
-replace an LLM component with a small distilled student. The usual question,
-``how closely does the student agree with the teacher?'', has, we show, two
-answers that point in opposite directions. In a real-time augmentative and
-alternative communication (AAC) agent, an LLM ranks candidate words for a
-ten-slot communication board; a 769-dimensional multilayer-perceptron (MLP)
-student over sentence embeddings replaces it at
-${\sim}10$\,ms against the teacher's 7\,s. On 84 held-out contexts the student
-reproduces the teacher's \emph{communicative-function} structure almost
-exactly---per-board function-set agreement 0.678 (95\,\% CI 0.650--0.707),
-distinct-functions retention 0.953---while sharing almost none of the
-teacher's \emph{words}: per-board word-set agreement 0.032 (0.015--0.052) and
-6.7\,\% overlap on the teacher's non-pinned words. A per-function breakdown
-shows the two functions the student under-serves fail for different reasons,
-both invisible to aggregate metrics: epistemic hedges (``I'm not sure'') are
-fully representable but are capped by a symbolic selection policy, whereas
-feeling statements are long-tail (38 distinct phrases in 42 slots, 14
-representable) and are lost in the label space. We argue that this
-function/lexis split is the natural decomposition for agents built on small language models (SLMs)---a
-student for \emph{what kind} of move to offer, a symbolic policy for
-\emph{which} to show, and an open, context-reading path for the specific
-words---and that agent evaluations should report the two agreements
-separately, since a word-overlap metric would call this student a failure and
-a function metric would call it near-perfect, and both are true.
+Agentic systems that must act within a conversational turn on-device replace
+language-model components with small task-specific students, and ask how
+closely the student agrees with its teacher. We show that this question has
+two answers that differ by an order of magnitude, and that the usual
+aggregate answers a third thing entirely. In a real-time augmentative and
+alternative communication (AAC) agent, a 3B-parameter small language model
+(SLM) ranks candidate words for a ten-slot communication board; two students
+replace it at ${\sim}10$\,ms: a closed-vocabulary multilayer perceptron (MLP)
+with a 95-label head, and an open-vocabulary bi-encoder. On 84 held-out
+contexts both reproduce the teacher's \emph{communicative-function} structure
+(per-board function-set agreement 0.678 and 0.718; distinct-functions
+retention 0.953 and 1.091) and almost none of its \emph{words} (word-set
+agreement 0.032 and 0.067). Two context-free baselines expose what the
+function aggregates measure: a teacher-frequency prior board scores 0.716 and
+a random board over the same label space 0.657 on function agreement, and the
+random board passes the system's shipped distinct-functions gate (1.003).
+Function structure is inherited from the label space and the pinned words,
+not learned; lexis is inherited by nobody, including the open-vocabulary
+student. What separates students from baselines is coverage-of-intent
+(random 0.507 vs 0.789) and a per-function breakdown with intervals, which
+shows the closed student losing two functions for two different reasons:
+feeling statements are long-tail and unrepresentable (the open-vocabulary
+student recovers them), while epistemic hedges are representable but lose the
+single slot a symbolic policy allows them---a student-by-policy interaction,
+since the other student over-serves them under the same policy. We recommend
+that evaluations of distilled agent components report function-level and
+lexical agreement separately, against context-free baselines, with a
+per-function breakdown and the teacher's base rates.
 \end{abstract}
 
 %------------------------------------------------------------------------------
 \section{Introduction}
-Small language models and small task-specific students are how agentic
-systems reach the latency, memory and privacy budgets of the edge. The recipe
-is familiar: an LLM produces the behaviour, a student learns to imitate it,
-and the student ships~\citep{hinton2015}. The recipe raises a question that is
-asked far more often than it is answered carefully: \emph{what, exactly, did
-the student keep?}
+Small language models are how agentic systems reach the latency, memory and
+privacy budgets of the edge~\citep{belcak2025}, and distilling an agent's
+behaviour into a still smaller task-specific student is the natural next
+step~\citep{hinton2015,kang2025}. Every such step raises the same question:
+what did the student keep? The default answer is one agreement number. For
+generation-like tasks that number hides a distinction an agent cares about:
+the \emph{function} of an output (an answer, a refusal, a request for
+clarification) and its \emph{lexical form} (the particular words) are learned
+at different rates and lost for different reasons. We measure them separately
+in one working system (team-only use), for two students and two baselines,
+and find that they disagree by an order of magnitude---and that the aggregate
+function number does not measure the student at all.
 
-The default answer is a single agreement score---top-$k$ overlap, exact match,
-a judge's preference. For generation-like tasks this single number hides a
-distinction that matters to an agent: the \emph{function} of an output (an
-answer, a refusal, a request for clarification) and its \emph{lexical form}
-(the particular words) are different things, are learned at different rates,
-and fail for different reasons. We measure them separately in one working
-system (team-only use) and find that they disagree by an order of magnitude.
-
-Our setting is an AAC agent for non-speaking users. A
-wearable senses the conversation around the user; the agent must place ten
-words on a touch board within the time a conversational turn stays open.
-The teacher is an LLM pipeline; the student is a two-layer MLP over sentence
-embeddings with a 95-way output head that runs in about ten milliseconds. The
-student passes its distinct-functions gate (retention 0.953) and its speed
-gate, fails its same-function-pair gate (\S\ref{sec:setting}), and agrees
-with the teacher's word choices 6.7\,\% of the time. Both numbers were known. What was not known
-is \emph{which} functions transfer, whether the low lexical agreement is
-uniform or concentrated, and whether the two losses that do exist come from
-the student, its label space, or the selection policy around it.
+The setting is an AAC agent for non-speaking users: a wearable senses the
+conversation, and the agent must place ten words on a touch board before the
+turn closes. The teacher is a locally run 3B-parameter SLM pipeline; the
+students are a closed-vocabulary MLP and an open-vocabulary bi-encoder, both
+at about ten milliseconds. The MLP passes its distinct-functions gate
+(retention 0.953) and its speed gate, fails its same-function-pair gate
+(\S\ref{sec:setting}), and agrees with the teacher's word choices 6.7\,\% of
+the time. Those numbers were known. Not known: which functions transfer, whether
+the low lexical agreement is concentrated, what a context-free board scores on
+the same instruments, and whether the losses come from the student, its label
+space, or the policy around it.
 
 \paragraph{Contributions.} (1)~A per-function transfer analysis over the
-teacher's own communicative-function taxonomy (\S\ref{sec:method}), showing
-function-set agreement of 0.678 against word-set agreement of 0.032 on the
-same boards (\S\ref{sec:results}). (2)~A diagnosis of the two under-served
-functions with two distinct causes---symbolic policy versus label space---that
-no aggregate metric distinguishes (\S\ref{sec:causes}). (3)~An evaluation
-recommendation that follows from the split---report function-level and
-lexical agreement separately, with a per-function breakdown---and a reading,
-in its light, of the companion design (student for function, symbolic policy
-for selection, open path for lexis; anonymised) (\S\ref{sec:discussion}).
+agent's own function taxonomy, for two students and two context-free
+baselines, on the same 84 boards (\S\ref{sec:method}--\ref{sec:results}).
+(2)~The finding that aggregate function agreement is set by the label space
+and the pinned words---baselines bracket both students and a random board
+passes the shipped gate---while lexical agreement is near zero for every
+board, so neither aggregate discriminates a student from noise; coverage of
+intent and the per-function view do (\S\ref{sec:results}). (3)~A diagnosis
+of the closed student's two lost functions as a label-space loss and a
+student-by-policy interaction respectively (\S\ref{sec:causes}), and the
+evaluation recommendation that follows (\S\ref{sec:discussion}).
 
 %------------------------------------------------------------------------------
-\section{The agent and its student}
+\section{Related work}
+\label{sec:related}
+\citet{gudibande2023} found that models imitating a proprietary LLM copy its
+\emph{style} but not its content. Our finding is the mirror image, for a
+structural reason: a closed head over sentence embeddings has no channel for
+surface form at all, so what it can copy is the distribution over kinds of
+move, and what it cannot copy is the wording. \citet{stanton2021} show that
+students with ample capacity still fail to match teacher predictive
+distributions; we add that \emph{which} part of the distribution is missed
+is predictable from the output space. The closest mechanistic precedent is in
+non-autoregressive translation, where distillation reduces the multi-modality
+and lexical diversity of the training data~\citep{zhou2020,xu2021} and
+students inherit the teacher's lexical-choice errors on low-frequency
+words~\citep{ding2021}; \citet{lin2023} show that alignment mostly shifts
+stylistic tokens. In AAC, language models have been used to generate
+sentences from keywords~\citep{shen2022}, expand abbreviations from
+context~\citep{cai2022}, and predict pictogram sequences~\citep{pereira2024};
+\citet{valencia2023} report that AAC users reject suggestions that do not
+sound like them, which is why lexical agreement, not only function, matters
+here. Our nine-function taxonomy refines \citet{light1988}'s four
+purposes of AAC interaction (needs and wants, information transfer, social
+closeness, social etiquette) into the moves a board must be able to launch
+within a turn.
+
+%------------------------------------------------------------------------------
+\section{The agent, two students, two baselines}
 \label{sec:setting}
 \paragraph{Task.} Given a one-sentence scene description (from a small
-vision--language model~\citep{qwen25vl}) and the last utterance of the
-conversation (from local automatic speech recognition, ASR), compose a ten-slot communication board: four
-pinned safety words (\emph{yes}, \emph{no}, \emph{I need help}, \emph{wait})
-and six \emph{dynamic} words chosen for the moment. The board is judged on its
-top-7 visible window. The system is fully local; nothing leaves the host.
+vision--language model~\citep{qwen25vl}) and the last utterance (from local
+automatic speech recognition, ASR), compose a ten-slot board: four pinned
+safety words (\emph{yes}, \emph{no}, \emph{I need help}, \emph{wait}) and six
+\emph{dynamic} words for the moment. The board is judged on its top-7 visible
+window. The system is fully local.
 
-\paragraph{Teacher.} A locally run 3B-parameter instruction-tuned LLM proposes
+\paragraph{Teacher.} A locally run 3B-parameter instruction-tuned SLM proposes
 candidate phrases; a symbolic maximal-marginal-relevance (MMR)
-stage~\citep{mmr1998} selects six for diversity of communicative function.
-The teacher corpus is 600 synthetic scenarios (559 after deduplication and a
-per-category cap), split 391/84/84 with a fingerprint guard on the held-out
-partition. All results below are on the 84 held-out rows.
+stage~\citep{mmr1998} selects six for diversity of function. The corpus is 600
+synthetic scenarios (559 after deduplication), split 391/84/84 with a
+fingerprint guard on the held-out partition; everything below is on the 84
+held-out rows.
 
-\paragraph{Student.} Input is a 769-d vector: 384-d MiniLM~\citep{minilm}
-embeddings of the scene and of the transcript plus an \texttt{is\_question}
-bit. The network is LayerNorm $\to$ Linear($769{\to}192$) $\to$ ReLU $\to$
-Dropout(0.3) $\to$ Linear($192{\to}95$). The 95 labels are the teacher's
-dynamic words with frequency $\ge3$, embedding-deduplicated at cosine 0.80.
-Crucially, the student's logits are \emph{not} the board: they form a
-candidate pool over which the teacher's own MMR selection is re-run, with a
-symbolic cap of one epistemic hedge per board and a reserve of two answer
-slots when the partner asked a question. An earlier version that showed the
-student's raw argmax was measured useless (a wall of hedges); the symbolic
-policy is what made the student usable (reported in companion work,
-anonymised), and we return to this in \S\ref{sec:causes}.
+\paragraph{Student v2 (closed vocabulary; served).} Input is a 769-d vector:
+384-d MiniLM~\citep{minilm} embeddings of scene and transcript plus an
+\texttt{is\_question} bit; LayerNorm $\to$ Linear($769{\to}192$) $\to$ ReLU
+$\to$ Dropout(0.3) $\to$ Linear($192{\to}95$). The 95 labels are the
+teacher's dynamic words with frequency $\ge3$, deduplicated at cosine 0.80.
+\paragraph{Student v3 (open vocabulary).} A bi-encoder scoring the same
+context vector against a bank of ${\sim}1\,350$ teacher phrases with no
+frequency floor, in a shared 128-d space.
+\paragraph{Shared policy.} For both students the scores are a candidate pool
+over which the teacher's MMR is re-run, with a cap of one epistemic hedge per
+board and a reserve of two answer slots when the partner asked a question.
+The cap exists because the raw argmax board of v2 was a wall of hedges
+(reported in companion work, anonymised). Both students run the same code
+for this stage.
+\paragraph{Baselines.} \emph{Prior}: the pinned words plus the six most
+frequent dynamic teacher words on the training split, the same board for
+every row; its three top-7 dynamic slots are all hedges (``I don't know'',
+``I am not sure'', ``I'm not sure''). \emph{Random}: the pinned words plus six
+words drawn per row from v2's 95-word label space.
 
-\paragraph{Gates.} The committed student's held-out gates are reproduced in
-Appendix~\ref{app:gates}: distinct-functions retention 0.953, near-duplicate
-rate 0.0, dynamic coverage-of-intent $0.904\times$ the teacher's, board
-latency 10.1\,ms against the teacher's 7.05\,s (${>}400\times$). One gate,
-same-function-pair rate, fails (0.189 vs 0.174) and is reported as failing.
+\paragraph{Gates.} Appendix~\ref{app:gates} reproduces the shipped gates for
+v2 (retention 0.953; same-function-pair 0.189 vs teacher 0.174, \textbf{fail};
+board latency 10.1\,ms vs 7.05\,s).
 
 %------------------------------------------------------------------------------
 \section{Two axes of agreement}
 \label{sec:method}
-We use the instruments the gates already use, applied identically to both
-arms, and add nothing that requires a model call beyond the sentence embedder.
+\paragraph{Function labels.} The agent's evaluation taxonomy names nine
+functions (\emph{question-back}, \emph{specific-answer},
+\emph{I-don't-know}, \emph{request-help}, \emph{comment},
+\emph{refuse/redirect}, \emph{emotion}, \emph{request-clarification},
+\emph{social}), each anchored by short first-person exemplars; an item is
+labelled by its nearest exemplar in MiniLM space. The labeller is blind to
+pinning, exactly as the shipped gate is.
 
-\paragraph{Function labels.} The teacher's evaluation taxonomy names nine
-communicative functions an AAC board should be able to launch:
-\emph{question-back}, \emph{specific-answer}, \emph{I-don't-know},
-\emph{request-help}, \emph{comment}, \emph{refuse/redirect}, \emph{emotion},
-\emph{request-clarification}, \emph{social}. Each function is anchored by a
-few short first-person exemplars; a board item is labelled by its nearest
-exemplar in MiniLM space (max over exemplars, not a centroid). The labeller is
-blind to which items are pinned, so the four core words are labelled like any
-other; this is exactly how the diversity gate counts.
+\paragraph{Per-board agreement.} For teacher board $T$ and candidate board
+$S$, let $F(\cdot)$ be the set of function labels in the top-7 window and
+$W(\cdot)$ the set of dynamic words in it. We report the paired Jaccard
+indices $J_F=|F(S)\cap F(T)|/|F(S)\cup F(T)|$ and $J_W$ analogously, with
+10\,000-resample bootstrap intervals.
 
-\paragraph{Per-board agreement.} For a held-out context with teacher board $T$
-and student board $S$, let $F(\cdot)$ be the \emph{set} of function labels in
-the top-7 window and $W(\cdot)$ the set of lower-cased dynamic (non-pinned)
-words in it. We report the paired Jaccard indices
-$J_F = |F(S)\cap F(T)|/|F(S)\cup F(T)|$ and $J_W$ analogously, averaged over
-the 84 rows, with 10\,000-resample bootstrap intervals. $J_F$ asks whether the
-student offers the same \emph{kinds} of move; $J_W$ asks whether it offers the
-same words.
+\paragraph{Per-function transfer.} For each function: \emph{presence}, the
+fraction of boards whose top-7 contains it (teacher and candidate), the ratio
+\emph{retention}, and a paired bootstrap interval on the presence margin, so
+a loss is claimed only when the interval excludes zero; and \emph{lexical
+overlap}, the fraction of the teacher's dynamic top-7 items of that function
+found anywhere on the candidate's ten-word board (the gate's lenient lookup).
 
-\paragraph{Per-function transfer.} For each function $f$: \emph{presence}, the
-fraction of boards whose top-7 contains at least one item labelled $f$
-(teacher and student), and their ratio, \emph{retention}; \emph{slots}, the
-mean number of top-7 items labelled $f$; and \emph{lexical overlap}, the
-fraction of the teacher's dynamic top-7 items labelled $f$ that appear
-anywhere on the student's ten-word board---the per-function analogue of the
-gate's dynamic-word overlap, which uses the same lenient lookup. The
-presence margin (student minus teacher) gets a paired bootstrap interval, the
-same construction the gates use, so a per-function loss is only claimed when
-its interval excludes zero.
+\paragraph{Confusion.} Both arms pin the same words first, so dynamic slot
+$i$ of the teacher's window (same MMR rank) is paired with dynamic slot $i$ of
+the candidate's; we count teacher function $\to$ candidate function over the
+252 paired slots.
+
+\paragraph{Coverage of intent.} Each scenario carries a set of authored
+acceptable moves; a board covers the intent if a dynamic top-7 item is a
+lexical or embedding match to a non-hedge move. This is the system's gated
+quality metric and we run its unchanged code on every board.
 
 %------------------------------------------------------------------------------
 \section{Results}
@@ -624,32 +654,27 @@ its interval excludes zero.
 \begin{table}[t]
 \centering
 \small
-\caption{Per-function transfer on the 84 held-out boards (top-7 window).
-Presence is the fraction of boards containing the function; retention is
-student/teacher presence; the interval is the 95\,\% paired bootstrap CI on
-the presence margin (student $-$ teacher). Slots are mean items per board.
-Lexical overlap is the fraction of the teacher's dynamic items of that
-function that appear anywhere on the student's board, with the teacher item
-count in parentheses. Three functions sit at 1.000 in both arms because a
-pinned core word classifies into them.}
-\label{tab:perfn}
-\begin{tabular}{@{}lrrrcrrr@{}}
+\caption{Aggregates on the same 84 boards. Function agreement is bracketed by
+the two context-free baselines; lexical agreement is near zero for every
+board; only coverage of intent and the per-function view separate students
+from baselines. Coverage is the shipped gate's dynamic top-7 rule with its
+paired margin verdict against the teacher ($n=71$ scored rows).}
+\label{tab:axes}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrrrr@{}}
 \toprule
- & \multicolumn{2}{c}{Presence} & & & \multicolumn{2}{c}{Slots/board} & Lexical \\
-\cmidrule(lr){2-3}\cmidrule(lr){6-7}
-Function & teacher & student & Retention & Margin CI & teacher & student & overlap (n) \\
+Axis & Metric & v2 (closed) & v3 (open) & Prior & Random \\
 \midrule
-question-back           & 0.036 & 0.131 & 3.67 & $[+0.02, +0.18]$ & 0.04 & 0.13 & 0.333 (3) \\
-specific-answer         & 0.262 & 0.309 & 1.18 & $[-0.08, +0.18]$ & 0.31 & 0.36 & 0.077 (26) \\
-I-don't-know            & 0.417 & 0.155 & \textbf{0.37} & $[\mathbf{-0.39}, \mathbf{-0.13}]$ & 0.48 & 0.15 & 0.075 (40) \\
-request-help$^\ast$     & 1.000 & 1.000 & 1.00 & --- & 1.46 & 1.64 & 0.077 (39) \\
-comment$^\ast$          & 1.000 & 1.000 & 1.00 & --- & 2.65 & 2.79 & 0.055 (55) \\
-refuse/redirect$^\ast$  & 1.000 & 1.000 & 1.00 & --- & 1.31 & 1.42 & 0.038 (26) \\
-emotion                 & 0.381 & 0.167 & \textbf{0.44} & $[\mathbf{-0.35}, \mathbf{-0.08}]$ & 0.50 & 0.18 & 0.024 (42) \\
-request-clarification   & 0.012 & 0.095 & 8.00 & $[+0.04, +0.14]$ & 0.01 & 0.10 & 0.000 (1) \\
-social                  & 0.191 & 0.238 & 1.25 & $[-0.06, +0.17]$ & 0.24 & 0.24 & 0.150 (20) \\
-\midrule
-\multicolumn{8}{@{}l@{}}{\footnotesize $^\ast$ presence forced to 1.000 in both arms by a pinned core word (\emph{I need help}; \emph{yes}/\emph{wait}; \emph{no}).}\\
+Function & $J_F$ [95\,\% CI] & 0.678 [.65,.71] & 0.718 [.68,.75] & 0.716 [.68,.75] & 0.657 [.63,.69] \\
+Function & distinct-functions retention & 0.953 & 1.091 & 0.931 & 1.003 \\
+Function & same-function-pair (teacher 0.174) & 0.189 & 0.138 & 0.191 & 0.166 \\
+Lexis    & $J_W$ [95\,\% CI] & 0.032 [.02,.05] & 0.067 [.04,.10] & 0.063 [.04,.09] & 0.002 [.00,.01] \\
+Lexis    & dynamic-word overlap & 0.067 & 0.139 & 0.131 & 0.012 \\
+Lexis    & diagonal share of paired slots & 0.163 & 0.262 & 0.159 & 0.151 \\
+Quality  & board variety & 0.952 & 0.988 & 0.012 & 1.000 \\
+Quality  & coverage of intent (teacher 0.873) & 0.789 & 0.789 & 0.746 & \textbf{0.507} \\
+Quality  & coverage margin verdict & inconcl. & inconcl. & inconcl. & \textbf{fail} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -657,146 +682,162 @@ social                  & 0.191 & 0.238 & 1.25 & $[-0.06, +0.17]$ & 0.24 & 0.24 
 \begin{table}[t]
 \centering
 \small
-\caption{The same 84 boards, aggregated on the two axes. Function agreement
-and lexical agreement differ by a factor of about twenty.}
-\label{tab:axes}
-\begin{tabular}{@{}llr@{}}
+\caption{Per-function presence (fraction of the 84 boards containing the
+function) for the teacher and both students, with the 95\,\% paired bootstrap
+interval on the presence margin, and lexical overlap with the teacher item
+count. Intervals that exclude zero are in bold. Three functions are at 1.000
+in every arm because a pinned word classifies into them.}
+\label{tab:perfn}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrcrcrr@{}}
 \toprule
-Axis & Metric & Value \\
+ & & \multicolumn{2}{c}{v2 (closed)} & \multicolumn{2}{c}{v3 (open)} & \multicolumn{2}{c}{Lexical overlap (n)} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+Function & teacher & presence & margin CI & presence & margin CI & v2 & v3 \\
 \midrule
-Function & per-board function-set Jaccard $J_F$ & 0.678 [0.650, 0.707] \\
-Function & distinct-functions@7, student / teacher & 4.095 / 4.298 (retention 0.953) \\
-Lexis    & per-board dynamic word-set Jaccard $J_W$ & 0.032 [0.015, 0.052] \\
-Lexis    & teacher dynamic top-7 words found on the student board & 0.067 \\
-Lexis    & full top-7 overlap (inflated by the four pinned words) & 0.594 \\
+question-back          & 0.036 & 0.131 & $\mathbf{[+.02,+.18]}$ & 0.048 & $[-.04,+.07]$ & 0.333 & 0.667 (3) \\
+specific-answer        & 0.262 & 0.309 & $[-.08,+.18]$ & 0.333 & $[-.05,+.19]$ & 0.077 & 0.154 (26) \\
+I-don't-know           & 0.417 & 0.155 & $\mathbf{[-.39,-.13]}$ & 0.691 & $\mathbf{[+.12,+.43]}$ & 0.075 & 0.275 (40) \\
+request-help$^\ast$    & 1.000 & 1.000 & --- & 1.000 & --- & 0.077 & 0.179 (39) \\
+comment$^\ast$         & 1.000 & 1.000 & --- & 1.000 & --- & 0.055 & 0.073 (55) \\
+refuse/redirect$^\ast$ & 1.000 & 1.000 & --- & 1.000 & --- & 0.038 & 0.077 (26) \\
+emotion                & 0.381 & 0.167 & $\mathbf{[-.35,-.08]}$ & 0.345 & $[-.16,+.08]$ & 0.024 & 0.095 (42) \\
+request-clarification  & 0.012 & 0.095 & $\mathbf{[+.04,+.14]}$ & 0.024 & $[+.00,+.04]$ & 0.000 & 0.000 (1) \\
+social                 & 0.191 & 0.238 & $[-.06,+.17]$ & 0.250 & $[-.05,+.17]$ & 0.150 & 0.050 (20) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Function transfers; lexis does not.} Table~\ref{tab:axes} is the
-headline. On the same boards, the student shares two-thirds of the teacher's
-function set ($J_F=0.678$) and three per cent of its dynamic words
-($J_W=0.032$). The aggregate distinct-functions gate (retention 0.953) and the aggregate
-agreement number (0.067) were both already known; the per-board Jaccard pair
-makes the contrast paired and interval-bounded, and shows that it is not an
-artefact of averaging: the intervals do not come within an order of magnitude
-of each other.
+\paragraph{Both students keep the function mix and lose the words.}
+Table~\ref{tab:axes}: $J_F$ is 0.678 (v2) and 0.718 (v3); $J_W$ is 0.032 and
+0.067. The open vocabulary doubles lexical agreement and it is still below
+seven per cent. Per function (Table~\ref{tab:perfn}, last columns), no cell
+with more than three teacher items is above 0.15 for v2 (\emph{social} is
+exactly 0.150) or 0.28 for v3;
+\emph{comment}, the largest cell, is at 0.055 and 0.073.
 
-\paragraph{Lexical overlap is uniformly low.} Table~\ref{tab:perfn}, last
-column, shows that the 6.7\,\% is not one function dragging down an otherwise
-faithful student. Of the 252 dynamic items the teacher placed in its top-7
-windows, every function with more than three items reaches at most 0.15 overlap;
-\emph{comment}, the largest cell (55 items), is at 0.055, and \emph{emotion}
-at 0.024. The student is offering the same kinds of move with different
-words almost everywhere.
+\paragraph{The function aggregates do not measure the student.} The
+frequency-prior board, one fixed board of three hedges, scores $J_F=0.716$,
+above both students; the random board scores 0.657 and passes the shipped
+distinct-functions gate with retention 1.003. Pins fix three of nine
+functions in every arm, and drawing from a label space built from teacher
+frequencies reproduces the teacher's base-rate function mix without reading
+the context. $J_F$ and distinct-functions retention are therefore properties
+of the label space and the pins, and any student over that label space
+inherits them. The same holds for the same-function-pair gate, which the
+random board passes and the served student fails.
 
-\paragraph{Two functions are lost; the rest are kept.} Six of nine functions
-have a presence margin whose interval includes zero or is pinned at 1.000 by a
-core word. Two are reliably under-served: \emph{I-don't-know} (presence 0.417
-$\to$ 0.155, CI $[-0.39,-0.13]$) and \emph{emotion} (0.381 $\to$ 0.167, CI
-$[-0.35,-0.08]$). Two are nominally gained (\emph{question-back},
-\emph{request-clarification}), but the teacher placed 3 and 1 items in those
-cells respectively, so we make no claim that the student is ``better'' there.
+\paragraph{What separates a student from a baseline.} Coverage of intent:
+random 0.507 (fail, margin CI $[-0.42,-0.14]$) against 0.789 for both
+students; the prior's 0.746 comes with a board variety of 0.012, i.e.\ it is
+one board. And the per-function view: the random board loses only
+\emph{I-don't-know} (few hedges in the label space, one slot allowed); the
+prior has \emph{nothing but} hedges; v2 loses \emph{I-don't-know} and
+\emph{emotion} with intervals that exclude zero; v3 over-serves
+\emph{I-don't-know} ($1.66\times$, CI $[+0.12,+0.43]$) and recovers
+\emph{emotion} (0.906, CI includes zero). Two nominal gains for v2
+(\emph{question-back}, \emph{request-clarification}) sit on 3 and 1 teacher
+items; we make no claim about them.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Where the two lost functions' paired dynamic slots went (teacher
+function $\to$ candidate function; counts over the teacher's items of that
+function). ``Generic'' = request-help + comment + refuse/redirect.}
+\label{tab:conf}
+\begin{tabular}{@{}llrrrrr@{}}
+\toprule
+Teacher slot & Student & same fn. & I-don't-know & emotion & generic & other \\
+\midrule
+emotion (42)      & v2 &  4 &  2 & --- & 29 &  7 \\
+emotion (42)      & v3 & 16 & 11 & --- &  7 &  8 \\
+I-don't-know (40) & v2 &  1 & --- &  2 & 31 &  6 \\
+I-don't-know (40) & v3 & 10 & --- &  5 & 12 & 13 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 %------------------------------------------------------------------------------
-\section{Two losses, two causes}
+\section{Two losses, two mechanisms}
 \label{sec:causes}
-The two under-served functions look identical in Table~\ref{tab:perfn}:
-similar teacher presence, similar drop, similar lexical overlap. Reading the
-teacher's actual words for each shows that they fail for different reasons.
+\paragraph{\emph{Emotion}: a label-space loss.} The teacher's 42
+\emph{emotion} items are 38 distinct phrases (``I slept well'', ``not
+ready'', ``I'm enjoying the music''); 14 are representable in v2's 95 labels.
+Feeling statements are situation-specific, hence long-tail, and a
+frequency-built label set cannot hold a phrase seen once---the mechanism a
+companion representability analysis (anonymised) quantifies. v2 concentrates
+its emotion mass on the few representable phrases (``I'm not hungry''
+$\times$5, ``I'm feeling a bit anxious'' $\times$4) and sends 29 of the 42
+teacher slots to generic functions (Table~\ref{tab:conf}). v3, with no
+frequency floor, keeps 16 of 42 on the diagonal and restores presence to
+0.345 (teacher 0.381). An open output space recovers the function; nothing
+else does.
 
-\paragraph{\emph{I-don't-know}: the label space has the words; the policy
-withholds them.} The teacher's 40 \emph{I-don't-know} items are 15 distinct
-phrases, dominated by ``I am not sure'' (16) and its variants; 35 of the 40
-are representable in the student's 95-label space (9 directly, 26 through the
-deduplication map that merges the variants). The student can emit them, and
-its raw logits do: the earlier ``hedge wall'' was precisely this cluster
-crowding the board. The symbolic policy around the student caps the hedge
-cluster at one phrase per board and, when the partner asked a question,
-reserves two slots for non-hedge answers. The student's hedge logits rarely win
-the one slot that remains. We attribute the loss to the symbolic layer rather
-than to distillation: the words are representable and the policy caps them,
-because a board that says ``I'm not sure'' three ways offers the user nothing.
-A companion ablation (anonymised) that removes the policy over the same logits
-is consistent with this reading.
-
-\paragraph{\emph{Emotion}: the label space does not have the words.} The
-teacher's 42 \emph{emotion} items are 38 distinct phrases (``I slept well'',
-``not ready'', ``I'm enjoying the music''); only 14 are representable. Feeling
-statements are situation-specific and therefore long-tail, and a
-frequency-built label set cannot hold a phrase that occurs once. Here the loss
-\emph{is} a distillation failure, of the kind a companion analysis
-(anonymised) attributes to a representability ceiling of closed label spaces;
-the student concentrates what emotion mass it has on the few representable
-phrases (``I'm not hungry'' $\times$5, ``I'm feeling a bit anxious'' $\times$4).
-No policy change can recover this; only a path that reads the specific phrase
-from the context can.
-
-\paragraph{Why this matters.} An aggregate agreement metric reports one number
-for both. A per-function view separates a loss that should be \emph{kept}
-(the policy is doing its job) from a loss that should be \emph{fixed} (the
-label space is too small)---and points each at the right component.
+\paragraph{\emph{I-don't-know}: a student-by-policy interaction.} The
+teacher's 40 \emph{I-don't-know} items are 15 phrases, 35 of them
+representable in v2 (26 through the deduplication map). The words are
+available, so the loss is not a label-space effect. Nor is it the hedge cap
+withholding the function: v3 runs the same cap and the same answer reserve
+and \emph{over}-serves the function (presence 0.691 vs teacher 0.417), and
+the prior board, which is nothing but hedges, keeps one per board as the cap
+allows. What the cap does is turn a class of six phrases into a single
+contested slot, and v2's hedge logits lose that contest to generic phrases (31
+of 40 teacher slots, Table~\ref{tab:conf}) while v3's win it too often (11 of
+the teacher's 42 emotion slots become hedges). The same symbolic rule,
+applied to two students, moves one function in opposite directions; the loss
+belongs to neither the student nor the policy alone. A reviewer who saw only
+the v2 aggregate would attribute it to the cap; one who saw only the v3
+aggregate would say the cap is too loose. Both would be reasoning from a
+number that Table~\ref{tab:axes} shows the random board can match.
 
 %------------------------------------------------------------------------------
-\section{Discussion: a decomposition for SLM-based agents}
+\section{What to report, and why}
 \label{sec:discussion}
-\paragraph{Student for function, policy for selection, open path for lexis.}
-The measurements support a three-way split of the teacher's job. The
-distilled student is good at the part that generalises across contexts: which
-\emph{kinds} of move belong on this board. It is bad at the part that does not
-generalise: the specific phrase this scene calls for. The symbolic policy is
-the right owner of decisions that are about the \emph{board} rather than about
-any word---diversity, hedge caps, answer quotas---because they are cheap,
-inspectable, and, for at least one function (\S\ref{sec:causes}), they decide
-presence outright. What remains, the long tail of specific
-words, cannot come from any fixed label space and must be read from the
-context at inference time; in this system an open path extracts candidate
-spans from the scene and question for deictic and alternative questions, and
-the student's board is otherwise unchanged. The split is not a compromise: it
-puts each part of the behaviour where it is learnable.
-
-\paragraph{Evaluate the two axes separately.} Had we reported only word
-overlap, this student would have been rejected at 6.7\,\%. Had we reported
-only function retention, it would have been accepted at 95\,\% and shipped
-with a missing \emph{emotion} function nobody had noticed. We recommend that
-evaluations of distilled agent components report (i) a function-level
-agreement against a task taxonomy and (ii) a lexical agreement, both paired
-and interval-bounded, and (iii) a per-function breakdown with the teacher's
-base rates, since two of our nine cells were too small to support any claim.
-The taxonomy need not be ours; it needs to be the one the agent's own quality
-gates already use, so that the analysis and the gates cannot disagree.
-
-\paragraph{Relation to compression.} Nothing here depends on the student being
-an MLP. A small language model trained to imitate the teacher's boards would
-face the same question, and we would expect the same answer for the same
-reason: function is a low-entropy signal that is consistent across the corpus,
-lexis is a high-entropy signal that is mostly one-off, and, for the reason the
-companion representability analysis (anonymised) gives, any student that has
-to ration capacity by frequency will keep the first and lose the second.
+The setting is SLM teacher to task-specific student, the common shape of an
+edge agent~\citep{belcak2025,kang2025}, and the recommendation is about
+evaluation rather than architecture.
+\emph{Report function-level and lexical agreement separately.} They differ
+by $10$--$20\times$ here and answer different questions; one number for both
+reports neither. \emph{Report both against context-free baselines.} A
+frequency-prior board and a random board over the student's own label space
+cost nothing and, in this system, bracket the students on every function
+aggregate including a shipped gate; a function metric that a random board
+passes is measuring the label space. \emph{Report a per-function breakdown
+with paired intervals and the teacher's base rates.} The two real losses,
+their two different mechanisms, and the two cells too small to support any
+claim are all invisible above that level. \emph{Keep a context-sensitive
+quality metric in the same table.} Coverage of intent is what finally
+separated students from baselines. The taxonomy need not be ours; it should
+be the one the agent's own gates use, so that analysis and gates cannot
+disagree. Finally, the split itself is a design fact: over a closed head,
+function is inherited from the label space, lexis is inherited by nobody, and
+a student's contribution is the context-sensitive relevance in between.
 
 %------------------------------------------------------------------------------
 \section{Limitations}
-All evaluation is on \textbf{synthetic scenarios}; the teacher is an LLM and
-the coverage-of-intent judge used by the gates is an LLM, so a student that
-passes here may be imitating the teacher imitating an LLM. The function
-labeller is an embedding nearest-exemplar classifier, applied identically to
-both arms but not validated against human labels. Single domain (board
-composition), single teacher, single student architecture, held-out $n=84$;
-two of nine taxonomy cells have teacher base rates of 3 and 1 items, and we
-draw no conclusion from them. No human subjects and no human interaction
-data; testing was on the development team under a self-imposed consent
-policy. The per-function counts are exact and reproducible from committed
-files with no model call beyond the sentence embedder.
+All evaluation is on \textbf{synthetic scenarios}; the teacher is an SLM and
+the acceptable moves behind coverage of intent were authored with LLM
+assistance, so a student that passes may be imitating the teacher imitating a
+model. The function labeller is an embedding nearest-exemplar classifier,
+applied identically to every arm but not validated against human labels; the
+slot confusion pairs slots by MMR rank, which is a convention. Single domain,
+single teacher, two students, held-out $n=84$; two of nine cells have teacher
+base rates of 3 and 1 items. No human subjects and no human interaction data;
+testing was on the development team under a self-imposed consent policy. All
+counts are reproducible from committed files with no model call beyond the
+sentence embedder and the two students.
 
-\paragraph{Use of LLMs.} (1)~The distillation teacher and the
-coverage-of-intent judge are LLMs (\S\ref{sec:setting}); they are objects of
-study, not sources of claims. (2)~The system and analysis scripts were
-developed with AI-assisted coding tools; every number here was recomputed from
-committed files. (3)~An LLM assisted with drafting and editing; the authors
-take responsibility for all content.
+\paragraph{Use of LLMs.} (1)~The teacher and the scenario authoring are model
+outputs (\S\ref{sec:setting}); they are objects of study, not sources of
+claims. (2)~The system and analysis scripts were developed with AI-assisted
+coding tools; every number here was recomputed from committed files. (3)~An
+LLM assisted with drafting and editing; the authors take responsibility for
+all content.
 
 %------------------------------------------------------------------------------
-\begin{thebibliography}{9}
+\begin{thebibliography}{99}
 
 \bibitem[Bai et al.(2025)]{qwen25vl}
 S.~Bai, K.~Chen, X.~Liu, J.~Wang, W.~Ge, S.~Song, K.~Dang, P.~Wang, S.~Wang,
@@ -807,39 +848,105 @@ J.~Lin.
 \newblock \emph{arXiv preprint arXiv:2502.13923}, 2025.
 % VERIFIED https://arxiv.org/abs/2502.13923
 
+\bibitem[Belcak et al.(2025)]{belcak2025}
+P.~Belcak, G.~Heinrich, S.~Diao, Y.~Fu, X.~Dong, S.~Muralidharan, Y.~C. Lin, and P.~Molchanov.
+\newblock Small language models are the future of agentic AI.
+\newblock \emph{arXiv preprint arXiv:2506.02153}, 2025.
+
+\bibitem[Cai et al.(2022)]{cai2022}
+S.~Cai, S.~Venugopalan, K.~Tomanek, A.~Narayanan, M.~R. Morris, and M.~P. Brenner.
+\newblock Context-aware abbreviation expansion using large language models.
+\newblock In \emph{NAACL}, 2022. arXiv:2205.03767.
+
 \bibitem[Carbonell and Goldstein(1998)]{mmr1998}
 J.~Carbonell and J.~Goldstein.
 \newblock The use of MMR, diversity-based reranking for reordering documents and
 producing summaries.
-\newblock In \emph{SIGIR}, pages 335--336, 1998.
+\newblock In \emph{SIGIR}, 1998.
+
+\bibitem[Ding et al.(2021)]{ding2021}
+L.~Ding, L.~Wang, X.~Liu, D.~F. Wong, D.~Tao, and Z.~Tu.
+\newblock Understanding and improving lexical choice in non-autoregressive translation.
+\newblock In \emph{ICLR}, 2021. arXiv:2012.14583.
+
+\bibitem[Gudibande et al.(2023)]{gudibande2023}
+A.~Gudibande, E.~Wallace, C.~Snell, X.~Geng, H.~Liu, P.~Abbeel, S.~Levine, and D.~Song.
+\newblock The false promise of imitating proprietary LLMs.
+\newblock \emph{arXiv preprint arXiv:2305.15717}, 2023.
 
 \bibitem[Hinton et al.(2015)]{hinton2015}
 G.~Hinton, O.~Vinyals, and J.~Dean.
 \newblock Distilling the knowledge in a neural network.
 \newblock \emph{arXiv preprint arXiv:1503.02531}, 2015.
 
+\bibitem[Kang et al.(2025)]{kang2025}
+M.~Kang, J.~Jeong, S.~Lee, J.~Cho, and S.~J. Hwang.
+\newblock Distilling LLM agent into small models with retrieval and code tools.
+\newblock In \emph{NeurIPS}, 2025. arXiv:2505.17612.
+
+\bibitem[Light(1988)]{light1988}
+J.~Light.
+\newblock Interaction involving individuals using augmentative and alternative
+communication systems: State of the art and future directions.
+\newblock \emph{Augmentative and Alternative Communication}, 4(2):66--82, 1988.
+
+\bibitem[Lin et al.(2023)]{lin2023}
+B.~Y. Lin, A.~Ravichander, X.~Lu, N.~Dziri, M.~Sclar, K.~Chandu, C.~Bhagavatula, and Y.~Choi.
+\newblock The unlocking spell on base LLMs: Rethinking alignment via in-context learning.
+\newblock \emph{arXiv preprint arXiv:2312.01552}, 2023.
+
+\bibitem[Pereira et al.(2024)]{pereira2024}
+J.~A. Pereira, J.~A. Pereira, C.~Zanchettin, and R.~do Nascimento Fidalgo.
+\newblock PrAACT: Predictive augmentative and alternative communication with transformers.
+\newblock \emph{Expert Systems with Applications}, 240:122417, 2024.
+
+\bibitem[Shen et al.(2022)]{shen2022}
+J.~Shen, B.~Yang, J.~J. Dudley, and P.~O. Kristensson.
+\newblock KWickChat: A multi-turn dialogue system for AAC using context-aware
+sentence generation by bag-of-keywords.
+\newblock In \emph{IUI}, pages 853--867, 2022.
+
+\bibitem[Stanton et al.(2021)]{stanton2021}
+S.~Stanton, P.~Izmailov, P.~Kirichenko, A.~A. Alemi, and A.~G. Wilson.
+\newblock Does knowledge distillation really work?
+\newblock In \emph{NeurIPS}, 2021. arXiv:2106.05945.
+
+\bibitem[Valencia et al.(2023)]{valencia2023}
+S.~Valencia, R.~Cave, K.~Kallarackal, K.~Seaver, M.~Terry, and S.~K. Kane.
+\newblock ``The less I type, the better'': How AI language models can enhance or
+impede communication for AAC users.
+\newblock In \emph{CHI}, 2023.
 
 \bibitem[Wang et al.(2020)]{minilm}
 W.~Wang, F.~Wei, L.~Dong, H.~Bao, N.~Yang, and M.~Zhou.
 \newblock MiniLM: Deep self-attention distillation for task-agnostic compression
 of pre-trained transformers.
-\newblock In \emph{NeurIPS}, volume~33, 2020.
+\newblock In \emph{NeurIPS}, 2020.
+
+\bibitem[Xu et al.(2021)]{xu2021}
+W.~Xu, S.~Ma, D.~Zhang, and M.~Carpuat.
+\newblock How does distilled data complexity impact the quality and confidence of
+non-autoregressive machine translation?
+\newblock In \emph{Findings of ACL}, 2021. arXiv:2105.12900.
+
+\bibitem[Zhou et al.(2020)]{zhou2020}
+C.~Zhou, G.~Neubig, and J.~Gu.
+\newblock Understanding knowledge distillation in non-autoregressive machine translation.
+\newblock In \emph{ICLR}, 2020. arXiv:1911.02727.
 
 \end{thebibliography}
 
 %------------------------------------------------------------------------------
 \appendix
-\section{Gates for the committed student}
+\section{Gates for the served student}
 \label{app:gates}
-Held-out $n=84$, same split and same checkpoint as the main text. Not the
-subject of this paper; included so the reader can see that a student can pass
-diversity and speed gates while agreeing with the teacher on almost no words.
+Held-out $n=84$, same split and checkpoint as the main text.
 
 \begin{center}
 \small
 \begin{tabular}{@{}lrrl@{}}
 \toprule
-Metric & student & teacher & verdict \\
+Metric & v2 & teacher & verdict \\
 \midrule
 Distinct functions @7 & 4.095 & 4.298 & PASS (retention 0.953 $\ge$ 0.90) \\
 Near-duplicate rate & 0.0 & 0.0006 & PASS ($\le$ 0.08) \\
@@ -852,20 +959,19 @@ Board latency (embed + MLP + MMR) & 10.1\,ms & 7.05\,s & ${>}400\times$ \\
 \end{tabular}
 \end{center}
 
-\section{Reproducing the breakdown}
+\section{Reproducing the analysis}
 \label{app:repro}
-The analysis is one script over the held-out rows. For each row the student
-board is built by the production path (embed, MLP, MMR with hedge cap and
-answer reserve) and paired with the teacher's cached board; both top-7 windows
-are labelled by the nearest-exemplar classifier; presence, slots, lexical
-overlap and the two Jaccard indices are accumulated as defined in
-\S\ref{sec:method}; the presence margins and Jaccard means get 10\,000-resample
-bootstrap intervals with a fixed seed. The overall rows reproduce the
-committed gate values (retention 0.953, \texttt{dynamic\_overlap} 0.067, full
-overlap 0.594) exactly, which anchors the breakdown to the gates. The
+One script builds each candidate board for every held-out row (students via
+their production inference paths, baselines as defined in
+\S\ref{sec:setting}), pairs it with the teacher's cached board, labels both
+top-7 windows with the nearest-exemplar classifier, and accumulates presence,
+slots, lexical overlap, the two Jaccard indices and the slot confusion; a
+second mode runs the system's unchanged gate code (including coverage of
+intent) over the same boards. Bootstrap intervals use 10\,000 resamples and
+a fixed seed. The v2 rows reproduce the committed gate values (retention
+0.953, dynamic-word overlap 0.067, full overlap 0.594) exactly. The
 representability counts in \S\ref{sec:causes} are membership tests of the
-teacher's lower-cased items against the label list and its deduplication map.
-The script and a unit test on synthetic boards will be released with the
-camera-ready.
+teacher's lower-cased items against the label list and its deduplication
+map. Script and unit tests will be released with the camera-ready.
 
 \end{document}
