@@ -92,6 +92,12 @@ def transfer_table(pairs: Sequence[tuple[list[str], list[str]]],
     s_distinct, t_distinct = [], []
     fn_jacc, word_jacc = [], []
     dyn_overlap, full_overlap = [], []
+    # Positional confusion over the DYNAMIC slots of the top-k window: both
+    # arms pin the same core words first, so slot i>len(core) in the teacher's
+    # window is paired with slot i in the student's (same MMR rank). Counts
+    # teacher function -> student function.
+    n_core = len(core)
+    confusion = {f: {g: 0 for g in functions} for f in functions}
 
     for sb, tb in pairs:
         s_top = [w for w in sb[:k]]
@@ -131,6 +137,11 @@ def transfer_table(pairs: Sequence[tuple[list[str], list[str]]],
             lex_tot[l] += 1
             if wl in s_all_dyn:
                 lex_hit[l] += 1
+        for i in range(n_core, min(len(t_lab), len(s_lab))):
+            if t_top[i].lower() in core or s_top[i].lower() in core:
+                continue
+            if t_lab[i] in confusion and s_lab[i] in confusion[t_lab[i]]:
+                confusion[t_lab[i]][s_lab[i]] += 1
 
     per_function = {}
     for f in functions:
@@ -170,6 +181,7 @@ def transfer_table(pairs: Sequence[tuple[list[str], list[str]]],
                 f for f in functions if lex_tot[f] and lex_hit[f] == 0),
         },
         "per_function": per_function,
+        "confusion_dynamic_slots": confusion,
     }
 
 
@@ -237,7 +249,18 @@ def markdown(res: dict) -> str:
         f"function-set Jaccard {o['function_jaccard']} {o['function_jaccard_ci95']} vs "
         f"word-set Jaccard {o['word_jaccard']} {o['word_jaccard_ci95']}",
         f"functions with zero lexical overlap: {o['functions_with_zero_lexical_overlap']}",
+        "",
+        "confusion over paired dynamic slots (rows: teacher function, cols: student function)",
     ]
+    conf = res.get("confusion_dynamic_slots", {})
+    if conf:
+        funcs = list(conf.keys())
+        lines.append("| teacher \\ student | " + " | ".join(funcs) + " | total |")
+        lines.append("|---|" + "---|" * (len(funcs) + 1))
+        for f in funcs:
+            row = conf[f]
+            lines.append(f"| {f} | " + " | ".join(str(row[g]) for g in funcs)
+                         + f" | {sum(row.values())} |")
     return "\n".join(lines)
 
 
@@ -251,36 +274,154 @@ def _embedding_labeller() -> Labeller:
     return label
 
 
-def collect_pairs(split_key: str = "test") -> tuple[list[tuple[list[str], list[str]]], dict]:
-    """(student_board, teacher_board) for every held-out row, built exactly as
-    evaluate.py builds them (same checkpoint, same infer.student_board, same
-    split fingerprint guard)."""
+STUDENTS = ("v2", "v3", "prior", "random")
+
+
+def _prior_board(train_rows: list[dict], core_words: list[str], k: int,
+                 k_dyn: int) -> list[str]:
+    """Teacher-frequency prior: the k_dyn most frequent DYNAMIC teacher words
+    on the TRAINING split, pinned behind the core words. Same board for every
+    row — the strongest context-free baseline."""
+    from collections import Counter
+    from evaluation.phase4 import data as d
+    core = {w.lower() for w in core_words}
+    c: Counter = Counter()
+    for r in train_rows:
+        for w in r["board"]:
+            if w.lower() not in core:
+                c[w.lower()] += 1
+    return d.assemble_board(core_words, [w for w, _ in c.most_common(k_dyn)], k)
+
+
+def board_builder(student: str = "v2", split_key: str = "test"):
+    """(board_fn(row) -> board, held_rows, meta) for one student. Shared by
+    collect_pairs (the breakdown) and gates_for (the Phase-4 gate code).
+
+    student:
+      v2     — the served closed-vocabulary MLP, built exactly as evaluate.py
+               builds it (same checkpoint, infer.student_board, split guard);
+      v3     — the open-vocabulary bi-encoder (evaluate_biencoder.load_v3,
+               infer_biencoder.student_board). Same held-out rows: the test
+               partition of splits_biencoder.json equals splits.json's. Same
+               policy: infer_biencoder imports HEDGE_CAP and the answer reserve
+               from infer.py;
+      prior  — the teacher-frequency prior board (see _prior_board);
+      random — core words + k_dyn words drawn from the v2 vocabulary, seed 0,
+               a fresh draw per row.
+    """
     import yaml
+    from evaluation.phase4 import data as d
     from evaluation.phase4 import evaluate as ev
 
+    if student not in STUDENTS:
+        raise ValueError(f"student must be one of {STUDENTS}")
     cfg = yaml.safe_load((HERE / "config.yaml").read_text())
     k = int(cfg["board"]["k"])
-    model, vocab, core_words, k_dyn = ev.load_student()
+    k_dyn = int(cfg["board"]["k_dyn"])
+    vocab, _ = d.load_vocab()
+    core_words = list(d.GUARANTEED_CORE)
     held = ev._held_out_rows(split_key=split_key)
-    pairs = []
-    for r in held:
-        sb = ev.student_board(model, vocab, r["scene"], r["transcript"],
-                              r.get("is_question", False), k, k_dyn, core_words)
-        pairs.append((list(sb), list(r["board"])))
     meta = {"n_rows": len(held), "vocab": len(vocab), "k": k, "k_dyn": k_dyn,
-            "core_words": list(core_words), "split": split_key}
+            "core_words": core_words, "split": split_key, "student": student}
+
+    if student == "v2":
+        model, vocab, core_words, k_dyn = ev.load_student()
+        meta.update(core_words=list(core_words), k_dyn=k_dyn)
+
+        def board(r):
+            return ev.student_board(model, vocab, r["scene"], r["transcript"],
+                                    r.get("is_question", False), k, k_dyn, core_words)
+    elif student == "v3":
+        from evaluation.phase4 import evaluate_biencoder as evb
+        from evaluation.phase4 import infer_biencoder as ib
+        model, index, ck = evb.load_v3()
+        meta["bank_sha"] = ck.get("bank_sha")
+
+        def board(r):
+            return ib.student_board(model, index, r.get("scene") or "",
+                                    r.get("transcript") or "",
+                                    r.get("is_question", False), k, k_dyn, core_words)
+    elif student == "prior":
+        train_rows = ev._held_out_rows(split_key="train")
+        fixed = _prior_board(train_rows, core_words, k, k_dyn)
+        meta["prior_board"] = fixed
+
+        def board(r):
+            return list(fixed)
+    else:  # random
+        rng = np.random.default_rng(0)
+        pool = [w for w in vocab if w.lower() not in {c.lower() for c in core_words}]
+
+        def board(r):
+            pick = [pool[i] for i in rng.choice(len(pool), size=k_dyn, replace=False)]
+            return d.assemble_board(core_words, pick, k)
+
+    return board, held, meta
+
+
+def collect_pairs(split_key: str = "test",
+                  student: str = "v2") -> tuple[list[tuple[list[str], list[str]]], dict]:
+    """(student_board, teacher_board) for every held-out row (see board_builder)."""
+    board, held, meta = board_builder(student, split_key)
+    pairs = [(list(board(r)), list(r["board"])) for r in held]
     return pairs, meta
+
+
+def gates_for(student: str = "v2", split_key: str = "test") -> dict:
+    """Run the UNCHANGED Phase-4 held-out gate code (evaluate.held_out_eval)
+    over one student's boards, so a baseline board is scored by exactly the
+    ruler the served student is scored by. No LLM: coverage-of-intent is the
+    lexical/embedding rule of metrics3 against the authored acceptable moves."""
+    from evaluation.phase4 import evaluate as ev
+    board, held, meta = board_builder(student, split_key)
+
+    def board_fn(scene, transcript, is_q):
+        return board({"scene": scene, "transcript": transcript, "is_question": is_q})
+    res = ev.held_out_eval(None, None, meta["k"], meta["k_dyn"], meta["core_words"],
+                           board_fn=board_fn, split_key=split_key)
+    dr, ag, cov = res["diversity_retention"], res["agreement"], res["coverage_of_intent"]
+    return {
+        "student": student,
+        "distinct_functions": dr["student_distinct_functions"],
+        "teacher_distinct_functions": dr["teacher_distinct_functions"],
+        "retention_ratio": dr["retention_ratio"],
+        "same_function_pair": dr["student_same_function_pair"],
+        "teacher_same_function_pair": dr["teacher_same_function_pair"],
+        "near_dup": dr["student_near_dup"],
+        "board_variety": dr["board_variety"],
+        "dynamic_overlap": ag["dynamic_overlap"],
+        "coverage_dynamic": cov["student_dynamic"],
+        "teacher_coverage_dynamic": cov["teacher_dynamic"],
+        "coverage_margin": cov["margin"],
+        "n_scored_dynamic": cov["n_scored_dynamic"],
+    }
 
 
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--split", default="test")
-    p.add_argument("--out", default=str(OUT))
+    p.add_argument("--student", default="v2", choices=STUDENTS)
+    p.add_argument("--out", default=None,
+                   help="output JSON (default function_transfer.json for v2, "
+                        "function_transfer_<student>.json otherwise)")
+    p.add_argument("--gates", action="store_true",
+                   help="score this student with the unchanged Phase-4 gate code "
+                        "and write function_transfer_gates_<student>.json")
     p.add_argument("--words", action="store_true",
                    help="also print per-function teacher/student words and "
                         "representability counts (no JSON written)")
     args = p.parse_args()
-    pairs, meta = collect_pairs(args.split)
+    if args.out is None:
+        args.out = str(OUT if args.student == "v2"
+                       else HERE / f"function_transfer_{args.student}.json")
+    if args.gates:
+        g = gates_for(args.student, args.split)
+        out = HERE / f"function_transfer_gates_{args.student}.json"
+        out.write_text(json.dumps(g, indent=2))
+        print(json.dumps(g, indent=2))
+        print(f"wrote {out}")
+        return 0
+    pairs, meta = collect_pairs(args.split, args.student)
     if args.words:
         from evaluation.phase4 import data as d
         vocab, _ = d.load_vocab()

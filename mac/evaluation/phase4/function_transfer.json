@@ -149,6 +149,107 @@
       "lexical_overlap": 0.15
     }
   },
+  "confusion_dynamic_slots": {
+    "question-back": {
+      "question-back": 0,
+      "specific-answer": 1,
+      "I-dont-know": 1,
+      "request-help": 1,
+      "comment": 0,
+      "refuse/redirect": 0,
+      "emotion": 0,
+      "request-clarification": 0,
+      "social": 0
+    },
+    "specific-answer": {
+      "question-back": 0,
+      "specific-answer": 6,
+      "I-dont-know": 3,
+      "request-help": 4,
+      "comment": 7,
+      "refuse/redirect": 2,
+      "emotion": 2,
+      "request-clarification": 0,
+      "social": 2
+    },
+    "I-dont-know": {
+      "question-back": 0,
+      "specific-answer": 6,
+      "I-dont-know": 1,
+      "request-help": 12,
+      "comment": 14,
+      "refuse/redirect": 5,
+      "emotion": 2,
+      "request-clarification": 0,
+      "social": 0
+    },
+    "request-help": {
+      "question-back": 2,
+      "specific-answer": 2,
+      "I-dont-know": 2,
+      "request-help": 8,
+      "comment": 9,
+      "refuse/redirect": 6,
+      "emotion": 3,
+      "request-clarification": 1,
+      "social": 6
+    },
+    "comment": {
+      "question-back": 6,
+      "specific-answer": 5,
+      "I-dont-know": 0,
+      "request-help": 11,
+      "comment": 12,
+      "refuse/redirect": 8,
+      "emotion": 2,
+      "request-clarification": 4,
+      "social": 7
+    },
+    "refuse/redirect": {
+      "question-back": 0,
+      "specific-answer": 5,
+      "I-dont-know": 3,
+      "request-help": 4,
+      "comment": 7,
+      "refuse/redirect": 6,
+      "emotion": 0,
+      "request-clarification": 1,
+      "social": 0
+    },
+    "emotion": {
+      "question-back": 2,
+      "specific-answer": 3,
+      "I-dont-know": 2,
+      "request-help": 9,
+      "comment": 12,
+      "refuse/redirect": 8,
+      "emotion": 4,
+      "request-clarification": 1,
+      "social": 1
+    },
+    "request-clarification": {
+      "question-back": 0,
+      "specific-answer": 1,
+      "I-dont-know": 0,
+      "request-help": 0,
+      "comment": 0,
+      "refuse/redirect": 0,
+      "emotion": 0,
+      "request-clarification": 0,
+      "social": 0
+    },
+    "social": {
+      "question-back": 1,
+      "specific-answer": 1,
+      "I-dont-know": 1,
+      "request-help": 5,
+      "comment": 5,
+      "refuse/redirect": 0,
+      "emotion": 2,
+      "request-clarification": 1,
+      "social": 4
+    }
+  },
   "meta": {
     "n_rows": 84,
     "vocab": 95,
@@ -161,7 +262,8 @@
       "wait"
     ],
     "split": "test",
-    "generated": "2026-09-02 13:10:15",
+    "student": "v2",
+    "generated": "2026-09-02 14:48:44",
     "labeller": "taxonomy.classify_functions (MiniLM nearest exemplar)"
   }
 }

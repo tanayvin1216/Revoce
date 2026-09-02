@@ -125,3 +125,24 @@ def test_word_breakdown_representability():
     assert wb["A"]["teacher_top"] == [("apple", 1)]
     assert wb["A"]["student_top"][0] == ("apple", 1)
     assert wb["B"]["teacher_items"] == 0
+
+
+def test_confusion_over_paired_dynamic_slots():
+    # core occupies slots 1-4; dynamic slots 5-7 are paired by position.
+    teacher = ["yes", "no", "I need help", "wait", "sad", "run", "apple"]   # C, B, A
+    student = ["yes", "no", "I need help", "wait", "pear", "walk", "glad"]  # A, B, C
+    r = _res([(student, teacher)])
+    c = r["confusion_dynamic_slots"]
+    assert c["C"]["A"] == 1 and c["B"]["B"] == 1 and c["A"]["C"] == 1
+    assert sum(sum(row.values()) for row in c.values()) == 3
+    assert "confusion over paired dynamic slots" in ft.markdown(r)
+
+
+def test_prior_board_is_most_frequent_training_words():
+    rows = [{"board": ["yes", "no", "I need help", "wait", "apple", "run", "sad"]},
+            {"board": ["yes", "no", "I need help", "wait", "apple", "run", "glad"]},
+            {"board": ["yes", "no", "I need help", "wait", "apple", "blue", "pear"]}]
+    b = ft._prior_board(rows, CORE, k=7, k_dyn=3)
+    assert b[:4] == CORE
+    assert b[4] == "apple" and b[5] == "run"
+    assert len(b) == 7
