@@ -109,3 +109,19 @@ def test_empty_input():
     r = _res([])
     assert r["n_heldout"] == 0
     assert r["overall"]["retention_ratio"] is None
+
+
+def test_word_breakdown_representability():
+    teacher = ["yes", "no", "I need help", "wait", "sad", "glad", "apple"]
+    student = ["yes", "no", "I need help", "wait", "apple", "pear", "blue"]
+    vocab = ["apple", "glad"]
+    canonical = {"sad": "glad"}          # sad merged into glad at dedup time
+    wb = ft.word_breakdown([(student, teacher)], label, CORE, vocab, canonical,
+                           k=7, functions=FUNCS)
+    assert wb["C"]["teacher_items"] == 2 and wb["C"]["teacher_distinct"] == 2
+    assert wb["C"]["representable_direct"] == 1        # glad
+    assert wb["C"]["representable_via_canonical"] == 1  # sad -> glad
+    assert wb["C"]["student_top"] == []
+    assert wb["A"]["teacher_top"] == [("apple", 1)]
+    assert wb["A"]["student_top"][0] == ("apple", 1)
+    assert wb["B"]["teacher_items"] == 0

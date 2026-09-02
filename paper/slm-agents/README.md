@@ -16,7 +16,7 @@ appendix after the body), double-blind, non-archival.
 | file | purpose |
 |---|---|
 | `main.tex` | the paper (single file; style file embedded; bibliography inline) |
-| `main.pdf` | last local build (6 pages: body ends on p.4, Limitations + refs + appendix from p.5) |
+| `main.pdf` | last local build (see the build note below for the current page layout) |
 
 ## Build
 
@@ -25,7 +25,7 @@ cd paper/slm-agents
 tectonic main.tex
 ```
 
-Body currently ends on page 4 of 6, so there is about a page of slack under the 6-page limit.
+Body (everything before References) currently ends on page 5 of 6; check the page count after every edit.
 
 ## Where the numbers come from
 
@@ -44,14 +44,14 @@ values (retention 0.953, dynamic_overlap 0.067, full overlap 0.594) exactly. Uni
 |---|---|
 | J_F 0.678 [0.650, 0.707]; J_W 0.032 [0.015, 0.052] | §I Jaccard rows |
 | Table 1 (presence / retention / CI / slots / lexical overlap) | §I per-function rows |
-| 35 of 40 I-dont-know items representable; 38 distinct emotion phrases, 14 representable | §I "where the two lost functions' teacher words live" |
+| 35 of 40 I-dont-know items representable; 38 distinct emotion phrases, 14 representable; "I'm not hungry" ×5, "I'm feeling a bit anxious" ×4 | §I "where the two lost functions' teacher words live" (`function_transfer.py --words`) |
 | Appendix gate table (0.953, 0.0/0.0006, 0.1893/0.1735, 0.952, 0.789/0.873, 0.067, 10.1 ms / 7.05 s) | §0a |
 
 Do not quote numbers from any other document.
 
 ## Pre-submission checklist
 
-- [ ] Resolve or delete every `\todo{}` (none as of this draft) and the `\newcommand{\todo}` line.
+- [ ] No `\todo{}` markers remain (the helper macro has been removed).
 - [ ] Resolve the `% VERIFY` in the bibliography (Qwen2.5-VL arXiv id / authors).
 - [ ] Anonymity sweep: `grep -i voicelink main.tex` returns nothing (it does); no repo URL, no
       names, no identifying file paths — appendix included.
@@ -69,4 +69,5 @@ Shares only bibliography entries (MMR, MiniLM, Qwen2.5-VL, Hinton) and the appen
 table with `paper/axiom/` and `paper/odi/`; no body text is shared. The AXIOM paper's ceiling
 result is referred to as "a companion analysis (anonymised)". The NEmo paper
 (`paper/nemo/`, on `pivot/neuro-symbolic`) owns the policy-ablation claim; this paper only
-observes that the hedge cap explains the I-dont-know loss and does not ablate it.
+observes that the hedge cap explains the I-dont-know loss, attributes it to the symbolic layer,
+and cites the companion ablation as consistent rather than ablating anything itself.

@@ -459,7 +459,7 @@
 
 \documentclass{article}
 \usepackage[dblblindworkshop]{neurips_2026}            % anonymous by default; [final] for camera-ready
-\workshoptitle{SLM-Agents: SLMs for Agentic Systems}
+\workshoptitle{1st Workshop on SLMs for Agentic Systems}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -472,9 +472,6 @@
 \usepackage{microtype}
 \usepackage{xcolor}
 
-% Drafting helper -- every \todo must be resolved or deleted before submission.
-\newcommand{\todo}[1]{\textcolor{red}{[\textbf{TODO:} #1]}}
-
 \title{Function Survives Distillation, Lexis Does Not:\\What a Small Student Keeps from an LLM Vocabulary Ranker}
 
 \author{Anonymous Author(s)\\Affiliation\\\texttt{email}}
@@ -486,9 +483,10 @@
 Agentic systems that must act within a conversational turn on-device often
 replace an LLM component with a small distilled student. The usual question,
 ``how closely does the student agree with the teacher?'', has, we show, two
-answers that point in opposite directions. In a real-time assistive-communication
-agent, an LLM ranks candidate words for a ten-slot communication board; a
-769-dimensional MLP student over sentence embeddings replaces it at
+answers that point in opposite directions. In a real-time augmentative and
+alternative communication (AAC) agent, an LLM ranks candidate words for a
+ten-slot communication board; a 769-dimensional multilayer-perceptron (MLP)
+student over sentence embeddings replaces it at
 ${\sim}10$\,ms against the teacher's 7\,s. On 84 held-out contexts the student
 reproduces the teacher's \emph{communicative-function} structure almost
 exactly---per-board function-set agreement 0.678 (95\,\% CI 0.650--0.707),
@@ -500,7 +498,7 @@ both invisible to aggregate metrics: epistemic hedges (``I'm not sure'') are
 fully representable but are capped by a symbolic selection policy, whereas
 feeling statements are long-tail (38 distinct phrases in 42 slots, 14
 representable) and are lost in the label space. We argue that this
-function/lexis split is the natural decomposition for SLM-based agents---a
+function/lexis split is the natural decomposition for agents built on small language models (SLMs)---a
 student for \emph{what kind} of move to offer, a symbolic policy for
 \emph{which} to show, and an open, context-reading path for the specific
 words---and that agent evaluations should report the two agreements
@@ -522,17 +520,17 @@ a judge's preference. For generation-like tasks this single number hides a
 distinction that matters to an agent: the \emph{function} of an output (an
 answer, a refusal, a request for clarification) and its \emph{lexical form}
 (the particular words) are different things, are learned at different rates,
-and fail for different reasons. We measure them separately in one deployed
-setting and find that they disagree by an order of magnitude.
+and fail for different reasons. We measure them separately in one working
+system (team-only use) and find that they disagree by an order of magnitude.
 
-Our setting is an assistive-communication agent for non-speaking users. A
+Our setting is an AAC agent for non-speaking users. A
 wearable senses the conversation around the user; the agent must place ten
 words on a touch board within the time a conversational turn stays open.
 The teacher is an LLM pipeline; the student is a two-layer MLP over sentence
-embeddings with a 94-way output head that runs in about ten milliseconds. The
-student passes its diversity gate (it keeps 95\,\% of the teacher's distinct
-communicative functions) and its speed gate, and it agrees with the teacher's
-word choices 6.7\,\% of the time. Both numbers were known. What was not known
+embeddings with a 95-way output head that runs in about ten milliseconds. The
+student passes its distinct-functions gate (retention 0.953) and its speed
+gate, fails its same-function-pair gate (\S\ref{sec:setting}), and agrees
+with the teacher's word choices 6.7\,\% of the time. Both numbers were known. What was not known
 is \emph{which} functions transfer, whether the low lexical agreement is
 uniform or concentrated, and whether the two losses that do exist come from
 the student, its label space, or the selection policy around it.
@@ -542,17 +540,18 @@ teacher's own communicative-function taxonomy (\S\ref{sec:method}), showing
 function-set agreement of 0.678 against word-set agreement of 0.032 on the
 same boards (\S\ref{sec:results}). (2)~A diagnosis of the two under-served
 functions with two distinct causes---symbolic policy versus label space---that
-no aggregate metric distinguishes (\S\ref{sec:causes}). (3)~A design argument
-for SLM-based agents that follows from the split: student for function,
-symbolic policy for selection, open context-reading path for lexis
-(\S\ref{sec:discussion}), and a corresponding evaluation recommendation.
+no aggregate metric distinguishes (\S\ref{sec:causes}). (3)~An evaluation
+recommendation that follows from the split---report function-level and
+lexical agreement separately, with a per-function breakdown---and a reading,
+in its light, of the companion design (student for function, symbolic policy
+for selection, open path for lexis; anonymised) (\S\ref{sec:discussion}).
 
 %------------------------------------------------------------------------------
 \section{The agent and its student}
 \label{sec:setting}
 \paragraph{Task.} Given a one-sentence scene description (from a small
 vision--language model~\citep{qwen25vl}) and the last utterance of the
-conversation (from local ASR), compose a ten-slot communication board: four
+conversation (from local automatic speech recognition, ASR), compose a ten-slot communication board: four
 pinned safety words (\emph{yes}, \emph{no}, \emph{I need help}, \emph{wait})
 and six \emph{dynamic} words chosen for the moment. The board is judged on its
 top-7 visible window. The system is fully local; nothing leaves the host.
@@ -567,15 +566,15 @@ partition. All results below are on the 84 held-out rows.
 \paragraph{Student.} Input is a 769-d vector: 384-d MiniLM~\citep{minilm}
 embeddings of the scene and of the transcript plus an \texttt{is\_question}
 bit. The network is LayerNorm $\to$ Linear($769{\to}192$) $\to$ ReLU $\to$
-Dropout(0.3) $\to$ Linear($192{\to}94$). The 94 labels are the teacher's
+Dropout(0.3) $\to$ Linear($192{\to}95$). The 95 labels are the teacher's
 dynamic words with frequency $\ge3$, embedding-deduplicated at cosine 0.80.
 Crucially, the student's logits are \emph{not} the board: they form a
 candidate pool over which the teacher's own MMR selection is re-run, with a
 symbolic cap of one epistemic hedge per board and a reserve of two answer
 slots when the partner asked a question. An earlier version that showed the
 student's raw argmax was measured useless (a wall of hedges); the symbolic
-policy is what made the student usable, and we return to this in
-\S\ref{sec:causes}.
+policy is what made the student usable (reported in companion work,
+anonymised), and we return to this in \S\ref{sec:causes}.
 
 \paragraph{Gates.} The committed student's held-out gates are reproduced in
 Appendix~\ref{app:gates}: distinct-functions retention 0.953, near-duplicate
@@ -614,7 +613,7 @@ fraction of boards whose top-7 contains at least one item labelled $f$
 mean number of top-7 items labelled $f$; and \emph{lexical overlap}, the
 fraction of the teacher's dynamic top-7 items labelled $f$ that appear
 anywhere on the student's ten-word board---the per-function analogue of the
-gate's \texttt{dynamic\_overlap}, which uses the same lenient lookup. The
+gate's dynamic-word overlap, which uses the same lenient lookup. The
 presence margin (student minus teacher) gets a paired bootstrap interval, the
 same construction the gates use, so a per-function loss is only claimed when
 its interval excludes zero.
@@ -677,7 +676,7 @@ Lexis    & full top-7 overlap (inflated by the four pinned words) & 0.594 \\
 \paragraph{Function transfers; lexis does not.} Table~\ref{tab:axes} is the
 headline. On the same boards, the student shares two-thirds of the teacher's
 function set ($J_F=0.678$) and three per cent of its dynamic words
-($J_W=0.032$). The aggregate diversity gate (retention 0.953) and the aggregate
+($J_W=0.032$). The aggregate distinct-functions gate (retention 0.953) and the aggregate
 agreement number (0.067) were both already known; the per-board Jaccard pair
 makes the contrast paired and interval-bounded, and shows that it is not an
 artefact of averaging: the intervals do not come within an order of magnitude
@@ -686,7 +685,7 @@ of each other.
 \paragraph{Lexical overlap is uniformly low.} Table~\ref{tab:perfn}, last
 column, shows that the 6.7\,\% is not one function dragging down an otherwise
 faithful student. Of the 252 dynamic items the teacher placed in its top-7
-windows, no function with more than three items exceeds 0.15 overlap;
+windows, every function with more than three items reaches at most 0.15 overlap;
 \emph{comment}, the largest cell (55 items), is at 0.055, and \emph{emotion}
 at 0.024. The student is offering the same kinds of move with different
 words almost everywhere.
@@ -709,17 +708,17 @@ teacher's actual words for each shows that they fail for different reasons.
 \paragraph{\emph{I-don't-know}: the label space has the words; the policy
 withholds them.} The teacher's 40 \emph{I-don't-know} items are 15 distinct
 phrases, dominated by ``I am not sure'' (16) and its variants; 35 of the 40
-are representable in the student's 94-label space (9 directly, 26 through the
+are representable in the student's 95-label space (9 directly, 26 through the
 deduplication map that merges the variants). The student can emit them, and
 its raw logits do: the earlier ``hedge wall'' was precisely this cluster
 crowding the board. The symbolic policy around the student caps the hedge
 cluster at one phrase per board and, when the partner asked a question,
 reserves two slots for non-hedge answers. The student's hedge logits rarely win
-the one slot that remains. The loss of this function is therefore a
-\emph{design decision made in the symbolic layer}, taken because a board that
-says ``I'm not sure'' three ways offers the user nothing; it is not a failure
-of distillation, and retraining the student would not (and should not) recover
-it.
+the one slot that remains. We attribute the loss to the symbolic layer rather
+than to distillation: the words are representable and the policy caps them,
+because a board that says ``I'm not sure'' three ways offers the user nothing.
+A companion ablation (anonymised) that removes the policy over the same logits
+is consistent with this reading.
 
 \paragraph{\emph{Emotion}: the label space does not have the words.} The
 teacher's 42 \emph{emotion} items are 38 distinct phrases (``I slept well'',
@@ -748,8 +747,8 @@ distilled student is good at the part that generalises across contexts: which
 generalise: the specific phrase this scene calls for. The symbolic policy is
 the right owner of decisions that are about the \emph{board} rather than about
 any word---diversity, hedge caps, answer quotas---because they are cheap,
-inspectable, and, as \S\ref{sec:causes} shows, they shape function presence
-more than the student's weights do. What remains, the long tail of specific
+inspectable, and, for at least one function (\S\ref{sec:causes}), they decide
+presence outright. What remains, the long tail of specific
 words, cannot come from any fixed label space and must be read from the
 context at inference time; in this system an open path extracts candidate
 spans from the scene and question for deictic and alternative questions, and
@@ -771,7 +770,8 @@ gates already use, so that the analysis and the gates cannot disagree.
 an MLP. A small language model trained to imitate the teacher's boards would
 face the same question, and we would expect the same answer for the same
 reason: function is a low-entropy signal that is consistent across the corpus,
-lexis is a high-entropy signal that is mostly one-off. Any student that has
+lexis is a high-entropy signal that is mostly one-off, and, for the reason the
+companion representability analysis (anonymised) gives, any student that has
 to ration capacity by frequency will keep the first and lose the second.
 
 %------------------------------------------------------------------------------

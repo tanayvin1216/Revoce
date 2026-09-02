@@ -173,6 +173,45 @@ def transfer_table(pairs: Sequence[tuple[list[str], list[str]]],
     }
 
 
+def word_breakdown(pairs: Sequence[tuple[list[str], list[str]]], label: Labeller,
+                   core_words: Sequence[str], vocab: Sequence[str],
+                   canonical: dict[str, str], k: int = METRIC_K,
+                   functions: Sequence[str] = FUNCTIONS, top: int = 8) -> dict:
+    """Per function: the teacher's and student's DYNAMIC top-k words, and how
+    many of the teacher's are representable in the student's label space
+    (directly, or through the canonical-merge map). This is what separates a
+    policy loss (words representable, policy withholds them) from a label-space
+    loss (words not representable)."""
+    from collections import Counter
+    core = {w.lower() for w in core_words}
+    vs = {w.lower() for w in vocab}
+    tw = {f: Counter() for f in functions}
+    sw = {f: Counter() for f in functions}
+    for sb, tb in pairs:
+        for board, bag in ((tb, tw), (sb, sw)):
+            topw = list(board[:k])
+            labs = label(topw) if topw else []
+            for w, l in zip(topw, labs):
+                if w.lower() not in core and l in bag:
+                    bag[l][w.lower()] += 1
+    out = {}
+    for f in functions:
+        items = tw[f]
+        direct = sum(c for w, c in items.items() if w in vs)
+        via = sum(c for w, c in items.items()
+                  if w not in vs and canonical.get(w, w) in vs)
+        out[f] = {
+            "teacher_items": int(sum(items.values())),
+            "teacher_distinct": len(items),
+            "representable_direct": int(direct),
+            "representable_via_canonical": int(via),
+            "representable": int(direct + via),
+            "teacher_top": items.most_common(top),
+            "student_top": sw[f].most_common(top),
+        }
+    return out
+
+
 def markdown(res: dict) -> str:
     o = res["overall"]
     lines = [
@@ -237,8 +276,24 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--split", default="test")
     p.add_argument("--out", default=str(OUT))
+    p.add_argument("--words", action="store_true",
+                   help="also print per-function teacher/student words and "
+                        "representability counts (no JSON written)")
     args = p.parse_args()
     pairs, meta = collect_pairs(args.split)
+    if args.words:
+        from evaluation.phase4 import data as d
+        vocab, _ = d.load_vocab()
+        wb = word_breakdown(pairs, _embedding_labeller(), meta["core_words"],
+                            vocab, d.load_canonical())
+        for f, r in wb.items():
+            print(f"== {f}: teacher items {r['teacher_items']}, distinct "
+                  f"{r['teacher_distinct']}, representable {r['representable']} "
+                  f"({r['representable_direct']} direct + "
+                  f"{r['representable_via_canonical']} via canonical)")
+            print("   teacher:", r["teacher_top"])
+            print("   student:", r["student_top"])
+        return 0
     res = transfer_table(pairs, _embedding_labeller(), meta["core_words"])
     res["meta"] = {**meta, "generated": time.strftime("%Y-%m-%d %H:%M:%S"),
                    "labeller": "taxonomy.classify_functions (MiniLM nearest exemplar)"}
