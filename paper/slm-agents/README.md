@@ -25,7 +25,7 @@ cd paper/slm-agents
 tectonic main.tex
 ```
 
-The PDF is 7 pages: the body (everything before References) ends on page 5, within the 6-content-page limit; References and the appendix run to page 7. Check after every edit.
+The PDF is 7 pages: the body (everything before References) ends at the foot of page 5, within the 6-content-page limit; References begin on page 6 and the appendix runs to page 7. Verified 2026-09-03: letter paper (612x792 pt), all fonts embedded Type 1, `[dblblindworkshop]` on the unmodified style (`neurips_2026.sty` in this folder is byte-identical to `paper/common/`). Check after every edit.
 
 ## Where the numbers come from
 
