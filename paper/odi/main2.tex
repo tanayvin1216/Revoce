@@ -1,0 +1,951 @@
+% ---------------------------------------------------------------------
+% The NeurIPS 2026 style file is embedded below so this single file
+% compiles anywhere (Overleaf included) with no separate upload.
+% DO NOT DELETE THIS BLOCK: it writes neurips_2026.sty at compile time.
+% ---------------------------------------------------------------------
+\begin{filecontents*}[overwrite]{neurips_2026.sty}
+% partial rewrite of the LaTeX2e package for submissions to the
+% Conference on Neural Information Processing Systems (NeurIPS):
+% Roman Garnett (garnett@wustl.edu) and the many authors of
+% nips15submit_e.sty, including MK and drstrip@sandia
+% last revision: January 2026
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{neurips_2026}[2026-01-29 NeurIPS 2026 submission/camera-ready style file]
+
+\newif\if@neuripsfinal\@neuripsfinalfalse
+\DeclareOption{final}{
+  \@neuripsfinaltrue
+  \@anonymousfalse
+}
+
+\newif\if@natbib\@natbibtrue
+\DeclareOption{nonatbib}{
+  \@natbibfalse
+}
+
+\newif\if@preprint\@preprintfalse
+\DeclareOption{preprint}{
+  \@preprinttrue
+  \@anonymousfalse
+}
+
+\newif\if@main\@maintrue
+\DeclareOption{main}{
+  \@maintrue
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear).}
+}
+\newif\if@position\@positionfalse
+\DeclareOption{position}{
+  \@positiontrue
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Position Paper Track.}
+}
+\newif\if@eandd\@eanddfalse
+\DeclareOption{eandd}{
+  \@eanddtrue
+\if@neuripsfinal\@anonymousfalse\else\if@preprint\@anonymousfalse\else\@anonymoustrue\fi\fi
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Track on Evaluations and Datasets.} 
+}
+\newif\if@creativeai\@creativeaifalse
+\DeclareOption{creativeai}{
+  \@creativeaitrue
+  \@anonymousfalse
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Creative AI Track.}
+}
+\newif\if@education\@educationfalse
+\DeclareOption{education}{
+  \@educationtrue
+  \@anonymousfalse
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Education Track.}
+}
+
+\newif\if@anonymous\@anonymoustrue
+
+\newcommand{\@workshoptitle}{}
+\newcommand{\workshoptitle}[1]{\renewcommand{\@workshoptitle}{#1}}
+
+\newif\if@workshop\@workshopfalse
+\DeclareOption{sglblindworkshop}{
+  \@workshoptrue
+  \@anonymousfalse
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Workshop: \@workshoptitle.}
+}
+\DeclareOption{dblblindworkshop}{
+  \@workshoptrue
+  \newcommand{\@trackname}{\@neuripsordinal\ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Workshop: \@workshoptitle.}
+}
+\DeclareOption{nonanonymous}{
+  \@anonymousfalse
+}
+
+\ProcessOptions\relax
+
+\renewcommand{\rmdefault}{ptm}
+\renewcommand{\sfdefault}{phv}
+
+\newcommand{\@neuripsordinal}{40th}
+\newcommand{\@neuripsyear}{2026}
+\newcommand{\@neuripslocation}{Sydney}
+
+\usepackage{environ}
+\newcommand{\acksection}{\section*{Acknowledgments and Disclosure of Funding}}
+\NewEnviron{ack}{%
+  \acksection
+  \BODY
+}
+
+\if@natbib
+  \RequirePackage{natbib}
+\fi
+
+\usepackage[verbose=true,letterpaper]{geometry}
+\AtBeginDocument{
+  \newgeometry{
+    textheight=9in,
+    textwidth=5.5in,
+    top=1in,
+    headheight=12pt,
+    headsep=25pt,
+    footskip=30pt
+  }
+  \@ifpackageloaded{fullpage}
+    {\PackageWarning{neurips_2026}{fullpage package not allowed! Overwriting formatting.}}
+    {}
+}
+
+\widowpenalty=10000
+\clubpenalty=10000
+\flushbottom
+\sloppy
+
+\renewcommand{\normalsize}{%
+  \@setfontsize\normalsize\@xpt\@xipt
+  \abovedisplayskip      7\p@ \@plus 2\p@ \@minus 5\p@
+  \abovedisplayshortskip \z@ \@plus 3\p@
+  \belowdisplayskip      \abovedisplayskip
+  \belowdisplayshortskip 4\p@ \@plus 3\p@ \@minus 3\p@
+}
+\normalsize
+\renewcommand{\small}{%
+  \@setfontsize\small\@ixpt\@xpt
+  \abovedisplayskip      6\p@ \@plus 1.5\p@ \@minus 4\p@
+  \abovedisplayshortskip \z@  \@plus 2\p@
+  \belowdisplayskip      \abovedisplayskip
+  \belowdisplayshortskip 3\p@ \@plus 2\p@   \@minus 2\p@
+}
+\renewcommand{\footnotesize}{\@setfontsize\footnotesize\@ixpt\@xpt}
+\renewcommand{\scriptsize}{\@setfontsize\scriptsize\@viipt\@viiipt}
+\renewcommand{\tiny}{\@setfontsize\tiny\@vipt\@viipt}
+\renewcommand{\large}{\@setfontsize\large\@xiipt{14}}
+\renewcommand{\Large}{\@setfontsize\Large\@xivpt{16}}
+\renewcommand{\LARGE}{\@setfontsize\LARGE\@xviipt{20}}
+\renewcommand{\huge}{\@setfontsize\huge\@xxpt{23}}
+\renewcommand{\Huge}{\@setfontsize\Huge\@xxvpt{28}}
+
+\renewcommand{\tiny}{\fontsize{6pt}{7pt}\selectfont}
+\renewcommand{\scriptsize}{\fontsize{7pt}{8pt}\selectfont}
+\renewcommand{\footnotesize}{\fontsize{8pt}{9.5pt}\selectfont}
+
+\providecommand{\section}{}
+\renewcommand{\section}{%
+  \@startsection{section}{1}{\z@}%
+                {-2.0ex \@plus -0.5ex \@minus -0.2ex}%
+                { 1.5ex \@plus  0.3ex \@minus  0.2ex}%
+                {\large\bf\raggedright}%
+}
+\providecommand{\subsection}{}
+\renewcommand{\subsection}{%
+  \@startsection{subsection}{2}{\z@}%
+                {-1.8ex \@plus -0.5ex \@minus -0.2ex}%
+                { 0.8ex \@plus  0.2ex}%
+                {\normalsize\bf\raggedright}%
+}
+\providecommand{\subsubsection}{}
+\renewcommand{\subsubsection}{%
+  \@startsection{subsubsection}{3}{\z@}%
+                {-1.5ex \@plus -0.5ex \@minus -0.2ex}%
+                { 0.5ex \@plus  0.2ex}%
+                {\normalsize\bf\raggedright}%
+}
+\providecommand{\paragraph}{}
+\renewcommand{\paragraph}{%
+  \@startsection{paragraph}{4}{\z@}%
+                {1.5ex \@plus 0.5ex \@minus 0.2ex}%
+                {-1em}%
+                {\normalsize\bf}%
+}
+\providecommand{\subparagraph}{}
+\renewcommand{\subparagraph}{%
+  \@startsection{subparagraph}{5}{\z@}%
+                {1.5ex \@plus 0.5ex \@minus 0.2ex}%
+                {-1em}%
+                {\normalsize\bf}%
+}
+\providecommand{\subsubsubsection}{}
+\renewcommand{\subsubsubsection}{%
+  \vskip5pt{\noindent\normalsize\rm\raggedright}%
+}
+
+\renewcommand{\topfraction      }{0.85}
+\renewcommand{\bottomfraction   }{0.4}
+\renewcommand{\textfraction     }{0.1}
+\renewcommand{\floatpagefraction}{0.7}
+
+\newlength{\@neuripsabovecaptionskip}\setlength{\@neuripsabovecaptionskip}{7\p@}
+\newlength{\@neuripsbelowcaptionskip}\setlength{\@neuripsbelowcaptionskip}{\z@}
+
+\setlength{\abovecaptionskip}{\@neuripsabovecaptionskip}
+\setlength{\belowcaptionskip}{\@neuripsbelowcaptionskip}
+
+\renewenvironment{table}
+  {\setlength{\abovecaptionskip}{\@neuripsbelowcaptionskip}%
+   \setlength{\belowcaptionskip}{\@neuripsabovecaptionskip}%
+   \@float{table}}
+  {\end@float}
+
+\setlength{\footnotesep }{6.65\p@}
+\setlength{\skip\footins}{9\p@ \@plus 4\p@ \@minus 2\p@}
+\renewcommand{\footnoterule}{\kern-3\p@ \hrule width 12pc \kern 2.6\p@}
+\setcounter{footnote}{0}
+
+\setlength{\parindent}{\z@}
+\setlength{\parskip  }{5.5\p@}
+
+\setlength{\topsep       }{4\p@ \@plus 1\p@   \@minus 2\p@}
+\setlength{\partopsep    }{1\p@ \@plus 0.5\p@ \@minus 0.5\p@}
+\setlength{\itemsep      }{2\p@ \@plus 1\p@   \@minus 0.5\p@}
+\setlength{\parsep       }{2\p@ \@plus 1\p@   \@minus 0.5\p@}
+\setlength{\leftmargin   }{3pc}
+\setlength{\leftmargini  }{\leftmargin}
+\setlength{\leftmarginii }{2em}
+\setlength{\leftmarginiii}{1.5em}
+\setlength{\leftmarginiv }{1.0em}
+\setlength{\leftmarginv  }{0.5em}
+\def\@listi  {\leftmargin\leftmargini}
+\def\@listii {\leftmargin\leftmarginii
+              \labelwidth\leftmarginii
+              \advance\labelwidth-\labelsep
+              \topsep  2\p@ \@plus 1\p@    \@minus 0.5\p@
+              \parsep  1\p@ \@plus 0.5\p@ \@minus 0.5\p@
+              \itemsep \parsep}
+\def\@listiii{\leftmargin\leftmarginiii
+              \labelwidth\leftmarginiii
+              \advance\labelwidth-\labelsep
+              \topsep    1\p@ \@plus 0.5\p@ \@minus 0.5\p@
+              \parsep    \z@
+              \partopsep 0.5\p@ \@plus 0\p@ \@minus 0.5\p@
+              \itemsep \topsep}
+\def\@listiv {\leftmargin\leftmarginiv
+              \labelwidth\leftmarginiv
+              \advance\labelwidth-\labelsep}
+\def\@listv  {\leftmargin\leftmarginv
+              \labelwidth\leftmarginv
+              \advance\labelwidth-\labelsep}
+\def\@listvi {\leftmargin\leftmarginvi
+              \labelwidth\leftmarginvi
+              \advance\labelwidth-\labelsep}
+
+\providecommand{\maketitle}{}
+\renewcommand{\maketitle}{%
+  \par
+  \begingroup
+    \renewcommand{\thefootnote}{\fnsymbol{footnote}}
+    \renewcommand{\@makefnmark}{\hbox to \z@{$^{\@thefnmark}$\hss}}
+    \long\def\@makefntext##1{%
+      \parindent 1em\noindent
+      \hbox to 1.8em{\hss $\m@th ^{\@thefnmark}$}##1
+    }
+    \thispagestyle{empty}
+    \@maketitle
+    \@thanks
+    \@notice
+  \endgroup
+  \let\maketitle\relax
+  \let\thanks\relax
+}
+
+\newcommand{\@toptitlebar}{
+  \hrule height 4\p@
+  \vskip 0.25in
+  \vskip -\parskip%
+}
+\newcommand{\@bottomtitlebar}{
+  \vskip 0.29in
+  \vskip -\parskip
+  \hrule height 1\p@
+  \vskip 0.09in%
+}
+
+\providecommand{\@maketitle}{}
+\renewcommand{\@maketitle}{%
+  \vbox{%
+    \hsize\textwidth
+    \linewidth\hsize
+    \vskip 0.1in
+    \@toptitlebar
+    \centering
+    {\LARGE\bf \@title\par}
+    \@bottomtitlebar
+    \if@anonymous
+      \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}
+        Anonymous Author(s) \\
+        Affiliation \\
+        Address \\
+        \texttt{email} \\
+      \end{tabular}%
+    \else
+      \def\And{%
+        \end{tabular}\hfil\linebreak[0]\hfil%
+        \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\ignorespaces%
+      }
+      \def\AND{%
+        \end{tabular}\hfil\linebreak[4]\hfil%
+        \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\ignorespaces%
+      }
+      \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\@author\end{tabular}%
+    \fi
+    \vskip 0.3in \@minus 0.1in
+  }
+}
+
+\newcommand{\ftype@noticebox}{8}
+\newcommand{\@notice}{%
+  \enlargethispage{2\baselineskip}%
+  \@float{noticebox}[b]%
+    \footnotesize\@noticestring%
+  \end@float%
+}
+
+\renewenvironment{abstract}%
+{%
+  \vskip 0.075in%
+  \centerline%
+  {\large\bf Abstract}%
+  \vspace{0.5ex}%
+  \begin{quote}%
+}
+{
+  \par%
+  \end{quote}%
+  \vskip 1ex%
+}
+
+\newcommand{\answerYes}[1][]{\textcolor{blue}{[Yes]#1}}
+\newcommand{\answerNo}[1][]{\textcolor{orange}{[No]#1}}
+\newcommand{\answerNA}[1][]{\textcolor{gray}{[N/A]#1}}
+\newcommand{\answerTODO}[1][]{\textcolor{red}{\bf [TODO]}}
+\newcommand{\justificationTODO}[1][]{\textcolor{red}{\bf [TODO]}}
+
+\if@preprint
+  \newcommand{\@noticestring}{%
+    Preprint.%
+  }
+\else
+  \if@neuripsfinal
+    \newcommand{\@noticestring}{
+      \@trackname
+    }
+  \else
+    \newcommand{\@noticestring}{%
+      Submitted to \@neuripsordinal\/ Conference on Neural Information Processing Systems (NeurIPS \@neuripsyear). Do not distribute.%
+    }
+    \NewEnviron{hide}{}
+    \let\ack\hide
+    \let\endack\endhide
+    \RequirePackage{lineno}
+    \linenumbers
+    \AtBeginDocument{%
+      \@ifpackageloaded{amsmath}{%
+        \newcommand*\patchAmsMathEnvironmentForLineno[1]{%
+          \expandafter\let\csname old#1\expandafter\endcsname\csname #1\endcsname
+          \expandafter\let\csname oldend#1\expandafter\endcsname\csname end#1\endcsname
+          \renewenvironment{#1}%
+                          {\linenomath\csname old#1\endcsname}%
+                          {\csname oldend#1\endcsname\endlinenomath}%
+        }%
+        \newcommand*\patchBothAmsMathEnvironmentsForLineno[1]{%
+          \patchAmsMathEnvironmentForLineno{#1}%
+          \patchAmsMathEnvironmentForLineno{#1*}%
+        }%
+        \patchBothAmsMathEnvironmentsForLineno{equation}%
+        \patchBothAmsMathEnvironmentsForLineno{align}%
+        \patchBothAmsMathEnvironmentsForLineno{flalign}%
+        \patchBothAmsMathEnvironmentsForLineno{alignat}%
+        \patchBothAmsMathEnvironmentsForLineno{gather}%
+        \patchBothAmsMathEnvironmentsForLineno{multline}%
+      }
+      {}
+    }
+  \fi
+\fi
+
+\endinput
+\end{filecontents*}
+% ODI 2026 double-blind workshop revision (main2.tex, integration pass 2, 2026-09-05).
+% Every number is either a value from main.tex or a value from a revision analysis whose independent check
+% reports CONFIRMED or CONFIRMED_WITH_CAVEATS (I-02, I-02b, I-03, I-04, I-04b, I-05, I-05b, I-06, I-07, I-07b,
+% I-08, I-09, I-10, I-12, I-16, I-21); those lines carry "% from analyses/I-xx_result.md; checked in I-xx_check.md".
+% No test count is quoted (I-16_check.md: freeze-time run only). No pending or unsourced markers remain.
+% Archived (2026-08-23) latency figures are labelled archived and are never attached to the clean configuration.
+\documentclass{article}
+
+\usepackage[dblblindworkshop]{neurips_2026}          % anonymous by default; [final] for camera-ready
+\workshoptitle{On-Device Intelligence: Foundation Models under Real-World Constraints}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{array}
+
+\newcommand{\fn}[1]{\texttt{#1}}
+
+\title{Diversity-Preserving Local Vocabulary Selection\\
+for Context-Aware Augmentative Communication}
+\author{Anonymous Author(s)}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Context-aware augmentative and alternative communication (AAC) must offer useful choices within local compute limits. Our wearable--host--tablet prototype combines fixed-vocabulary scoring with pinned core entries, answer slots, a hedge cap and maximal marginal relevance (MMR).
+Across 120 frozen teacher pools, MMR adds 0.43 distinct function labels per seven-entry window (95\% CI 0.32--0.55) and 0.73 over six dynamic entries (0.58--0.88) versus relevance-only selection. % I-06_check.md
+Learned and no-learning candidate filters trade off by vocabulary and window without demonstrating a learned-head advantage. % I-02_check.md; I-02b_check.md
+A retrospective 95-entry control with training-only label preprocessing and calibration, served through OpenVINO with a mixed-precision INT8 head, covers 62/71 annotated rows against the teacher's 68/71; 90\% retention remains inconclusive. Its recorded Apple M4 board-construction median is 4.5\,ms after perception, with static embeddings warm under background load. % I-04b_check.md; I-10_check.md
+Benefit for AAC users remains untested.
+\end{abstract}
+
+% Related-work comparison checked against https://aclanthology.org/2021.acl-long.108.pdf sections 3.4--3.5
+% and https://shawnshenjx.github.io/files/Kwickchat.pdf section 10 (two judges, 400 sentences).
+\section{Introduction}
+AAC systems support people with complex communication needs through selectable words, symbols or utterances, the \emph{entries} of a displayed board. A fixed vocabulary may omit the response the conversation calls for, while generated suggestions can be redundant or misrepresent what a user wishes to say; a compact board should support different communicative functions, such as answering, asking for clarification and declining to respond.
+
+Context-aware AAC has drawn vocabulary from photographs \citep{fontana2021}, built context-sensitive tools \citep{kane2012}, expanded abbreviations \citep{cai2022}, generated sentences \citep{kwickchat2022} and predicted communication cards \citep{praact2024}; AAC users report tensions between reduced typing and control over generated language \citep{valencia2023}. Two approaches are closest to ours: \citet{fontana2021} derive photograph-based vocabulary by phrase clustering and frequency ranking, whereas we use transcript and scene context with explicit communicative-function constraints. KWickChat \citep{kwickchat2022} generates whole sentences from a bag of keywords with a context-conditioned language model and checked semantic consistency with two human judges over 400 sentences, whereas we select short fixed-vocabulary entries without run-time generation and have no equivalent validation. Our systems question is: \emph{what diversity, coverage and board-construction cost does local fixed-vocabulary selection achieve?}
+
+We study a ten-entry board with four pinned core entries and six dynamic entries. Our contributions are (1) a same-pool selector ablation showing that, with the pool, pinned entries and board size fixed, the MMR term alone raises function diversity, reported beside the confounded complete-policy comparison with direct LLM generation (Section~\ref{sec:slate}); % from analyses/I-06_result.md; checked in I-06_check.md
+(2) a hybrid ranker, learned scores feeding an explicit-constraint selector over a fixed vocabulary, with a controlled comparison of learned and no-learning candidate filters under that shared selector (Section~\ref{sec:distil}); % from analyses/I-02_result.md; checked in I-02_check.md
+and (3) an order-counterbalanced latency benchmark of the board-construction path, PyTorch against OpenVINO, on the configuration whose serving-function quality is measured (Section~\ref{sec:latency}). % from analyses/I-10_result.md; checked in I-10_check.md
+
+% Unchanged architecture/configuration constants: revision/audit_claude.md section 2.13; revision/audit_gpt.md; revision/issues_final.md I-08/I-11/I-17/I-23/I-27. Revision experiment values are sourced at their tables/paragraphs.
+\section{Local architecture and inference boundary}\label{sec:system}
+An ESP32-S3 wearable streams one VGA JPEG every 2\,s and 16\,kHz mono PCM over a WebSocket and performs no inference. The host transcribes with Whisper \fn{base.en} INT8 \citep{whisper} behind a voice activity detector, describes the scene with Qwen2.5-VL-3B \citep{qwen25vl} when a change detector triggers, and adds personal context (Appendix~\ref{app:hw}); model work runs in worker threads to keep scene generation off the audio path, and traffic stays within the local network. One function, \fn{rank\_vocabulary}, receives scene, transcript, personal context and a strategy and returns ranked entries; every strategy passes through it, and embedder and head runtimes are chosen by configuration (Appendix~\ref{app:repro}) without changing firmware or the interface. Buffers are ephemeral, personal context stays on the host, four core entries remain outside model control, and an utterance requires a user selection; access control, secure transport and bystander consent remain deployment requirements.
+
+\section{Diversity-first board selection}\label{sec:slate}
+\textbf{Policy.} A local Qwen2.5-3B-Instruct teacher generates candidates from a slot prompt covering nine communicative moves plus four topical phrases; a deterministic pool adds core entries, of which ``yes'', ``no'', ``I need help'' and ``wait'' are pinned. Selection uses maximal marginal relevance (MMR) \citep{mmr1998} over \fn{all-MiniLM-L6-v2} sentence embeddings \citep{minilm}, $s^*=\arg\max_{s\in C\setminus S}[\lambda\,\mathrm{rel}(s,c)-(1-\lambda)\max_{s'\in S}\mathrm{sim}(s,s')]$, where $C$ is the candidate pool, $S$ the set already chosen by the MMR pass, $c$ the context and $\mathrm{sim}$ cosine similarity; relevance is clipped cosine to a normalised context query (Appendix~\ref{app:train}). On questions, tagged answers may occupy up to five dynamic slots and are chosen with $\lambda=0.35$; the remaining slots are filled with $\lambda=0.6$, preferring an unseen function tag when scores tie within 0.02. Answer slots are reserved first; an MMR order over the whole pool is then filtered into the remaining slots, so MMR is a primitive the selector calls, not a greedy optimisation over the displayed board (Appendix~\ref{app:train}).
+
+\textbf{Protocol.} We use 120 synthetic scenarios (24 each in classroom, clinic, airport, dinner and direct-question settings) and score the whole board (@10), at most six entries after removing core entries (dyn@6), and the historical first-seven window (@7). % from analyses/I-03_result.md; checked in I-03_check.md
+Distinct functions counts nearest-exemplar MiniLM labels; near-duplicate pairs have cosine $\geq0.85$; coverage requires a window entry to match an authored acceptable move by word-boundary lexical overlap or cosine $\geq0.50$; lexical hit tests the gold utterance on the full board (Appendix~\ref{app:metrics}). Table~\ref{tab:selection}(a) compares two complete cached policies; direct LLM generation uses the same LLM without slot prompt, MMR or pinning and returned eight entries per board. Table~\ref{tab:selection}(b) is a same-pool ablation: one teacher pool per scenario was regenerated with the same model (greedy decoding, 2026-09-05), and three arms fill the six dynamic slots from that pool under the same four pinned entries and ten-entry board: relevance only (six highest clipped cosines), MMR ($\lambda=0.6$, no quota or tie-break) and the full shipped policy. % from analyses/I-06_result.md; checked in I-06_check.md
+
+\begin{table}[t]
+\centering\footnotesize
+\setlength{\tabcolsep}{4.5pt}\renewcommand{\arraystretch}{0.9}
+\caption{Board selection on 120 scenarios; near-duplicate rates satisfy the historical ceiling in both cached arms, so that criterion does not distinguish them. (a) Cached complete policies: direct generation returned eight entries per board, so @10 scores ten against eight and dyn@6 six against a mean of 5.94 (length-confounded). (b) Same-pool ablation on pools regenerated on 2026-09-05; arms differ only in the six dynamic slots. Lexical hit uses the full board; the blocks are different teacher realisations.}
+\label{tab:selection}
+\scriptsize
+\begin{tabular}{llrrrr}
+\toprule
+Window & Policy & Distinct fn.\ $\uparrow$ & Near-dup.\ $\downarrow$ & Coverage $\uparrow$ & Lexical hit\\
+\midrule
+\multicolumn{6}{l}{\emph{(a) Complete policies, cached boards}}\\
+% from analyses/I-03_result.md; checked in I-03_check.md (historical checkpoint).
+@7 & Diversity-first & 4.683 & 0.0004 & 1.000 & 0.525\\
+@7 & Direct LLM generation & 3.875 & 0.0274 & 0.775 & 0.333\\
+@10 & Diversity-first & 5.425 & 0.0037 & 1.000 & 0.525\\
+@10 & Direct LLM generation & 4.017 & 0.0292 & 0.775 & 0.333\\
+dyn@6 & Diversity-first & 3.925 & 0.0106 & 0.975 & 0.525\\
+dyn@6 & Direct LLM generation & 3.592 & 0.0292 & 0.650 & 0.333\\
+\midrule
+\multicolumn{6}{l}{\emph{(b) Same pool, same pinned core, same board size (pools regenerated 2026-09-05)}}\\
+% from analyses/I-06_result.md; checked in I-06_check.md (boards and scores reproduced byte-for-byte)
+@7 & Relevance only & 4.167 & 0.0095 & 0.958 & 0.608\\
+@7 & MMR ($\lambda=0.6$) & 4.600 & 0.0012 & 1.000 & 0.617\\
+@7 & Full shipped policy & 4.633 & 0.0004 & 0.983 & 0.575\\
+@10 & Relevance only & 4.700 & 0.0104 & 0.992 & 0.608\\
+@10 & MMR ($\lambda=0.6$) & 5.258 & 0.0030 & 1.000 & 0.617\\
+@10 & Full shipped policy & 5.383 & 0.0026 & 1.000 & 0.575\\
+dyn@6 & Relevance only & 3.058 & 0.0306 & 0.958 & 0.608\\
+dyn@6 & MMR ($\lambda=0.6$) & 3.783 & 0.0083 & 0.950 & 0.617\\
+dyn@6 & Full shipped policy & 3.858 & 0.0078 & 0.958 & 0.575\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Results.} In block (a), diversity-first selection offers 0.81 more distinct functions at @7 (paired 95\% CI $[0.59,1.01]$) and 0.33 $[0.11,0.56]$ at dyn@6; prompt, pool, length and pinning differ between policies. % I-03_check.md
+In block (b), plain MMR raises distinct functions over relevance-only selection by 0.43 $[0.32,0.55]$ at @7, 0.56 $[0.43,0.68]$ at @10 and 0.73 $[0.58,0.88]$ at dyn@6. It also lowers near-duplicate and same-function pair rates (Appendix~\ref{app:uncertainty}). These within-pool effects mean more function labels appear among the displayed suggestions. The full policy adds 0.03 $[-0.06,0.13]$, 0.13 $[0.04,0.21]$ and 0.08 $[-0.03,0.18]$ functions over plain MMR at the respective windows. Coverage is near ceiling: relevance-only covers 115/120 scenarios at @7 and dyn@6; MMR changes those rates by $+5/120$ $[0.008,0.083]$ and $-1/120$ $[-0.042,0.025]$. The cached complete-policy coverage gap remains confounded. % I-06_check.md
+
+\section{Distil the scores, retain the constraints}\label{sec:distil}
+The historical teacher timing is 7.05\,s per board in the evaluation harness (IQR 6.96--7.46; eight timing samples, all classroom scenarios). We replace generation with a student that scores a fixed vocabulary of $V$ entries: two 384-dimensional MiniLM embeddings (scene and transcript) and a question flag feed a two-layer head (769$\rightarrow$192$\rightarrow V$, dropout 0.3) trained to predict which entries the teacher selected with weighted binary cross-entropy, logit adjustment and an auxiliary listwise term (Appendix~\ref{app:train}). The head only chooses the candidate pool: its 18 highest-scoring entries go to the selector, whose MMR relevance term is context cosine, so learned scores never re-enter after the cut.
+
+\textbf{Corpus and vocabularies.} The teacher corpus has 600 boards: the 120 Section~\ref{sec:slate} contexts with regenerated boards, 360 authored scenarios and 120 turns imported from an earlier examples corpus (labelled real in the source, provenance undocumented). Deduplication and a 15\% category cap leave 559 rows, split at random 391/84/84. The historical vocabulary (95 entries after frequency filtering and embedding deduplication at $\tau=0.80$, 23 merges) was fitted on all 559 rows before the split, so its label space is not independent of the test contexts, although test boards never enter gradient updates. % from analyses/I-16_result.md; checked in I-16_check.md
+We therefore retrained with the vocabulary, canonical map, label priors and loss weights fitted on the 391 training rows only, with the same partition, hyperparameters and selector; the frequency floor of three then yields 45 entries (13 merges). % from analyses/I-05_result.md; checked in I-05_check.md
+A retrospective size-matched control lowers the floor to two with a cap of 116 raw entries (Appendix~\ref{app:train}), giving 95 entries (21 merges); the cap was chosen to match the historical size after a floor-two diagnostic had been scored on the test split, so it is a control, not a validated configuration. % from analyses/I-05b_result.md; checked in I-05b_check.md
+After canonical mapping, the historical vocabulary lexically represents 37.5\% of the teacher's held-out non-core slots, the clean 95- and 45-entry vocabularies 30.0\% and 26.8\% (lexical measures, not semantic coverage; Appendix~\ref{app:train}). % from analyses/I-16_result.md and I-05b_result.md; checked in I-16_check.md and I-05b_check.md
+Corpus-level deduplication and the category cap still run on all rows, and the row-level split leaves 22 of the 84 test rows sharing a template family or source conversation with a training row (Appendix~\ref{app:uncertainty}). % from analyses/I-09_result.md; checked in I-09_check.md
+
+\textbf{Selector.} A \emph{hedge} is one of 18 listed phrases that defer or express uncertainty (``I don't know'', ``maybe'', ``I need more time''); every other entry is \emph{non-hedge}. An \emph{open answer} is a span extracted from the transcript or scene; it may coincide with a vocabulary entry. From the 18-entry pool the student fills six dynamic slots with cosine MMR ($\lambda=0.6$); on questions it first reserves two non-hedge candidates by query relevance, or up to two open answers, rejecting pairs with cosine $\geq0.85$, and a hedge cap of one applies during fill (zero with an open answer present; Appendix~\ref{app:train}). The teacher has an answer quota but neither the student's hedge cap nor its non-hedge reservation; on the historical checkpoint the selector places 0.19 listed hedges per seven-entry window against 1.07 for raw score-based selection and 0.43 for the teacher (Appendix~\ref{app:train}). % from analyses/I-08_result.md; checked in I-08_check.md
+An appropriate ``I don't know'' is a legitimate move, so the cap is a policy choice. The selector consults the evaluation taxonomy during fill, partly optimising function diversity by construction.
+
+\begin{table}[t]
+\centering\footnotesize
+\caption{Cached teacher and students on the 84 test rows. \emph{Clean 95}: retrospective size-matched control with training-only label preprocessing, direct PyTorch selector (\fn{b72bb3ec7254}); \emph{served}: that checkpoint through the serving function, OpenVINO MiniLM and train-calibrated INT8 head. Other student rows use the direct selector. \emph{Clean 45}: same fit, unchanged floor (\fn{b691659cecf3}). \emph{Historical}: fitted on all rows (\fn{d6ce2e56d50b}). Dynamic coverage uses the 71 annotated rows (one measurement at @10 and dyn@6); agreement is directional teacher-entry recall (Appendix~\ref{app:metrics}); intervals and @7 rows in Appendix~\ref{app:uncertainty}.}
+\label{tab:student}
+\scriptsize\setlength{\tabcolsep}{4.5pt}\renewcommand{\arraystretch}{0.9}
+\begin{tabular}{llrrrrr}
+\toprule
+Window & Board & Dist.\ fn.\ $\uparrow$ & Near-dup.\ $\downarrow$ & Same-fn.\ $\downarrow$ & Dyn.\ cov.\ $\uparrow$ & Agree.\\
+\midrule
+% Teacher and historical rows: analyses/I-03_result.md, checked in I-03_check.md.
+% Clean 95 rows: analyses/I-05b_result.md, checked in I-05b_check.md. Clean 45 rows: I-05_result.md, checked in I-05_check.md.
+@10 & Teacher & 5.190 & 0.0042 & 0.1643 & 0.958 & ---\\
+@10 & Student, clean 95 & 5.310 & 0.0000 & 0.1582 & 0.859 & 0.079\\
+@10 & Student, clean 95, served & 5.417 & 0.0000 & 0.1529 & 0.873 & 0.077\\ % from analyses/I-04b_result.md (seam boards, I-04b_scores_v1.json); checked in I-04b_check.md
+@10 & Student, clean 45 & 5.036 & 0.0000 & 0.1714 & 0.761 & 0.071\\
+@10 & Student, historical & 5.286 & 0.0000 & 0.1619 & 0.859 & 0.091\\
+dyn@6 & Teacher & 3.917 & 0.0127 & 0.1833 & 0.958 & ---\\
+dyn@6 & Student, clean 95 & 4.869 & 0.0000 & 0.0857 & 0.859 & 0.079\\
+dyn@6 & Student, clean 95, served & 4.917 & 0.0000 & 0.0825 & 0.873 & 0.077\\ % from analyses/I-04b_result.md; checked in I-04b_check.md
+dyn@6 & Student, historical & 4.786 & 0.0000 & 0.0937 & 0.859 & 0.091\\
+% @7 continuity rows (teacher 4.298/0.0006/0.1735/0.873; historical student 4.095/0.0000/0.1893/0.789/0.067) moved to Appendix E text.
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Student results.} The clean 95-entry student retains 102.3\% of the teacher's distinct functions at @10 (margin over 90\% of teacher 0.638, 95\% paired CI $[0.385,0.889]$) and 124.3\% at dyn@6 (1.344 $[1.121,1.556]$), with an inconclusive same-function-pair difference at @10 (teacher minus student 0.006 $[-0.011,0.022]$) and fewer pairs at dyn@6. Dynamic coverage is 61/71 against the teacher's 68/71: retention 0.897, margin over 90\% of teacher $-0.003$ $[-0.100,0.090]$, inconclusive against the 90\% criterion. % from analyses/I-05b_result.md; checked in I-05b_check.md
+With the unchanged floor (45 entries) coverage is 54/71 (ratio 0.794; margin $-0.101$ $[-0.213,0.009]$); the size-matched model recovers the historical count (paired clean-95 minus clean-45 $+0.099$ $[0.014,0.183]$; Appendix~\ref{app:uncertainty}), a contrast that conflates vocabulary size, content and retraining and is not a causal decomposition of leakage. At @7 the clean model covers 50/71 against the historical 56/71 ($-0.085$ $[-0.169,-0.014]$); Appendix~\ref{app:uncertainty} traces four of the seven lost rows to entries that entered the historical vocabulary through validation or test counts. % from analyses/I-05_result.md and I-05b_result.md; checked in I-05_check.md and I-05b_check.md
+Higher dyn@6 diversity accompanies different constraints and fewer hedges; it does not establish better meaning preservation. Exact-entry recall is low for every model (0.079 clean, 0.091 historical at @10), and Appendix~\ref{app:example} shows a row where the student matches the teacher's function count yet covers no acceptable move.
+
+\textbf{Learned versus no-learning candidate filters.} Because the head only chooses the 18-entry pool, we replaced it, under the identical selector, with context cosine over the vocabulary, training-label frequency, the full vocabulary and a random pool (Table~\ref{tab:pools}, Appendix~\ref{app:uncertainty}). On the historical and clean-45 vocabularies the cosine pool raises full-board distinct functions ($+0.56$ $[0.35,0.77]$ and $+0.68$ $[0.45,0.90]$), and lowers the same-function-pair rate. Dynamic coverage is 65/71 against 61/71 on the historical vocabulary (cosine minus learned $+0.056$ $[-0.014,0.141]$, inconclusive) and 63/71 against 54/71 on the clean-45 vocabulary ($+0.127$ $[0.028,0.225]$, uncorrected). % from analyses/I-02_result.md; checked in I-02_check.md
+On the clean 95-entry model coverage is 60/71 against 61/71 (learned minus cosine $+0.014$ $[-0.085,0.113]$; @7 in Appendix~\ref{app:uncertainty}), the cosine-minus-learned full-board function difference is inconclusive ($+0.27$ $[-0.01,0.55]$), cosine boards carry fewer hedge entries ($-0.42$ $[-0.52,-0.31]$ per board) and the learned pool is nominally ahead on the dynamic-only proxies (uncorrected, borderline). Context-free pools have no demonstrated coverage advantage and lower full-board function-count point estimates on all three vocabularies; random pools are worse on coverage on both 95-entry vocabularies ($-0.17$ $[-0.28,-0.06]$, clean model). % from analyses/I-02b_result.md; checked in I-02b_check.md
+These uncorrected controls show vocabulary- and window-dependent trade-offs without demonstrating a learned-head advantage. Every arm retains the pretrained embedder and constrained selector; the full-vocabulary arm also changes pool size. % from analyses/I-02_check.md and I-02b_check.md (no checked ablation quantifies the constraints' share of the measured diversity; constraints-alone causation is not claimed)
+
+\textbf{Export, quantisation and served-board quality.} In the export checks, both training-fitted checkpoints have OpenVINO FP32 logit error below $5.8\times10^{-6}$ on all 559 contexts and reproduce all 84 PyTorch test boards. NNCF post-training INT8 quantisation \citep{nncf} is calibrated on the 391 training contexts only, with the exclusion of the final vocabulary projection chosen on the 84 validation contexts; the historical 95-entry head was instead calibrated on 360 contexts including 51 of the 84 test contexts, so its exported-path results are transductive with respect to calibration. On the test contexts the mixed-precision INT8 heads agree with FP32 at 0.954/0.833 (clean 45) and 0.950/0.833 (clean 95) mean/minimum top-six overlap at 2.8--3.2$\times$ smaller size (Appendices~\ref{app:hw} and~\ref{app:additional}): FP32--INT8 agreement, not a quality evaluation. % from analyses/I-07_result.md and I-07b_result.md; checked in I-07_check.md and I-07b_check.md (4.8e-6 for the 45-entry head, 5.7e-6 for the 95-entry head; identical-board counts in Appendix G)
+For the retrospective 95-entry control, boards generated through \fn{rank\_vocabulary} with OpenVINO MiniLM and the train-calibrated INT8 head cover 62/71 rows against the teacher's 68/71 at @10/dyn@6. The 90\% retention margin is $+0.011$ $[-0.085,0.096]$, inconclusive. Coverage matches the PyTorch serving path row for row, although INT8 changes 24/84 board sets. Distinct functions are 5.417 against 5.190 and same-function pairs 0.1529 against 0.1643 (Table~\ref{tab:student}). The extra hit over the direct selector's 61/71 comes from a hedge match on a row whose authored question flag the serving heuristic misses (Appendix~\ref{app:uncertainty}). These are fixed-PyTorch metric scores of experimentally loaded bundles, not production promotion; Section~\ref{sec:latency} times the same recorded configuration. % I-04b_check.md; I-10_check.md
+
+\section{Profile the board path, not just the head}\label{sec:latency}
+% Archived head medians: docs/VERIFIED_NUMBERS.md micro-latency row; archived board medians: mac/intel/artifacts/e2e_mac.json (2026-08-23).
+% Revision benchmark: analyses/I-10_result.md (I-10_bench_v3 + v4, 55,188 timed boards), checked in I-10_check.md; joined to quality by I-04b_check.md and I-10_check.md.
+We time the board-construction call through \fn{rank\_vocabulary} (embedding, head and selector) for the 84 held-out scenarios on an Apple M4 CPU (OpenVINO 2026.2.1, PyTorch 2.12.0), excluding perception, capture, transport and rendering: six order-counterbalanced in-process sessions of ten repeats per backend (5,040 timed calls per backend), static embeddings warm, each board's context keys evicted after the call, background load recorded rather than excluded (Appendix~\ref{app:additional}). For the clean 95-entry configuration of Section~\ref{sec:distil}, whose saved first-round boards in every session equal the quality boards, the OpenVINO embedder and INT8 head take 4.50\,ms median (IQR 3.98--5.15; scenario-bootstrap 95\% CI 4.35--4.64), the PyTorch path 9.05\,ms (IQR 8.40--10.32) and the INT8 head behind the PyTorch embedder 9.15\,ms: the paired per-scenario PyTorch-to-OpenVINO median ratio is 2.04 (IQR 1.87--2.28) while the two PyTorch-embedder medians differ by 0.10\,ms. The p90 values (8.52\,ms OpenVINO, 13.4\,ms for both PyTorch-embedder paths) describe this scenario mix and cache/load protocol; a few long-context question rows contribute disproportionately (Table~\ref{tab:latency}). % from analyses/I-10_result.md; checked in I-10_check.md
+The archived 2026-08-23 benchmark of the historical head (PyTorch first, three repeats) reported 5.5 and 9.7\,ms medians for a nominally matching configuration; its larger PyTorch-path tail recurs under that recipe today but the counterbalanced PyTorch and INT8-head tails nearly coincide (13.36 against 13.35\,ms), so it is protocol-sensitive and not attributed to either head (Appendix~\ref{app:additional}). % from analyses/I-10_result.md and I-04_check.md; checked in I-10_check.md (mechanism-neutral wording required)
+The archived head micro-benchmarks show a size saving without a head-time reduction (Appendix~\ref{app:hw}), and perception remains dominant (Whisper 250--410\,ms per clip on either runtime, scene inference second-scale). The student avoids a teacher-generation call, but the historical teacher and student workloads and cache states differ, so we quote no speed-up (Appendix~\ref{app:additional}).
+
+\section{Limitations and conclusion}\label{sec:limits}
+The corpus combines synthetic and authored scenarios with imported turns of undocumented provenance; corpus-wide context deduplication precedes the split for every model, and the historical model's label space was fitted before it. % issues_final.md stated limitations: I-15/I-16 provenance; I-05 pre-split preprocessing (historical rows remain in Tables 2, 3 and 5)
+The teacher is an LLM and there is no evaluation with AAC users: proxy diversity does not establish expressiveness, preference, motor accessibility or successful communication, and a consented, participatory evaluation with AAC users is the highest-priority validation. % I-26
+Function diversity is an internal proxy: labels are unvalidated nearest-exemplar assignments, the selector consults the same taxonomy, distinct functions and same-function pairs summarise one label assignment, and coverage ignores polarity (``I do not want water'' can match ``I want water''). % I-13
+The held-out corpus was inspected during selector and criterion development; the extent of validation-only hyperparameter selection is not established, neither training-only preprocessing nor the size-matched control undoes that exposure, and generalisation to unseen template families is untested, the no-sibling subset being a retrospective selection (Appendix~\ref{app:uncertainty}). % I-14; I-09
+The same-pool ablation uses one greedy teacher realisation per scenario, and its full-policy arm is not identical with the cached diversity-first row. % from analyses/I-06_result.md; checked in I-06_check.md
+Unmeasured are a head-free board path (cosine pool plus selector) as a unit, % from analyses/I-02_check.md: no head-free latency measured
+a matched-workload teacher--student timing, controlled concurrent perception load, energy and peak memory, % I-27; I-26
+cold-start and idle-machine latency (background load was recorded, not excluded), and controlled target-device timings (Intel runs show portability only; Appendix~\ref{app:additional}). % from analyses/I-10_check.md caveats
+
+With pool, pins and board size fixed, MMR raises distinct function labels, with coverage near ceiling across arms; % from analyses/I-06_result.md; checked in I-06_check.md
+the retrospective student retains function-count diversity, while learned and no-learning filters trade off by vocabulary and window; % from analyses/I-02_check.md and I-05b_check.md
+and the same recorded OpenVINO configuration covers 62/71 rows against the teacher's 68/71 (90\% retention inconclusive) at 4.5\,ms median post-perception board construction under the measured warm-cache and background-load protocol. % from analyses/I-04b_result.md and I-10_result.md; checked in I-04b_check.md and I-10_check.md (joined operating point with its caveat; host Apple M4 stated in Section 5)
+
+\clearpage
+
+\begin{thebibliography}{99}
+
+\bibitem[Bai et al.(2025)]{qwen25vl}
+S.~Bai, K.~Chen, X.~Liu, J.~Wang, W.~Ge, S.~Song, K.~Dang, P.~Wang, S.~Wang,
+J.~Tang, H.~Zhong, Y.~Zhu, M.~Yang, Z.~Li, J.~Wan, P.~Wang, W.~Ding, Z.~Fu,
+Y.~Xu, J.~Ye, X.~Zhang, T.~Xie, Z.~Cheng, H.~Zhang, Z.~Yang, H.~Xu, and
+J.~Lin.
+\newblock Qwen2.5-VL technical report.
+\newblock \emph{arXiv preprint arXiv:2502.13923}, 2025.
+
+\bibitem[Cai et al.(2022)]{cai2022}
+S.~Cai, S.~Venugopalan, K.~Tomanek, A.~Narayanan, M.~R. Morris, and M.~P.
+Brenner.
+\newblock Context-aware abbreviation expansion using large language models.
+\newblock In \emph{NAACL-HLT}, pages 1261--1275, 2022.
+
+\bibitem[Carbonell and Goldstein(1998)]{mmr1998}
+J.~Carbonell and J.~Goldstein.
+\newblock The use of MMR, diversity-based reranking for reordering documents and
+producing summaries.
+\newblock In \emph{SIGIR}, pages 335--336, 1998.
+
+\bibitem[Fontana de Vargas and Moffatt(2021)]{fontana2021}
+M.~Fontana de Vargas and K.~Moffatt.
+\newblock Automated generation of storytelling vocabulary from photographs for
+use in AAC.
+\newblock In \emph{ACL-IJCNLP}, pages 1353--1364, 2021.
+
+\bibitem[Kane et al.(2012)]{kane2012}
+S.~K. Kane, B.~Linam-Church, K.~Althoff, and D.~McCall.
+\newblock What we talk about: Designing a context-aware communication tool for
+people with aphasia.
+\newblock In \emph{ASSETS}, pages 49--56, 2012.
+
+\bibitem[Kozlov et al.(2020)]{nncf}
+A.~Kozlov, I.~Lazarevich, V.~Shamporov, N.~Lyalyushkin, and Y.~Gorbachev.
+\newblock Neural network compression framework for fast model inference.
+\newblock \emph{arXiv preprint arXiv:2002.08679}, 2020.
+
+\bibitem[Pereira et al.(2024)]{praact2024}
+Jayr Alencar Pereira, Jaylton Alencar Pereira, Cleber Zanchettin, and Robson do Nascimento Fidalgo.
+\newblock PrAACT: Predictive augmentative and alternative communication with
+transformers.
+\newblock \emph{Expert Systems with Applications}, 240:122417, 2024.
+
+\bibitem[Radford et al.(2023)]{whisper}
+A.~Radford, J.~W. Kim, T.~Xu, G.~Brockman, C.~McLeavey, and I.~Sutskever.
+\newblock Robust speech recognition via large-scale weak supervision.
+\newblock In \emph{ICML}, volume 202 of \emph{PMLR}, pages 28492--28518, 2023.
+
+\bibitem[Shen et al.(2022)]{kwickchat2022}
+J.~Shen, B.~Yang, J.~J. Dudley, and P.~O. Kristensson.
+\newblock KWickChat: A multi-turn dialogue system for AAC using context-aware
+sentence generation by bag-of-keywords.
+\newblock In \emph{IUI}, pages 853--867, 2022.
+
+\bibitem[Valencia et al.(2023)]{valencia2023}
+S.~Valencia, R.~Cave, K.~Kallarackal, K.~Seaver, M.~Terry, and S.~K. Kane.
+\newblock ``The less I type, the better'': How AI language models can enhance
+or impede communication for AAC users.
+\newblock In \emph{CHI}, 2023.
+
+\bibitem[Wang et al.(2020)]{minilm}
+W.~Wang, F.~Wei, L.~Dong, H.~Bao, N.~Yang, and M.~Zhou.
+\newblock MiniLM: Deep self-attention distillation for task-agnostic compression
+of pre-trained transformers.
+\newblock In \emph{NeurIPS}, volume~33, 2020.
+
+\end{thebibliography}
+\clearpage
+\appendix
+% =====================================================================
+\section{Metric definitions}\label{app:metrics}
+
+Full@10 scores up to ten entries including core; dyn@6 removes core entries case-insensitively before retaining at most six in each arm. Full@7 retains the historical first-seven window. Dynamic coverage in a full window removes core entries after truncation. % from analyses/I-03_result.md; checked in I-03_check.md
+The pinned set (``yes'', ``no'', ``I need help'', ``wait'') is classified as comment, refuse/redirect, request-help and comment, so boards with these pins start with exactly three distinct functions and one same-function pair: a same-function-pair floor of $1/21$ at seven entries, $1/45$ at ten, and zero when only the six dynamic entries are scored.
+
+\begin{description}
+\item[Distinct functions] Number of the nine AAC communicative functions
+(question-back, specific-answer, I-don't-know, request-help, comment,
+refuse/redirect, emotion, request-clarification, social) represented among the
+evaluated window. Each entry receives the label of its single nearest authored exemplar (maximum cosine, not nearest centroid) in the 384-d MiniLM embedding space. Generation tags instead use request, reject, comment, question, share-information, express-feeling, social, direct-attention and clarify; the evaluation labels are assigned independently of these tags.
+\item[Near-duplicate pair rate] Fraction of entry pairs in the evaluated window whose embedding cosine similarity is at least 0.85.
+\item[Same-function-pair rate] Fraction of entry pairs in the evaluated window that
+share a function label. The distillation criterion is ``no worse than the teacher''; lower is not always better, because several concrete answers to one question share a label.
+\item[Coverage-of-intent] Fraction of scenarios for which at least one of the
+scenario's authored \emph{acceptable moves} matches a board entry under the proxy rule.
+The all-entry score uses the stated window. ``Dynamic'' removes core entries from that window before scoring and removes hedge moves from the acceptable-move set; hedge \emph{predictions} are not removed and can still receive lexical or cosine credit. Matching uses word-boundary lexical overlap or embedding cosine at least 0.50 and ignores polarity. Table~\ref{tab:selection} coverage keeps hedge targets. Dynamic coverage in Table~\ref{tab:student} is measured on the 71 test rows with authored acceptable moves (20 Section~\ref{sec:slate} rows and 51 authored scenarios; the 13 imported turns have none).
+\item[Lexical hit (diagnostic)] Whether the scenario's single authored gold utterance is lexically matched by any entry of the full generated board. It is a lexical-hit test, not exact-entry matching.
+\item[Board variety] Number of distinct unordered entry sets in the stated window over the held-out set divided by its size; a degeneracy guard. At @10 it is 0.976 for the clean 95-entry student, 0.964 for the clean 45-entry student and 1.000 for the historical student. % from analyses/I-05b_result.md, I-05_result.md, I-03_result.md
+\item[Dynamic word agreement] Directional exact-entry recall after lower-casing. At @10 and dyn@6 it compares the teacher's six non-core entries with the student's six. At @7 it retains the legacy asymmetric rule: teacher non-core entries within the first seven versus all six student dynamic entries. % from analyses/I-03_result.md; checked in I-03_check.md
+\item[Diversity retention] Student distinct functions divided by the teacher's, in the same window.
+% Hedge-list correction: analyses/I-08_check.md.
+\item[Hedge] One of 18 listed phrases expressing uncertainty or deferral; the same list serves the selector's cap and the metrics. Near-hedges outside the list (``I need to think about it'') are neither capped nor counted.
+\item[INT8 top-$k$ overlap] For each context, $|T_k^{\mathrm{INT8}}
+\cap T_k^{\mathrm{FP32}}|/k$ with $k{=}6$; mean and minimum over the stated context set (the 360 calibration contexts for the historical head; the 84 test contexts for the clean 45- and 95-entry heads).
+\item[Board Jaccard] $|A\cap B|/|A\cup B|$ for a backend board $A$ and the PyTorch board $B$ on the same scenario, averaged over the 84 held-out rows.
+\end{description}
+
+\section{Reproduction}\label{app:repro}
+
+% Environment-variable prefix anonymised for review; restore at camera-ready.
+The commands below describe the historical workflow and explicit-window re-scoring, run from the host server directory with perception disabled (\fn{SYSTEM\_PERCEPTION=0}); none calls an LLM, VLM or Whisper unless noted. Running them requires the project code, models and evaluation data, which are planned for release on acceptance; the \fn{SYSTEM} prefix is an anonymised placeholder for the project prefix. Default-window scripts overwrite historical outputs; use a fresh output path for each explicit-window re-score. The MiniLM bundle must be exported and validated before OpenVINO benchmarking; a missing bundle is rejected by the benchmark, and the revision quality scripts assert generation backends before scoring in a separate PyTorch process. % from analyses/I-12_check.md
+The revision analyses (training-only preprocessing and retraining, the size-matched control, the candidate-pool ablation, the same-pool selector ablation, train-only requantisation and the constant recounts) are stand-alone scripts that import the project modules and write hashed manifests; they will be released with the code.
+\begin{footnotesize}
+\begin{verbatim}
+python3 -m pytest -q                                  # record the dated outcome
+python3 evaluation/phase3/selftest.py --from-boards   # Table 1(a) (re-scores cached boards)
+# Repeat with --metric-k 7 for continuity, or add --dynamic-only for dyn@6 (k=6).
+python3 evaluation/phase3/selftest.py --from-boards \
+  --metric-k 10 --output /tmp/slate10.json
+python3 evaluation/phase4/evaluate.py --teacher-samples 0 \
+  --metric-k 10 --output /tmp/student10.json
+python3 evaluation/phase4/evaluate.py --teacher-samples 8  # teacher latency (LLM run)
+python3 intel/convert.py                              # student IR + MiniLM export
+python3 intel/convert.py --skip-student --validate-minilm-only # existing bundle check
+python3 intel/quantize.py                             # NNCF INT8 + overlap check
+python3 intel/bench.py                                # head micro-latency, benchmark_app
+python3 intel/bench_e2e.py --n 84                     # latency table (post-perception board)
+python3 intel/bench_whisper.py --n 10                 # Whisper comparison
+\end{verbatim}
+\end{footnotesize}
+% No test count is asserted: I-16_check.md requires one dated run at repository freeze (the 2026-09-05 21:44 EDT run, 241 passed / 1 media-scan failure, is retained in revision/pytest_freeze_2026-09-05.log for the final build).
+
+Artefact identities: historical configuration \fn{d6ce2e56d50b}, vocabulary \fn{865b8083da276824}; training-fitted 45-entry configuration \fn{b691659cecf3}, vocabulary \fn{30e9becb9a556cd8}; retrospective 95-entry configuration \fn{b72bb3ec7254}, vocabulary \fn{0f3bb094cd439111}. All use split fingerprint \fn{ab51f7fba4c9c39e}. The historical configuration ID is recorded provenance; the current parsed YAML has ID \fn{5c185c1fcb78}, and the differently shaped revision configuration objects do not imply that every setting changed. % I-05_check.md; I-05b_check.md; I-21_check.md
+
+The shared SHA-256 archive (\fn{34e556f7}\ldots) covers the historical artefacts and the initial training-fitted 45-entry model, candidate controls and export. It predates the size-matched control, served-quality and revision-latency experiments, which have their own hashed records. It preserves working-tree bytes, not a source-control revision, and excludes external MiniLM and teacher weights. % I-21_check.md
+Runtime selection uses \fn{SYSTEM\_STUDENT\_BACKEND=torch|openvino} and \fn{SYSTEM\_EMBED\_BACKEND=torch|openvino}; head device selection is \fn{SYSTEM\_OV\_DEVICE=CPU|GPU|NPU}. Vocabulary sidecars reject mismatched head/vocabulary pairs; split fingerprints detect corpus drift, not family overlap.
+
+\section{Hardware and software fingerprint}\label{app:hw}
+
+\begin{figure}[h]
+\centering\small
+\fbox{\begin{minipage}[c]{0.18\linewidth}\centering Wearable\\Audio + images\\No inference\end{minipage}}
+$\longrightarrow$
+\fbox{\begin{minipage}[c]{0.45\linewidth}\centering Local host\\Speech + scene perception\\$\downarrow$\\\textbf{Board-construction boundary}\\Embed $\rightarrow$ score $\rightarrow$ select\\\textbf{4.5\,ms median}\end{minipage}} % from analyses/I-10_result.md (clean configuration, OpenVINO embedder + INT8 head); checked in I-10_check.md
+$\longrightarrow$
+\fbox{\begin{minipage}[c]{0.16\linewidth}\centering Tablet\\4 core entries\\6 dynamic entries\end{minipage}}
+\caption{The local network spans three devices. Reported board timings cover only the lower host stage on Apple M4 (clean 95-entry configuration, Table~\ref{tab:latency}); perception, transport and display are outside the timed boundary.}
+\label{fig:system}
+\end{figure}
+
+\begin{itemize}
+\item Host for every number in Tables 1--5 and the abstract: Apple M4 (arm64),
+Darwin 25.5.0. Exploratory Intel observations appear in Appendix~\ref{app:additional}, from one uncontrolled session on a Core Ultra 9 185H;
+no controlled absolute Intel board latency is claimed.
+\item OpenVINO 2026.2.1 (build 21919), ARM CPU plugin, devices [CPU],
+\fn{INFERENCE\_PRECISION\_HINT=f32} (pinned because the ARM plugin's f16 default degraded Whisper decoding and shifted student logits); PyTorch 2.12.0; Python 3.13.6; NNCF 3.2.0.
+\item Head micro-benchmarks: batch 1, input (1, 769) float32, 500 timed
+iterations after 50 warm-up; \fn{benchmark\_app} latency hint, 5\,s each. Head-only medians on the Apple M4: 0.015\,ms (PyTorch), 0.025\,ms (OpenVINO FP32) and 0.031\,ms (INT8). % Archived head medians: docs/VERIFIED_NUMBERS.md micro-latency row (unchanged from main.tex)
+\item Board benchmark (revision): 84 held-out scenarios; per backend six in-process sessions in a Latin square over backend order, run twice, each with the documented Python cache and seam-state reset, three untimed warm-up boards and ten timed repeats (5,040 calls), static embeddings pre-warmed and each board's context keys evicted after the call; plus one isolated single-backend process (840 calls) and one session of the archived recipe (three repeats, per-round eviction, 252 calls). Percentiles are over pooled samples; intervals resample the 84 scenarios. % from analyses/I-10_result.md; checked in I-10_check.md
+\item Student artefacts on disk (\fn{.xml}+\fn{.bin}), historical 95-entry head: FP32 IR 662.1\,KiB (678,025 bytes), INT8 IR 235.5\,KiB (241,117 bytes). Clean 45-entry head: FP32 IR 624.5\,KiB, INT8 IR 197.9\,KiB. Clean 95-entry head: FP32 IR 662.2\,KiB, INT8 IR 235.6\,KiB ($2.81\times$). % from analyses/I-07_result.md and I-07b_result.md; checked in I-07_check.md and I-07b_check.md (historical byte counts from I-07b_check.md)
+\item Teacher: Qwen2.5-3B-Instruct (4-bit) via a local runtime; scene model
+Qwen2.5-VL-3B-Instruct (4-bit); embedder \fn{all-MiniLM-L6-v2}; speech
+Whisper \fn{base.en} INT8 via \fn{faster-whisper} (CTranslate2) or
+\fn{openvino\_genai.WhisperPipeline}.
+\item Wearable: ESP32-S3 (dual-core Xtensa LX7, 240\,MHz, 8\,MB PSRAM),
+OV2640-class camera, SPH0645 I$^2$S microphone; VGA JPEG at 2000\,ms cadence,
+16\,kHz PCM in 512-sample chunks. Separate FreeRTOS tasks isolate audio capture from camera work; a physical button toggles capture and an LED indicates activity. On the host, a 64$\times$64 greyscale change detector (archived gate timing 0.214\,ms per frame) gates scene inference. We quote no device cost, because no bill of materials has been costed.
+\end{itemize}
+
+\section{Training and selector configuration}\label{app:train}
+The training implementation uses Adam, learning rate $10^{-3}$, weight decay $10^{-3}$, batch size 32, seed 0, a maximum of 60 epochs and early stopping after 15 epochs without validation-loss improvement. The minimum-validation-loss checkpoint is retained. Historical vocabulary filtering uses minimum frequency three and a maximum of 200 entries before single-link embedding deduplication at cosine 0.80; the clean 45-entry model keeps those settings on the 391 training rows (58 raw entries, 45 after deduplication, validation selects epoch 6); the size-matched control uses minimum frequency two and a cap of 116 raw entries, the cap falling inside the frequency-two tier so that \fn{build\_vocab}'s existing alphabetical tie-break decides which frequency-two entries enter (95 after deduplication, 67 shared with the historical vocabulary, epoch 8). % from analyses/I-05_result.md and I-05b_result.md; checked
+Lexical representability of the teacher's non-core entries (exact membership or one canonical-map lookup; 3600 corpus slots, 504 held-out slots): historical vocabulary 32.4\% (1166/3600; 23.4\% by exact match; 70/600 rows with none, 11.7\%) and 37.5\% (189/504) held out with 11/84 zero-hit rows; clean 45-entry vocabulary 26.8\% (135/504) held out with 16/84 zero-hit rows; clean 95-entry control 30.0\% (151/504) held out. % from analyses/I-16_result.md and I-05b_result.md; checked in I-16_check.md and I-05b_check.md
+Context deduplication uses cosine 0.95. The context query is a normalised weighted sum of the transcript, scene and personal-context embeddings (weights 0.7/0.2/0.1).
+
+For label $j$, let $p_j$ be its empirical frequency, $z_j$ its logit and $y_j$ its binary target. The loss is weighted BCE on $z_j-\log p_j$, plus $0.3$ times the mean negative log-softmax probability of positive labels. Positive weights are $\mathrm{clip}(N_{\rm neg}/N_{\rm pos},1,20)$. For the historical model, vocabulary, priors and weights were computed over the pre-split corpus; for the clean models they are fitted on training rows only, and poisoning every held-out board leaves all fitted objects unchanged. % from analyses/I-05_check.md
+Gradient updates use training indices and checkpoint selection uses validation indices in every run.
+
+The student scores a closed vocabulary, but its final board can include extracted open-answer spans. Those spans receive up to two reserved slots on supported question types, in extractor order with a cosine-0.85 duplicate guard. A small-pool backfill can relax the hedge cap to return six dynamic entries; it never fired on the historical checkpoint's held-out split. % from analyses/I-08_result.md; checked in I-08_check.md
+Pinned core entries are assembled first. Reservation and MMR ordering are computed separately, and the MMR order is then filtered into the unreserved slots (Section~\ref{sec:slate}); the MMR relevance term is context cosine, so learned logits determine pool membership only.
+
+On the 84 held-out rows of the historical checkpoint \fn{d6ce2e56d50b}, with the fixed 18-phrase hedge list, direct score-based selection (the four pinned entries plus the six highest-scoring entries) places 1.07 hedge entries in the seven-entry window and at least two on 7.1\% of boards (1.23 and 22.6\% over the whole board); the selector places 0.19 per window and 0.60 per board against the teacher's 0.43 and 0.98, and no student board carries more than one. % from analyses/I-08_result.md; checked in I-08_check.md
+Canonicalisation maps six hedge variants to ``I don't know'' and one to ``I need more time'', leaving four vocabulary hedge entries. The same-checkpoint policy comparison does not measure a canonicalisation effect or isolate the cap. % from analyses/I-08_check.md (corrects I-08_result.md).
+
+\section{Uncertainty and supplementary comparisons}\label{app:uncertainty}
+Quality intervals are 95\% percentile intervals from 10,000 paired row-bootstrap resamples (seed 0), conditional on the chosen corpus, policies and checkpoints. They omit family dependence, training-seed variation, configuration selection and multiplicity. Latency intervals instead use 2,000 scenario-bootstrap resamples, retaining all repeats of each sampled scenario (I-10). An interval containing zero does not establish equivalence.
+
+\textbf{Student criteria.} A positive margin favours satisfying the criterion: for function diversity the margin is student minus $0.9$ times teacher; for same-function pairs it is teacher minus student; for coverage it is student minus $0.9$ times teacher.
+\begin{center}\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llrrr}
+\toprule
+Window & Student & Function diversity & Same-function pairs & Dynamic coverage\\
+\midrule
+% Clean 95: analyses/I-05b_result.md (checked in I-05b_check.md); clean 45: I-05_result.md (I-05_check.md); historical: I-03_result.md (I-03_check.md).
+@10 & Clean 95 & 0.638 $[0.385,0.889]$ & 0.006 $[-0.011,0.022]$ & $-0.003$ $[-0.100,0.090]$\\
+@10 & Clean 45 & 0.364 $[0.131,0.592]$ & $-0.007$ $[-0.023,0.008]$ & $-0.101$ $[-0.213,0.009]$\\
+@10 & Historical & 0.614 $[0.367,0.863]$ & 0.002 $[-0.014,0.018]$ & $-0.003$ $[-0.100,0.092]$\\
+dyn@6 & Clean 95 & 1.344 $[1.121,1.556]$ & 0.098 $[0.068,0.128]$ & as @10\\
+dyn@6 & Clean 45 & 1.308 $[1.091,1.513]$ & 0.093 $[0.064,0.122]$ & as @10\\
+dyn@6 & Historical & 1.261 $[1.058,1.458]$ & 0.090 $[0.063,0.118]$ & as @10\\
+@7 & Clean 95 & 0.311 $[0.066,0.546]$ & $-0.006$ $[-0.031,0.019]$ & $-0.082$ $[-0.214,0.045]$\\
+@7 & Clean 45 & $-0.035$ $[-0.244,0.174]$ & $-0.037$ $[-0.062,-0.013]$ & $-0.110$ $[-0.234,0.014]$\\
+@7 & Historical & 0.227 $[0.006,0.449]$ & $-0.016$ $[-0.041,0.010]$ & 0.003 $[-0.118,0.118]$\\
+\midrule
+% Deployed path (OpenVINO MiniLM + I-07b INT8 head, seam boards): analyses/I-04b_result.md, checked in I-04b_check.md.
+@10 & Clean 95, served & 0.745 $[0.494,0.989]$ & 0.011 $[-0.005,0.027]$ & 0.011 $[-0.085,0.096]$\\
+dyn@6 & Clean 95, served & 1.392 $[1.181,1.600]$ & 0.101 $[0.071,0.130]$ & as @10\\
+@7 & Clean 95, served & 0.311 $[0.060,0.556]$ & $-0.004$ $[-0.029,0.021]$ & $-0.096$ $[-0.231,0.035]$\\
+\bottomrule
+\end{tabular}\end{center}
+\textbf{Serving function.} The clean-95 served rows score the boards returned by the serving function with the OpenVINO MiniLM embedder and the INT8 head; paired coverage outcomes are $59/9/3/0$ at @10 and dyn@6 and $42/20/7/2$ at @7. The OpenVINO embedder and the FP32 head reproduce the PyTorch boards on all 84 rows; INT8 changes 24 of 84 served boards (25 of 84 direct-selector boards; mean Jaccard 0.926 and 0.924, minimum 0.429) and moves one covered row at @7 only (49/71 against the PyTorch path's 50/71; a covering entry pushed to the fourth dynamic slot). The served and direct-selector boards differ on one row whose authored question flag the serving heuristic misses; on that row the served board's hedge entry ``I don't know'' matches the acceptable move ``I don't really know'', which the hedge filter does not remove on the move side, so the @10 point pass (62/71 against 61/71) rests on that row; its retention interval includes zero. On the historical artefacts the same protocol gives 61/71 at @10 and 55/71 at @7 (margins $-0.003$ $[-0.100,0.092]$ and $-0.011$ $[-0.132,0.107]$), with INT8 calibration having seen 51 of the 84 test contexts. % from analyses/I-04b_result.md and I-04_result.md; checked in I-04b_check.md and I-04_check.md
+\textbf{Leaked-entry trace (@7).} Of the seven test rows the historical student covers at @7 and the clean 95-entry student does not, four are covered in the historical boards only by entries that entered the historical vocabulary through validation or test counts: three by ``my name is sarah'' (train/validation/test frequency 1/0/3) and one by ``i'm feeling a bit anxious.'' (2/1/1); the remaining three carry shared entries as well. Twenty-eight historical entries fall below the frequency floor on training rows alone, and nineteen of them reach it only with test rows. This trace identifies which entries supply particular metric hits on fixed boards; it is not an estimate of the retraining counterfactual, and rows 89--91 belong to one name-introduction family. % from analyses/I-05b_result.md; checked in I-05b_check.md (row ids corrected by the checker)
+
+At @7 (continuity window) the teacher scores 4.298 distinct functions, near-duplicate rate 0.0006, same-function-pair rate 0.1735 and dynamic coverage 62/71, and the historical PyTorch student 4.095, 0.0000, 0.1893 and 56/71 with agreement 0.067. % from analyses/I-03_result.md; checked in I-03_check.md
+For the three direct-selector PyTorch students, function diversity meets the 90\% threshold at @10 and dyn@6 for all three students, and dynamic coverage meets it by point estimate for none of them at @10 (clean 95 and historical 0.897, clean 45 0.794) with every interval crossing zero. At @10 and dyn@6 the paired coverage outcomes (student, teacher) are $(1,1)=58$, $(0,1)=10$, $(1,0)=3$, $(0,0)=0$ for both 95-entry students and $51/17/3/0$ for the 45-entry student; every board is four pins followed by six non-core entries, so these counts are identical across the two windows by construction. The raw historical student-minus-teacher coverage difference is $-0.0986$ $[-0.1972,0.0000]$; the paired clean-95 minus historical coverage difference is $0.000$ $[-0.070,0.070]$. % from analyses/I-03_result.md, I-05_result.md, I-05b_result.md; checked
+
+\textbf{No-sibling subset (historical checkpoint).} On the retrospectively selected subset of test rows without a training or validation sibling (62 rows: 51 authored, 11 imported, no Section~\ref{sec:slate} rows), function retention is 0.936 at @7 and 0.984 at @10; coverage ratios on its 51 annotated rows are 0.867 and 0.917. Function margins are 0.155 $[-0.084,0.403]$ and 0.439 $[0.192,0.697]$; coverage margins are $-0.029$ $[-0.165,0.102]$ and 0.016 $[-0.100,0.129]$. The changed source mix prevents causal attribution to sibling overlap; intervals do not correct for retrospective selection. Of the 14 test rows with a training-or-validation context at cosine $>0.90$, 12 match training rows alone; a family-aware split is future work. % from analyses/I-09_result.md; checked in I-09_check.md (historical checkpoint only).
+
+\textbf{Same-pool selector ablation (Table~\ref{tab:selection}b).} Paired differences over the 120 regenerated pools; counts are the paired coverage outcomes (both, first only, second only, neither). % from analyses/I-06_result.md; checked in I-06_check.md
+\begin{center}\footnotesize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{llrrrr}
+\toprule
+Window & Difference & Distinct fn. & Same-fn. & Coverage & Counts\\
+\midrule
+@7 & MMR $-$ relevance & 0.433 $[0.317,0.550]$ & $-0.035$ $[-0.046,-0.023]$ & 0.042 $[0.008,0.083]$ & 115/5/0/0\\
+@7 & Full $-$ relevance & 0.467 $[0.342,0.592]$ & $-0.037$ $[-0.050,-0.023]$ & 0.025 $[-0.017,0.067]$ & 113/5/2/0\\
+@7 & Full $-$ MMR & 0.033 $[-0.058,0.133]$ & $-0.003$ $[-0.012,0.006]$ & $-0.017$ $[-0.042,0.000]$ & 118/0/2/0\\
+@10 & MMR $-$ relevance & 0.558 $[0.433,0.683]$ & $-0.040$ $[-0.050,-0.029]$ & 0.008 $[0.000,0.025]$ & 119/1/0/0\\
+@10 & Full $-$ relevance & 0.683 $[0.567,0.800]$ & $-0.054$ $[-0.066,-0.043]$ & 0.008 $[0.000,0.025]$ & 119/1/0/0\\
+@10 & Full $-$ MMR & 0.125 $[0.042,0.208]$ & $-0.015$ $[-0.021,-0.009]$ & 0 & 120/0/0/0\\
+dyn@6 & MMR $-$ relevance & 0.725 $[0.575,0.883]$ & $-0.117$ $[-0.146,-0.089]$ & $-0.008$ $[-0.042,0.025]$ & 112/2/3/3\\
+dyn@6 & Full $-$ relevance & 0.800 $[0.625,0.975]$ & $-0.147$ $[-0.181,-0.115]$ & 0.000 $[-0.033,0.033]$ & 113/2/2/3\\
+dyn@6 & Full $-$ MMR & 0.075 $[-0.033,0.183]$ & $-0.030$ $[-0.047,-0.014]$ & 0.008 $[0.000,0.025]$ & 114/1/0/5\\
+\bottomrule
+\end{tabular}\end{center}
+Near-duplicate pair-rate differences: MMR $-$ relevance $-0.0083$ $[-0.0119,-0.0052]$ at @7, $-0.0074$ $[-0.0107,-0.0044]$ at @10 and $-0.0222$ $[-0.0322,-0.0133]$ at dyn@6; full $-$ relevance $-0.0091$ $[-0.0127,-0.0056]$, $-0.0078$ $[-0.0113,-0.0046]$ and $-0.0228$ $[-0.0333,-0.0133]$; full $-$ MMR $-0.0008$ $[-0.0020,0.0000]$, $-0.0004$ $[-0.0022,0.0015]$ and $-0.0006$ $[-0.0056,0.0050]$. % from analyses/I-06_result.md; checked in I-06_check.md
+Pool statistics: 11.64 non-core items per pool on average (minimum 6, maximum 19); 88 of 120 scenarios are in answer mode and their pools carry answer-tagged items, so ``full $-$ MMR'' compares the combined answer-quota and tie-break policy. Two pools have exactly six non-core items, so all arms select the same set there (in different orders); excluding them gives distinct functions 4.153/4.585/4.619 at @7 and 3.042/3.780/3.856 at dyn@6 (relevance/MMR/full), so the conclusion persists. Mean clipped relevance of the six chosen dynamic items is 0.354 (relevance only), 0.317 (MMR) and 0.282 (full policy): the selectors trade relevance for spread, which none of the metrics prices. The two first-seven coverage misses of the full policy (``How was your day?'' in the dinner setting) are covered at @10. The pools are verified by replay of the stored raw teacher responses, not by fresh generation. % from analyses/I-06_result.md; checked in I-06_check.md
+
+\begin{table}[h]
+\centering\small
+\caption{Candidate pools under the identical selector on the 84 test rows: distinct functions (rows covered, of 71). Learned: top-18 head logits. Cosine: top-18 context cosine over the vocabulary. Frequency: top-18 by canonical label frequency on the 391 training rows, with ties resolved by NumPy quicksort over vocabulary positions. Full: every entry. Historical uses the pre-split 95-entry vocabulary; clean 45 and clean 95 the training-fitted ones. Random and vocabulary-order pools, pair rates and hedge counts are in Appendix~\ref{app:uncertainty}.}
+\label{tab:pools}
+\footnotesize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+& \multicolumn{3}{c}{Historical 95} & \multicolumn{3}{c}{Clean 45} & \multicolumn{3}{c}{Clean 95}\\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}
+Pool & @7 & @10 & dyn@6 & @7 & @10 & dyn@6 & @7 & @10 & dyn@6\\
+\midrule
+% Historical and clean 45: analyses/I-02_result.md, checked in I-02_check.md; clean 95: analyses/I-02b_result.md, checked in I-02b_check.md
+% (pools, boards and per-row metrics reproduced independently in both checks)
+Learned & 4.095 (56) & 5.286 (61) & 4.786 (61) & 3.833 (48) & 5.036 (54) & 4.833 (54) & 4.179 (50) & 5.310 (61) & 4.869 (61)\\
+Cosine & 4.667 (57) & 5.845 (65) & 4.738 (65) & 4.345 (53) & 5.714 (63) & 4.917 (63) & 4.333 (48) & 5.583 (60) & 4.619 (60)\\
+Frequency & 3.762 (44) & 4.881 (55) & 4.679 (55) & 3.512 (43) & 4.333 (54) & 4.262 (54) & 4.012 (44) & 5.119 (56) & 4.810 (56)\\
+Full vocabulary & 4.690 (57) & 6.310 (64) & 5.179 (64) & 4.298 (53) & 5.810 (61) & 5.024 (61) & 4.357 (47) & 5.762 (57) & 4.738 (57)\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Candidate-pool ablation (Table~\ref{tab:pools}).} Per-arm near-duplicate rate, same-function-pair rate, mean listed hedges per board and dynamic coverage (of 71), followed by paired baseline-minus-learned differences in distinct functions and same-function pairs; positive $\Delta$DF and negative $\Delta$SFP favour the baseline. The 18-entry frequency cut-off falls inside a six-way tie at training count 5 in all three vocabularies; tied entries enter by NumPy quicksort order over vocabulary positions (2 historical, 3 clean 45, 1 clean 95). Vocabulary-order is \fn{vocab[:18]} (a pre-split-order control on the historical vocabulary; it overlaps the frequency pool on 13/18, 17/18 and 15/18 entries); random is 18 entries drawn without replacement per row (seed 0, one realisation). Intervals are uncorrected over 45 comparisons per vocabulary (12 of 45 exclude zero on the clean 95-entry model, 26 historical, 22 clean 45). % from analyses/I-02_result.md and I-02b_result.md; checked in I-02_check.md and I-02b_check.md
+\begin{center}\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{lllrrrrrr}
+\toprule
+Vocab. & Window & Pool & Near-dup. & Same-fn. & Hedges & Cov. & $\Delta$DF $[$CI$]$ & $\Delta$SFP $[$CI$]$\\
+\midrule
+Hist. & @10 & Learned & 0.0000 & 0.1619 & 0.60 & 61 & --- & ---\\
+Hist. & @10 & Cosine & 0.0008 & 0.1325 & 0.15 & 65 & 0.560 $[0.345,0.774]$ & $-0.029$ $[-0.042,-0.017]$\\
+Hist. & @10 & Frequency & 0.0000 & 0.1839 & 0.68 & 55 & $-0.405$ $[-0.607,-0.202]$ & 0.022 $[0.010,0.034]$\\
+Hist. & @10 & Vocab.\ order & 0.0000 & 0.1701 & 0.73 & 58 & $-0.321$ $[-0.560,-0.095]$ & 0.008 $[-0.005,0.021]$\\
+Hist. & @10 & Full & 0.0005 & 0.1167 & 0.13 & 64 & 1.024 $[0.810,1.238]$ & $-0.045$ $[-0.059,-0.032]$\\
+Hist. & @10 & Random & 0.0021 & 0.1272 & 0.14 & 52 & 0.643 $[0.369,0.917]$ & $-0.035$ $[-0.050,-0.020]$\\
+Hist. & dyn@6 & Learned & 0.0000 & 0.0937 & 0.60 & 61 & --- & ---\\
+Hist. & dyn@6 & Cosine & 0.0000 & 0.0968 & 0.15 & 65 & $-0.048$ $[-0.238,0.155]$ & 0.003 $[-0.017,0.022]$\\
+Hist. & dyn@6 & Frequency & 0.0000 & 0.1040 & 0.68 & 55 & $-0.107$ $[-0.286,0.083]$ & 0.010 $[-0.009,0.029]$\\
+Hist. & dyn@6 & Vocab.\ order & 0.0000 & 0.0968 & 0.73 & 58 & $-0.107$ $[-0.310,0.095]$ & 0.003 $[-0.017,0.022]$\\
+Hist. & dyn@6 & Full & 0.0000 & 0.0611 & 0.13 & 64 & 0.393 $[0.190,0.583]$ & $-0.033$ $[-0.052,-0.014]$\\
+Hist. & dyn@6 & Random & 0.0000 & 0.0690 & 0.14 & 52 & 0.262 $[0.024,0.500]$ & $-0.025$ $[-0.045,-0.005]$\\
+Hist. & @7 & Learned & 0.0000 & 0.1893 & 0.19 & 56 & --- & ---\\
+Hist. & @7 & Cosine & 0.0006 & 0.1497 & 0.04 & 57 & 0.571 $[0.369,0.762]$ & $-0.040$ $[-0.060,-0.020]$\\
+Hist. & @7 & Frequency & 0.0000 & 0.2166 & 0.30 & 44 & $-0.333$ $[-0.512,-0.167]$ & 0.027 $[0.011,0.045]$\\
+Hist. & @7 & Vocab.\ order & 0.0000 & 0.2069 & 0.38 & 48 & $-0.238$ $[-0.429,-0.048]$ & 0.018 $[-0.000,0.035]$\\
+Hist. & @7 & Full & 0.0006 & 0.1485 & 0.02 & 57 & 0.595 $[0.405,0.798]$ & $-0.041$ $[-0.062,-0.020]$\\
+Hist. & @7 & Random & 0.0028 & 0.1621 & 0.06 & 41 & 0.381 $[0.167,0.595]$ & $-0.027$ $[-0.049,-0.006]$\\
+\midrule
+Clean 45 & @10 & Learned & 0.0000 & 0.1714 & 0.52 & 54 & --- & ---\\
+Clean 45 & @10 & Cosine & 0.0008 & 0.1484 & 0.43 & 63 & 0.679 $[0.452,0.905]$ & $-0.023$ $[-0.035,-0.011]$\\
+Clean 45 & @10 & Frequency & 0.0000 & 0.2029 & 0.67 & 54 & $-0.702$ $[-0.893,-0.524]$ & 0.032 $[0.020,0.043]$\\
+Clean 45 & @10 & Vocab.\ order & 0.0000 & 0.1788 & 0.71 & 56 & $-0.226$ $[-0.440,-0.024]$ & 0.007 $[-0.006,0.020]$\\
+Clean 45 & @10 & Full & 0.0013 & 0.1415 & 0.39 & 61 & 0.774 $[0.560,0.988]$ & $-0.030$ $[-0.042,-0.019]$\\
+Clean 45 & @10 & Random & 0.0019 & 0.1545 & 0.43 & 57 & 0.429 $[0.190,0.667]$ & $-0.017$ $[-0.032,-0.003]$\\
+Clean 45 & dyn@6 & Learned & 0.0000 & 0.0905 & 0.52 & 54 & --- & ---\\
+Clean 45 & dyn@6 & Cosine & 0.0000 & 0.0865 & 0.43 & 63 & 0.083 $[-0.119,0.298]$ & $-0.004$ $[-0.024,0.016]$\\
+Clean 45 & dyn@6 & Frequency & 0.0000 & 0.1325 & 0.67 & 54 & $-0.571$ $[-0.738,-0.405]$ & 0.042 $[0.026,0.060]$\\
+Clean 45 & dyn@6 & Vocab.\ order & 0.0000 & 0.1103 & 0.71 & 56 & $-0.274$ $[-0.452,-0.095]$ & 0.020 $[0.001,0.039]$\\
+Clean 45 & dyn@6 & Full & 0.0000 & 0.0770 & 0.39 & 61 & 0.190 $[-0.024,0.405]$ & $-0.014$ $[-0.033,0.006]$\\
+Clean 45 & dyn@6 & Random & 0.0000 & 0.0968 & 0.43 & 57 & $-0.060$ $[-0.274,0.155]$ & 0.006 $[-0.015,0.028]$\\
+Clean 45 & @7 & Learned & 0.0000 & 0.2109 & 0.14 & 48 & --- & ---\\
+Clean 45 & @7 & Cosine & 0.0011 & 0.1791 & 0.13 & 53 & 0.512 $[0.345,0.679]$ & $-0.032$ $[-0.048,-0.016]$\\
+Clean 45 & @7 & Frequency & 0.0000 & 0.2256 & 0.36 & 43 & $-0.321$ $[-0.464,-0.179]$ & 0.015 $[-0.002,0.031]$\\
+Clean 45 & @7 & Vocab.\ order & 0.0000 & 0.2041 & 0.36 & 44 & $-0.060$ $[-0.226,0.107]$ & $-0.007$ $[-0.025,0.010]$\\
+Clean 45 & @7 & Full & 0.0011 & 0.1825 & 0.11 & 53 & 0.464 $[0.298,0.631]$ & $-0.028$ $[-0.045,-0.013]$\\
+Clean 45 & @7 & Random & 0.0017 & 0.1769 & 0.19 & 46 & 0.476 $[0.286,0.667]$ & $-0.034$ $[-0.052,-0.016]$\\
+\midrule
+% Clean 95 rows: analyses/I-02b_pool_v2/numbers.json (I-02b_result.md); checked in I-02b_check.md (225 intervals reproduced independently)
+Clean 95 & @10 & Learned & 0.0000 & 0.1582 & 0.54 & 61 & --- & ---\\
+Clean 95 & @10 & Cosine & 0.0005 & 0.1582 & 0.12 & 60 & 0.274 $[-0.012,0.548]$ & 0.000 $[-0.017,0.017]$\\
+Clean 95 & @10 & Frequency & 0.0000 & 0.1635 & 0.58 & 56 & $-0.191$ $[-0.405,0.012]$ & 0.005 $[-0.005,0.016]$\\
+Clean 95 & @10 & Vocab.\ order & 0.0000 & 0.1788 & 0.71 & 56 & $-0.500$ $[-0.738,-0.262]$ & 0.021 $[0.007,0.034]$\\
+Clean 95 & @10 & Full & 0.0003 & 0.1447 & 0.17 & 57 & 0.452 $[0.179,0.726]$ & $-0.013$ $[-0.029,0.002]$\\
+Clean 95 & @10 & Random & 0.0003 & 0.1548 & 0.24 & 49 & 0.155 $[-0.155,0.464]$ & $-0.003$ $[-0.019,0.012]$\\
+Clean 95 & dyn@6 & Learned & 0.0000 & 0.0857 & 0.54 & 61 & --- & ---\\
+Clean 95 & dyn@6 & Cosine & 0.0000 & 0.1135 & 0.12 & 60 & $-0.250$ $[-0.476,-0.012]$ & 0.028 $[0.004,0.052]$\\
+Clean 95 & dyn@6 & Frequency & 0.0000 & 0.0897 & 0.58 & 56 & $-0.059$ $[-0.238,0.119]$ & 0.004 $[-0.013,0.021]$\\
+Clean 95 & dyn@6 & Vocab.\ order & 0.0000 & 0.1103 & 0.71 & 56 & $-0.309$ $[-0.500,-0.107]$ & 0.025 $[0.005,0.044]$\\
+Clean 95 & dyn@6 & Full & 0.0000 & 0.0992 & 0.17 & 57 & $-0.131$ $[-0.357,0.095]$ & 0.013 $[-0.008,0.035]$\\
+Clean 95 & dyn@6 & Random & 0.0000 & 0.1032 & 0.24 & 49 & $-0.155$ $[-0.393,0.083]$ & 0.018 $[-0.005,0.039]$\\
+Clean 95 & @7 & Learned & 0.0000 & 0.1797 & 0.19 & 50 & --- & ---\\
+Clean 95 & @7 & Cosine & 0.0006 & 0.1746 & 0.04 & 48 & 0.155 $[-0.048,0.345]$ & $-0.005$ $[-0.023,0.013]$\\
+Clean 95 & @7 & Frequency & 0.0000 & 0.1825 & 0.26 & 44 & $-0.167$ $[-0.357,0.012]$ & 0.003 $[-0.014,0.019]$\\
+Clean 95 & @7 & Vocab.\ order & 0.0000 & 0.2041 & 0.36 & 44 & $-0.405$ $[-0.607,-0.202]$ & 0.024 $[0.006,0.042]$\\
+Clean 95 & @7 & Full & 0.0006 & 0.1740 & 0.02 & 47 & 0.179 $[-0.012,0.369]$ & $-0.006$ $[-0.024,0.013]$\\
+Clean 95 & @7 & Random & 0.0000 & 0.1820 & 0.11 & 37 & 0.119 $[-0.095,0.333]$ & 0.002 $[-0.020,0.024]$\\
+\bottomrule
+\end{tabular}\end{center}
+Paired baseline-minus-learned coverage differences: historical cosine 0.056 $[-0.014,0.141]$ at @10/dyn@6 and 0.014 $[-0.099,0.127]$ at @7; historical full vocabulary 0.042 $[-0.042,0.127]$ and 0.014 $[-0.099,0.127]$; historical frequency $-0.085$ $[-0.183,0.014]$ and $-0.169$ $[-0.282,-0.056]$; historical random $-0.127$ $[-0.239,-0.014]$ and $-0.211$ $[-0.338,-0.085]$; clean-45 cosine 0.127 $[0.028,0.225]$ and 0.070 $[-0.028,0.183]$; clean-45 full vocabulary 0.099 $[0.000,0.197]$ and 0.070 $[-0.028,0.183]$; clean-45 frequency 0.000 $[-0.056,0.056]$ and $-0.070$ $[-0.169,0.014]$; clean-45 random 0.042 $[-0.085,0.183]$ and $-0.028$ $[-0.155,0.113]$; % from analyses/I-02_result.md; checked in I-02_check.md
+clean-95 cosine $-0.014$ $[-0.113,0.085]$ and $-0.028$ $[-0.155,0.099]$; clean-95 full vocabulary $-0.056$ $[-0.169,0.056]$ and $-0.042$ $[-0.155,0.085]$; clean-95 frequency $-0.070$ $[-0.169,0.014]$ and $-0.085$ $[-0.197,0.028]$; clean-95 random $-0.169$ $[-0.282,-0.056]$ and $-0.183$ $[-0.310,-0.056]$. On the clean 95-entry vocabulary the frequency cut-off again falls inside a six-way tie at count 5 (one tied entry enters; the frequency and vocabulary-order pools overlap on 15/18 entries), and the learned and cosine pools share 3.8 of 18 entries on average yet reach 61 and 60 covered rows, so similar aggregate counts coexist with different pools; this comparison does not allocate coverage to selector components. The change from the clean-45 cosine coverage advantage to an inconclusive difference on the clean 95-entry model compares two separately fitted checkpoints on different vocabularies; no interaction interval was computed. % from analyses/I-02b_check.md
+The random pool is one realisation; its coverage deficit recurs on both 95-entry vocabularies but not on the 45-entry one. Hedge composition also differs: learned boards carry a listed hedge on 50/84 (historical), 44/84 (clean 45) and 45/84 (clean 95) boards against 13/84, 36/84 and 10/84 for cosine; hedge predictions can earn coverage, and their function labels affect both diversity proxies. The hedge counts alone do not isolate a cause of the diversity differences. % from analyses/I-02_check.md and I-02b_check.md
+
+\section{Worked example}\label{app:example}
+Table~\ref{tab:example} shows one held-out row, its cached teacher board and the historical student's board regenerated from the checkpoint; the caption gives its proxy scores. The student board matches the teacher's four distinct functions at @7 yet covers no acceptable move at @7 or @10, illustrating that matching function counts can coexist with a missed acceptable move. % boards and scores: see comment above the table
+% Worked example: mac/evaluation/phase4/teacher_data.jsonl id "dinner-4-1" (gathered row index 81, test split,
+% category dinner, is_question true). Teacher board = the cached row["board"]; student board regenerated on
+% 2026-09-05 with infer.student_board(model, vocab, scene, transcript, True, k=10, k_dyn=6, core) from the
+% historical student.pt (config_hash d6ce2e56d50b, 95-entry vocab.json). Scores with metrics3 on that pair: teacher
+% @7 distinct functions 4 / same-fn 0.190, student @7 4 / 0.286; coverage teacher True, student False at @7 and @10.
+% Its three template siblings dinner-4-0/2/3 are in the training split (analyses/I-09_family_map.json).
+\begin{table}[h]
+\centering\small
+\caption{Held-out row \fn{dinner-4-1}, historical student: the teacher covers an acceptable move; the student covers none at @7 or @10, yet both score four distinct functions at @7. The row has three training siblings.}
+\label{tab:example}
+\footnotesize
+\begin{tabular}{@{}p{0.13\linewidth}p{0.83\linewidth}@{}}
+\toprule
+Context & \emph{Scene:} A dinner table at home. dad is passing dishes around. \emph{Transcript:} dad: What do you want to do after dinner? \emph{Acceptable moves:} watch a movie; play a game; go to bed; read a book; go outside (the hedge move ``I don't know'' is excluded)\\
+Teacher board & yes; no; I need help; wait; I want to cook; I'm not sure; I'd like to play video games; I need to rest; \textbf{I want to read a book}; I don't care\\
+Student board & yes; no; I need help; wait; i'm not hungry; can i have some bread?; yes, please; i need to use the restroom.; i forgot; i need to check my schedule\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Additional observations}\label{app:additional}
+% Historical timing source: docs/VERIFIED_NUMBERS.md and revision/issues_final.md I-11/I-27; no controlled cache attribution.
+\begin{table}[h]
+\centering\small
+\caption{Post-perception board-construction latency on an Apple M4 CPU, milliseconds over pooled samples. Revision rows: 5,040 timed calls per backend (six counterbalanced sessions of ten repeats over 84 scenarios), static embeddings warm, context keys evicted after each board, background load recorded. Jaccard is mean board-set overlap with the PyTorch path (identical boards in parentheses); it is neither the fraction of entries replaced nor evidence that the boards are otherwise identical. p90 is descriptive of the scenario mix (Section~\ref{sec:latency}). Archived rows are the 2026-08-23 aggregates (three repeats, 252 calls, PyTorch first) for a nominally matching historical configuration; their raw samples and original encoder weights are unavailable and their p90 is not quoted.}
+\label{tab:latency}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{llrrrrr}
+\toprule
+Embedder & Head & p25 & p50 & p75 & p90 & Jaccard (identical)\\
+\midrule
+\multicolumn{7}{l}{\emph{Clean 95-entry configuration (\fn{b72bb3ec7254}, train-calibrated INT8 head, validated MiniLM bundle)}}\\
+% from analyses/I-10_result.md (I-10_bench_v3 + v4); checked in I-10_check.md (all percentiles reproduced from raw samples)
+PyTorch & PyTorch & 8.40 & 9.05 & 10.32 & 13.36 & 1.000 (84/84)\\
+PyTorch & OpenVINO INT8 & 8.41 & 9.15 & 10.57 & 13.35 & 0.926 (60/84)\\
+OpenVINO & OpenVINO INT8 & 3.98 & \textbf{4.50} & 5.15 & 8.52 & 0.926 (60/84)\\
+\midrule
+\multicolumn{7}{l}{\emph{Historical head (\fn{d6ce2e56d50b}, transductive INT8 calibration), same protocol}}\\
+% from analyses/I-10_result.md section 2.5; checked in I-10_check.md (nine pooled family/backend rows match)
+PyTorch & PyTorch & 8.31 & 9.22 & 11.51 & 15.82 & 1.000 (84/84)\\
+PyTorch & OpenVINO INT8 & 8.34 & 9.14 & 10.75 & 13.66 & 0.913 (55/84)\\
+OpenVINO & OpenVINO INT8 & 4.07 & 4.60 & 5.34 & 8.63 & 0.913 (55/84)\\
+\midrule
+\multicolumn{7}{l}{\emph{Archived 2026-08-23 aggregates, historical head, archived recipe}}\\
+% Archived: mac/intel/artifacts/e2e_mac.json (p50 9.6968 / 9.6508 / 5.5051); join is configuration-level only (I-04_check.md); p90 dropped per I-10_check.md
+PyTorch & PyTorch & --- & 9.7 & --- & --- & 1.000\\
+PyTorch & OpenVINO INT8 & --- & 9.7 & --- & --- & 0.913\\
+OpenVINO & OpenVINO INT8 & --- & 5.5 & --- & --- & 0.913\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Evaluation-harness timing.} The historical harness reported 10.135\,ms median (IQR 6.62--11.43; 50 scenarios: 24 classroom, 24 clinic and 2 airport, sharing ten scene strings). Its teacher timing was 7.05\,s (eight classroom scenarios; Section~\ref{sec:distil}). The unmatched workloads preclude a speed-up ratio. % issues_final.md I-27; audit_gpt.md F2; docs/VERIFIED_NUMBERS.md freeze-time rows
+
+\textbf{Speech recognition timing.} On 2.1/4.0\,s clips, OpenVINO Whisper takes 300/403\,ms median against 252/407\,ms for \fn{faster-whisper} ($n=10$, identical transcripts).
+
+\textbf{Exploratory Intel session.} On a Core Ultra 9 185H, head medians were 0.108\,ms for PyTorch, 0.040\,ms for OpenVINO FP32 and 0.043\,ms for INT8. In the board benchmark the MiniLM embedder always ran on the CPU and only the head was placed on the CPU (FP32) or the Arc iGPU (INT8); the PyTorch-path over OpenVINO-path board time ratios were 2.02 with the CPU head and 1.85 with the iGPU head. Each ratio changes the embedder runtime and the head together, was taken during a concurrent large download with PyTorch board timings ranging from 40 to 129\,ms across three runs, and is descriptive only. The current IR has a dynamic batch axis; a static batch-one export for the NPU has not been evaluated.
+
+\textbf{Open-vocabulary extraction.} The context-based answer extractor activates on 2 of the 84 held-out rows and does not change the reported direct-selector criteria. % I-05_check.md; I-05b_check.md
+
+\textbf{Other export checks.} The student head uses ONNX opset~17 and OpenVINO IR; quantisation excludes the final vocabulary projection, so INT8 denotes a mixed-precision artefact. For the historical head, the maximum INT8 logit difference from FP32 is 1.05 (mean 0.23) and top-six overlap on its 360 calibration contexts is 0.950 mean and 0.667 minimum.
+% Historical export checks: revision/audit_claude.md section 2.13 and mac/intel/artifacts/e2e_mac.json.
+For the clean 45-entry head, ONNX Runtime matches eager PyTorch within $7.7\times10^{-6}$ on all 559 contexts; the validation-only rule (mean top-six overlap $\geq0.8$ and minimum $\geq0.5$ against OpenVINO FP32, the repository's historical gate) rejected three of four NNCF candidates (full-INT8 validation overlap 0.786 and 0.665; head-excluded mixed preset 0.696) and kept the performance preset with the final projection excluded; candidate test logits were computed before this retrospective validation-based selection. The chosen head's test-context logit difference is at most 0.74 (mean 0.21). The ten differing test boards swap one or two dynamic entries. % from analyses/I-07_result.md; checked in I-07_check.md
+For the clean 95-entry head the same procedure (calibration on the 391 training contexts, none from validation or test; the full-INT8 candidate's validation overlap of 0.702 fails the 0.8 gate, so the final projection is again excluded) gives test top-six overlap 0.950 mean and 0.833 minimum (59 rows at 6/6, 25 at 5/6; top-one agreement 0.976; logit difference at most 0.74, mean 0.16), 59 of 84 identical direct-selector boards with PyTorch embeddings (17 one-entry, 4 two-entry, 3 three-entry and 1 four-entry swaps; mean Jaccard 0.924, minimum 0.429), three of the membership changes involving hedge entries. Board agreement is lower than for the 45-entry head, but vocabulary content, labels and weights differ as well as width, so width is not isolated as the cause; candidate test logits were computed before the validation-only selection was applied. These agreement measurements are for the Apple M4 CPU plugin and do not transfer to Intel hardware. % from analyses/I-07b_result.md; checked in I-07b_check.md (hedge-swap and width corrections applied)
+The restored MiniLM bundle has verified hashes. Archived Apple M4 CPU validation reports cosine $\geq0.9999998$ against PyTorch on 153 distinct scene/transcript texts from 84 held-out rows and all 95 vocabulary entries (maximum absolute difference $5.4\times10^{-7}$). The checker verified files and benchmark guards; numerical OpenVINO parity was reviewed from archived summaries, without retained vectors for independent recalculation. % from analyses/I-12_result.md; bounded by analyses/I-12_check.md.
+The archived rows of Table~\ref{tab:latency} remain historical: bundle restoration does not reproduce their latency or establish identity with the original weights, and the 1.1\,ms gap between the archived OpenVINO median and today's session of the same recipe has no attribution. % from analyses/I-10_result.md; checked in I-10_check.md
+\textbf{Benchmark caveats.} One session of the archived recipe on the historical artefacts today gives medians of 9.7 (PyTorch), 9.3 (INT8 head, PyTorch embedder) and 4.4\,ms (OpenVINO) with a PyTorch-path p90 of 21.9\,ms against 12.3\,ms for the INT8 head, reproducing the archived pattern in one session; the cause of the archived asymmetry is not established, since order, repeat count, eviction, reset and static warm-up change together between the recipes. Five of the eighteen clean-configuration sessions were flagged for another process at or above 40\% CPU in a bracketing snapshot; restricting to unflagged sessions moves the clean medians by at most 0.05\,ms and the p90 by at most 0.15\,ms, but snapshots cannot see bursts inside a session. Per-position medians differ by at most 0.62\,ms with no consistent direction, without establishing elimination of order effects; the single isolated process per backend ($n{=}1$) is about 0.3--0.4\,ms slower at the median for the PyTorch-embedder paths and not separable from drift. The first timed pass through a freshly loaded PyTorch embedder has a round-one p90 of 21.8--25.1\,ms against 12.6--13.4\,ms afterwards, with no comparable tail pattern for the OpenVINO embedder; the mechanism is not identified. For the OpenVINO path only 18 of 84 scenarios contribute any sample above the pooled p90, and the six slowest are all question rows on which the open-answer extractor encodes additional spans. The clean-configuration timing and quality records share their artefact and source hashes and their first-round boards, but the current working-tree \fn{infer.py} differs from the recorded one, so the join describes the recorded pipeline rather than the current tree; later-round boards were not archived. Section~\ref{sec:distil} and Appendix~\ref{app:uncertainty} report exported-path quality for the clean 95-entry model and historical artefacts, and the head sizes cover the head IR only, not the full system footprint. % from analyses/I-10_result.md; checked in I-10_check.md (caveats and infer.py drift)
+
+\section{Use of large language models}
+LLM coding agents assisted with code, tests and notes under author direction, and LLM tools assisted with manuscript editing. The system itself uses a local language-model teacher and a vision--language model. In revision, LLM agents audited the manuscript against the artefacts, re-scored cached boards at explicit windows, recounted the hedge, split and vocabulary statistics, retrained the student with training-only preprocessing and the size-matched control, ran the candidate-pool ablation, regenerated 120 teacher pools with the local teacher for the same-pool ablation, requantised the 45- and 95-entry heads with train-only calibration, exported and validated the MiniLM OpenVINO bundle, re-scored the held-out set through the deployed OpenVINO path, benchmarked board-construction latency with repeated counterbalanced sessions and raw samples, and built the artefact manifest; a second agent checked each reported analysis within the reproduction scope documented in its checker report, and LLM agents drafted the integration of the checked results into this text and its consistency passes under author direction. % I-22: lists the analyses actually run during revision (I-02/I-02b, I-03, I-04/I-04b, I-05/I-05b, I-06, I-07/I-07b, I-08, I-09, I-10, I-12, I-16, I-21)
+The authors are responsible for verifying the implementation, measurements, citations and final claims.
+
+\end{document}
