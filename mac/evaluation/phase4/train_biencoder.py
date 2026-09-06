@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import random
 import time
 from pathlib import Path
@@ -36,8 +37,8 @@ from evaluation.phase4.student_biencoder import BiEncoderRanker
 from evaluation.phase4.train import gather_rows, load_config, seed_everything
 
 HERE = Path(__file__).resolve().parent
-CKPT_PATH = HERE / "student_biencoder.pt"
-SPLITS_PATH = HERE / "splits_biencoder.json"
+CKPT_PATH = d.ART / "student_biencoder.pt"
+SPLITS_PATH = d.ART / "splits_biencoder.json"
 
 
 def _batches(n: int, bs: int, rng: np.random.Generator):
@@ -147,14 +148,26 @@ def train(min_freq: int = 1) -> dict:
     # --- the bank: no frequency floor -------------------------------------
     tau = float(cfg["vocab"].get("bank_dedup_tau", cfg["vocab"]["dedup_tau"]))
     linkage = str(cfg["vocab"].get("bank_linkage", "complete"))
+    # Split FIRST; with VOICELINK_TRAIN_ONLY_INVENTORY=1 the bank is built from
+    # the TRAINING rows only (2026-09-05 audit; see train.py). Same partition as
+    # shipped, asserted.
+    splits = d.split_indices(len(rows), cfg["train"]["val_frac"],
+                             cfg["train"]["test_frac"], seed)
+    train_only = os.environ.get("VOICELINK_TRAIN_ONLY_INVENTORY") == "1"
+    if train_only:
+        shipped = json.loads((HERE / "splits_biencoder.json").read_text())
+        assert all(shipped[k] == splits[k] for k in ("train", "val", "test")), \
+            "split drifted from the shipped splits_biencoder.json — refusing to train"
+        print(f"[train-only inventory] bank from the {len(splits['train'])} training rows", flush=True)
+    inv_rows = [rows[i] for i in splits["train"]] if train_only else rows
     phrases, canonical = bank_mod.build_phrase_bank(
-        rows, dedup_tau=tau, min_freq=min_freq, linkage=linkage)
+        inv_rows, dedup_tau=tau, min_freq=min_freq, linkage=linkage)
     phrase2idx = {p: i for i, p in enumerate(phrases)}
     bank_mod.save_bank(phrases, canonical)
 
     # How much the old frequency floor would have thrown away, measured.
     floored, _ = bank_mod.build_phrase_bank(
-        rows, dedup_tau=tau, min_freq=int(cfg["vocab"]["min_freq"]),
+        inv_rows, dedup_tau=tau, min_freq=int(cfg["vocab"]["min_freq"]),
         linkage=linkage)
     print(f"[bank] {len(phrases)} phrases (no floor) vs {len(floored)} at "
           f"min_freq={cfg['vocab']['min_freq']} — the floor would discard "
@@ -165,8 +178,6 @@ def train(min_freq: int = 1) -> dict:
     P = bank_mod.phrase_features(phrases)              # (N, 384)
     pos = [bank_mod.positives_for_row(r, canonical, phrase2idx) for r in rows]
 
-    splits = d.split_indices(len(rows), cfg["train"]["val_frac"],
-                             cfg["train"]["test_frac"], seed)
     splits["fingerprint"] = d.rows_fingerprint(rows)
     splits["bank_sha"] = bank_mod.bank_sha(phrases)
     SPLITS_PATH.write_text(json.dumps(splits, indent=2))

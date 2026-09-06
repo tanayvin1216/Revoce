@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import random
 import sys
 import time
@@ -34,7 +35,7 @@ from evaluation.phase4 import data as d                 # noqa: E402
 from evaluation.phase4.export_onnx import export_student  # noqa: E402
 from evaluation.phase4.student import StudentRanker      # noqa: E402
 
-CKPT = HERE / "student.pt"
+CKPT = d.ART / "student.pt"
 PHASE3_BOARDS = MAC / "evaluation" / "phase3" / "boards.jsonl"
 TEACHER_DATA = HERE / "teacher_data.jsonl"
 TAU = 1.0  # logit-adjustment temperature
@@ -124,7 +125,22 @@ def train() -> dict:
     rows = gather_rows()
     if len(rows) < 20:
         raise SystemExit(f"only {len(rows)} teacher rows — generate more first")
-    vocab, word2idx = d.build_vocab(rows, cfg["vocab"]["min_freq"],
+    # Split FIRST. With VOICELINK_TRAIN_ONLY_INVENTORY=1 the vocabulary, its
+    # deduplication map and the class statistics are built from the TRAINING
+    # rows only (2026-09-05 audit: the shipped student built them over all rows,
+    # so held-out teacher phrases shaped its label space). The partition itself
+    # is the same deterministic split as shipped and is asserted below.
+    splits = d.split_indices(len(rows), cfg["train"]["val_frac"],
+                             cfg["train"]["test_frac"], cfg["seed"])
+    train_only = os.environ.get("VOICELINK_TRAIN_ONLY_INVENTORY") == "1"
+    if train_only:
+        shipped = json.loads((HERE / "splits.json").read_text())
+        assert all(shipped[k] == splits[k] for k in ("train", "val", "test")), \
+            "split drifted from the shipped splits.json — refusing to train"
+        print("[train-only inventory] vocab + class stats from the "
+              f"{len(splits['train'])} training rows", flush=True)
+    inv_rows = [rows[i] for i in splits["train"]] if train_only else rows
+    vocab, word2idx = d.build_vocab(inv_rows, cfg["vocab"]["min_freq"],
                                     cfg["vocab"]["max_size"])
     # RC-2: collapse near-synonym clusters (the 7-hedge wall) to one column each;
     # dropped variants keep contributing label mass via the canonical map.
@@ -139,8 +155,6 @@ def train() -> dict:
     d.save_vocab(vocab)
     d.save_canonical(canonical)
     X, Y = d.make_xy(rows, word2idx, canonical)
-    splits = d.split_indices(len(rows), cfg["train"]["val_frac"],
-                             cfg["train"]["test_frac"], cfg["seed"])
     splits["fingerprint"] = d.rows_fingerprint(rows)
     d.save_splits(splits)
 
@@ -154,8 +168,9 @@ def train() -> dict:
     Yt = torch.from_numpy(Y).to(dev)
     tr, va = splits["train"], splits["val"]
 
-    pw = _pos_weight(Y).to(dev)
-    log_p = _log_priors(Y).to(dev)
+    stat_rows = splits["train"] if train_only else list(range(len(Y)))
+    pw = _pos_weight(Y[stat_rows]).to(dev)
+    log_p = _log_priors(Y[stat_rows]).to(dev)
     model = StudentRanker(cfg["model"]["context_dim"], cfg["model"]["hidden_dim"],
                           len(vocab), cfg["model"]["dropout"]).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=cfg["train"]["lr"],
