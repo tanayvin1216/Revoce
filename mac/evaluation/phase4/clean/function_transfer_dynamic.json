@@ -1,0 +1,98 @@
+{
+ "v2": {
+  "n": 84,
+  "JF_full": 0.651,
+  "JF_full_ci": [
+   0.62,
+   0.684
+  ],
+  "JF_dynamic": 0.238,
+  "JF_dynamic_ci": [
+   0.19,
+   0.288
+  ],
+  "n_dyn_scored": 84,
+  "distinct_full": [
+   3.905,
+   4.298,
+   0.909
+  ],
+  "distinct_dynamic": [
+   2.619,
+   2.512,
+   1.043
+  ]
+ },
+ "v3": {
+  "n": 84,
+  "JF_full": 0.676,
+  "JF_full_ci": [
+   0.642,
+   0.711
+  ],
+  "JF_dynamic": 0.23,
+  "JF_dynamic_ci": [
+   0.186,
+   0.276
+  ],
+  "n_dyn_scored": 84,
+  "distinct_full": [
+   4.798,
+   4.298,
+   1.116
+  ],
+  "distinct_dynamic": [
+   2.476,
+   2.512,
+   0.986
+  ]
+ },
+ "prior": {
+  "n": 84,
+  "JF_full": 0.716,
+  "JF_full_ci": [
+   0.683,
+   0.75
+  ],
+  "JF_dynamic": 0.157,
+  "JF_dynamic_ci": [
+   0.117,
+   0.198
+  ],
+  "n_dyn_scored": 84,
+  "distinct_full": [
+   4.0,
+   4.298,
+   0.931
+  ],
+  "distinct_dynamic": [
+   1.0,
+   2.512,
+   0.398
+  ]
+ },
+ "random": {
+  "n": 84,
+  "JF_full": 0.67,
+  "JF_full_ci": [
+   0.637,
+   0.703
+  ],
+  "JF_dynamic": 0.244,
+  "JF_dynamic_ci": [
+   0.198,
+   0.292
+  ],
+  "n_dyn_scored": 84,
+  "distinct_full": [
+   3.94,
+   4.298,
+   0.917
+  ],
+  "distinct_dynamic": [
+   2.512,
+   2.512,
+   1.0
+  ]
+ }
+}

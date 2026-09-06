@@ -1,0 +1,62 @@
+{
+ "v2-random": {
+  "JF_dyn_diff": -0.006,
+  "JF_dyn_ci": [
+   -0.065,
+   0.054
+  ],
+  "cov_corrected_diff": 0.225,
+  "cov_corrected_ci": [
+   0.085,
+   0.366
+  ]
+ },
+ "v3-random": {
+  "JF_dyn_diff": -0.014,
+  "JF_dyn_ci": [
+   -0.078,
+   0.049
+  ],
+  "cov_corrected_diff": 0.056,
+  "cov_corrected_ci": [
+   -0.085,
+   0.197
+  ]
+ },
+ "v2-prior": {
+  "JF_dyn_diff": 0.082,
+  "JF_dyn_ci": [
+   0.015,
+   0.151
+  ],
+  "cov_corrected_diff": 0.394,
+  "cov_corrected_ci": [
+   0.254,
+   0.535
+  ]
+ },
+ "v3-prior": {
+  "JF_dyn_diff": 0.073,
+  "JF_dyn_ci": [
+   0.037,
+   0.11
+  ],
+  "cov_corrected_diff": 0.225,
+  "cov_corrected_ci": [
+   0.113,
+   0.338
+  ]
+ },
+ "v3-v2": {
+  "JF_dyn_diff": -0.008,
+  "JF_dyn_ci": [
+   -0.077,
+   0.059
+  ],
+  "cov_corrected_diff": -0.169,
+  "cov_corrected_ci": [
+   -0.31,
+   -0.028
+  ]
+ }
+}

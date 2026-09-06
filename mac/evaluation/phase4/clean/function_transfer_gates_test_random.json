@@ -1,0 +1,23 @@
+{
+  "student": "random",
+  "distinct_functions": 3.94,
+  "teacher_distinct_functions": 4.298,
+  "retention_ratio": 0.917,
+  "same_function_pair": 0.1933,
+  "teacher_same_function_pair": 0.1735,
+  "near_dup": 0.0051,
+  "board_variety": 1.0,
+  "dynamic_overlap": 0.008,
+  "coverage_dynamic": 0.437,
+  "teacher_coverage_dynamic": 0.873,
+  "coverage_margin": {
+    "margin": -0.3493,
+    "ci": [
+      -0.4732,
+      -0.2254
+    ],
+    "n": 71,
+    "verdict": "FAIL"
+  },
+  "n_scored_dynamic": 71
+}
