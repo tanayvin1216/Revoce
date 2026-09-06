@@ -123,18 +123,27 @@ def load_boards(path: Path = BOARDS_PATH) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Scoring — pure metrics over cached boards (the only ML dep is embed).
 # ---------------------------------------------------------------------------
-def _score_one(row: dict) -> dict:
+def _score_one(row: dict, metric_k: int | None = None,
+               dynamic_only: bool = False) -> dict:
     from evaluation.embed import embed  # lazy so --from-boards stays the only ML use
 
-    board = row.get("board", [])
-    top = board[:TOPK]
+    metric_k = TOPK if metric_k is None else metric_k
+    if metric_k < 1:
+        raise ValueError("metric_k must be positive")
+    original_board = row.get("board", [])
+    board = original_board
+    if dynamic_only:
+        from rank_vocabulary import GUARANTEED_CORE
+        core = {w.lower() for w in GUARANTEED_CORE}
+        board = [w for w in board if w.lower() not in core]
+    top = board[:metric_k]
     bvecs = embed(top) if top else embed([])
     return {
-        "distinct_functions": metrics3.distinct_functions_at(board, TOPK, board_vecs=bvecs),
+        "distinct_functions": metrics3.distinct_functions_at(board, metric_k, board_vecs=bvecs),
         "near_dup": metrics3.near_dup_rate(bvecs),
         "coverage_of_intent": metrics3.coverage_of_intent(
-            board, row.get("acceptable_moves", []), TOPK, board_vecs=bvecs),
-        "exact_match": metrics3.exact_match(board, row.get("gold_utterance", "")),
+            board, row.get("acceptable_moves", []), metric_k, board_vecs=bvecs),
+        "exact_match": metrics3.exact_match(original_board, row.get("gold_utterance", "")),
     }
 
 
@@ -153,11 +162,15 @@ def _aggregate(scored: list[dict]) -> dict:
     }
 
 
-def score_boards(board_rows: list[dict]) -> dict:
+def score_boards(board_rows: list[dict], metric_k: int | None = None,
+                 dynamic_only: bool = False) -> dict:
     """Aggregate the four metrics overall and per category, per strategy.
 
     Importable and model-free apart from embed(), so the unit test drives it on a
     tiny fixture with a monkeypatched embedder."""
+    metric_k = TOPK if metric_k is None else metric_k
+    if metric_k < 1:
+        raise ValueError("metric_k must be positive")
     per_strategy: dict[str, list[dict]] = {s: [] for s in STRATEGIES}
     per_cat: dict[str, dict[str, list[dict]]] = {}
     scenario_ids: set[str] = set()
@@ -167,7 +180,7 @@ def score_boards(board_rows: list[dict]) -> dict:
         if strat not in per_strategy:
             continue
         scenario_ids.add(row.get("id", ""))
-        s = _score_one(row)
+        s = _score_one(row, metric_k=metric_k, dynamic_only=dynamic_only)
         per_strategy[strat].append(s)
         cat = row.get("category", "unknown")
         per_cat.setdefault(cat, {st: [] for st in STRATEGIES})[strat].append(s)
@@ -177,6 +190,7 @@ def score_boards(board_rows: list[dict]) -> dict:
         cat: {st: _aggregate(scs[st]) for st in STRATEGIES} for cat, scs in per_cat.items()
     }
     return {
+        "metric_window": {"k": metric_k, "dynamic_only": dynamic_only},
         "n_scenarios": len(scenario_ids),
         "overall": overall,
         "per_category": per_category,
@@ -244,11 +258,13 @@ def print_report(results: dict) -> None:
     print("\n" + bar)
     print("VoiceLink Phase-3 self-test — coverage-shaped metrics")
     print(bar)
+    window = results.get("metric_window", {"k": 7, "dynamic_only": False})
+    print(f"window: {window}; gates retain historical @7 thresholds")
     print(f"scenarios: {results['n_scenarios']}")
     print(f"{'metric':<26}{'diverse':>12}{'topk':>12}")
-    print(f"{'distinct-functions@7':<26}{d['distinct_functions']:>12.3f}{t['distinct_functions']:>12.3f}")
+    print(f"{('distinct-functions@' + str(window['k'])):<26}{d['distinct_functions']:>12.3f}{t['distinct_functions']:>12.3f}")
     print(f"{'near-duplicate rate':<26}{d['near_dup']:>12.4f}{t['near_dup']:>12.4f}")
-    print(f"{'coverage-of-intent@7':<26}{d['coverage_of_intent']:>12.3f}{t['coverage_of_intent']:>12.3f}")
+    print(f"{('coverage-of-intent@' + str(window['k'])):<26}{d['coverage_of_intent']:>12.3f}{t['coverage_of_intent']:>12.3f}")
     print(f"{'exact-match (diagnostic)':<26}{d['exact_match']:>12.3f}{t['exact_match']:>12.3f}")
     print(bar)
     for name, g in results["gates"].items():
@@ -275,13 +291,18 @@ def run(args) -> int:
         ranker._temp = 0.0  # the seam picks the sampler; topk wants greedy
         board_rows = generate_boards(scenarios, ranker, sleep=args.sleep)
 
-    results = evaluate_gates(score_boards(board_rows))
-    RESULTS_PATH.write_text(json.dumps(results, indent=2))
-    print(f"\nwrote {RESULTS_PATH}")
+    results = evaluate_gates(score_boards(
+        board_rows, metric_k=args.metric_k, dynamic_only=args.dynamic_only))
+    output = args.output or RESULTS_PATH
+    # Explicit analysis outputs are exclusive: preserve every prior result.
+    with output.open("x" if args.output else "w") as f:
+        f.write(json.dumps(results, indent=2))
+    print(f"\nwrote {output}")
 
     try:
         from evaluation.phase3 import plots3
-        plots3.render(results)
+        if not args.output:
+            plots3.render(results)
     except Exception as e:  # noqa: BLE001 - plotting must never fail the gate read
         print(f"(plots skipped: {e})")
 
@@ -297,7 +318,19 @@ def parse_args(argv=None):
     p.add_argument("--limit", type=int, default=0, help="cap scenarios (debug)")
     p.add_argument("--sleep", type=float, default=0.0,
                    help="seconds between LLM calls (thermal pacing)")
-    return p.parse_args(argv)
+    p.add_argument("--metric-k", type=int, default=None,
+                   help="score first K entries (default: historical 7)")
+    p.add_argument("--dynamic-only", action="store_true",
+                   help="remove core entries BEFORE applying --metric-k")
+    p.add_argument("--output", type=Path, help="new JSON path; refuses overwrite, skips plots")
+    args = p.parse_args(argv)
+    if args.metric_k is not None and args.metric_k < 1:
+        p.error("--metric-k must be positive")
+    if (args.metric_k is not None or args.dynamic_only) and not args.output:
+        p.error("explicit scoring windows require --output to preserve historical artifacts")
+    if args.output and args.output.exists():
+        p.error("--output already exists")
+    return args
 
 
 if __name__ == "__main__":

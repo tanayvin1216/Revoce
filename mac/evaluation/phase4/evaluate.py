@@ -84,9 +84,12 @@ except ImportError:
 
 
 def dynamic_words(board: list[str], core_words: list[str],
-                  k: int = METRIC_K) -> list[str]:
+                  k: int | None = None) -> list[str]:
     """The non-core words inside the top-k window — what the model actually
     contributed to the visible board. The honest coverage gate scores THESE."""
+    k = METRIC_K if k is None else k
+    if k < 1:
+        raise ValueError("k must be positive")
     core_lower = {w.lower() for w in core_words}
     return [w for w in board[:k] if w.lower() not in core_lower]
 
@@ -144,14 +147,17 @@ def _combine_verdict(margins: list[dict], absolutes_ok: bool) -> str:
     return "PASS"
 
 
-def _df_dup_sfp(board: list[str]) -> tuple[int, float, float]:
-    """distinct-functions@7, near-dup rate, same-function-pair rate — one embed."""
+def _df_dup_sfp(board: list[str], metric_k: int | None = None) -> tuple[int, float, float]:
+    """distinct-functions@k, near-dup rate, same-function-pair rate — one embed."""
     from evaluation.embed import embed
-    top = board[:METRIC_K]
+    metric_k = METRIC_K if metric_k is None else metric_k
+    if metric_k < 1:
+        raise ValueError("metric_k must be positive")
+    top = board[:metric_k]
     vecs = embed(top) if top else embed([])
-    return (metrics3.distinct_functions_at(board, METRIC_K, board_vecs=vecs),
+    return (metrics3.distinct_functions_at(board, metric_k, board_vecs=vecs),
             metrics3.near_dup_rate(vecs),
-            metrics3.same_function_pair_rate(board, METRIC_K, board_vecs=vecs))
+            metrics3.same_function_pair_rate(board, metric_k, board_vecs=vecs))
 
 
 def _held_out_rows(splits_path: Path | None = None,
@@ -193,7 +199,8 @@ def _acceptable_moves_lookup() -> dict[tuple, list[str]]:
 
 def held_out_eval(model, vocab, k, k_dyn, core_words,
                   board_fn=None, splits_path: Path | None = None,
-                  split_key: str = "test") -> dict:
+                  split_key: str = "test", metric_k: int | None = None,
+                  dynamic_only: bool = False) -> dict:
     """(1) diversity retention + (2) agreement + (4) coverage-of-intent, held-out.
 
     board_fn lets a DIFFERENT student be scored by exactly this gate code —
@@ -202,6 +209,11 @@ def held_out_eval(model, vocab, k, k_dyn, core_words,
     rather than reimplementing the metrics is the whole point: if v3 is
     compared to v2, it has to be the same ruler.
     """
+    # Full mode truncates then removes core for dynamic coverage. Dynamic-only
+    # mode removes core first, then truncates BOTH arms to the same K.
+    metric_k = METRIC_K if metric_k is None else metric_k
+    if metric_k < 1:
+        raise ValueError("metric_k must be positive")
     core_lower = {w.lower() for w in core_words}
     held = _held_out_rows(splits_path, split_key)
     moves_by_ctx = _acceptable_moves_lookup()
@@ -222,36 +234,39 @@ def held_out_eval(model, vocab, k, k_dyn, core_words,
 
     for r in held:
         sb = board_fn(r["scene"], r["transcript"], r.get("is_question", False))
+        tb = r["board"]
+        if dynamic_only:
+            sb = [w for w in sb if w.lower() not in core_lower][:metric_k]
+            tb = [w for w in tb if w.lower() not in core_lower][:metric_k]
         moves = moves_by_ctx.get((r.get("scene", "").strip(), r.get("transcript", "").strip()))
         if moves:
-            s_cov.append(1.0 if metrics3.coverage_of_intent(sb, moves, METRIC_K) else 0.0)
-            t_cov.append(1.0 if metrics3.coverage_of_intent(r["board"], moves, METRIC_K) else 0.0)
-            # The HONEST coverage: only the model's own words inside the top-7
-            # window, scored against non-hedge moves (a hedge is never the
-            # intent the gate should certify).
+            s_cov.append(1.0 if metrics3.coverage_of_intent(sb, moves, metric_k) else 0.0)
+            t_cov.append(1.0 if metrics3.coverage_of_intent(tb, moves, metric_k) else 0.0)
+            # Dynamic coverage excludes core entries in the selected window and
+            # hedge targets. Predictions are not hedge-filtered by this metric.
             honest_moves = [m for m in moves if not metrics3.is_hedge(m)]
             if honest_moves:
                 s_cov_dyn.append(1.0 if metrics3.coverage_of_intent(
-                    dynamic_words(sb, core_words), honest_moves, METRIC_K) else 0.0)
+                    dynamic_words(sb, core_words, k=metric_k), honest_moves, metric_k) else 0.0)
                 t_cov_dyn.append(1.0 if metrics3.coverage_of_intent(
-                    dynamic_words(r["board"], core_words), honest_moves, METRIC_K) else 0.0)
-        distinct_boards.add(tuple(sorted(w.lower() for w in sb[:METRIC_K])))
+                    dynamic_words(tb, core_words, k=metric_k), honest_moves, metric_k) else 0.0)
+        distinct_boards.add(tuple(sorted(w.lower() for w in sb[:metric_k])))
 
         sb_dynamic = [w for w in sb if w.lower() not in core_lower]
         if len(sb_dynamic) >= 3:
             dynamic_triples.add(frozenset(w.lower() for w in sb_dynamic[:3]))
 
-        sdf, sdup, ssfp = _df_dup_sfp(sb)
-        tdf, tdup, tsfp = _df_dup_sfp(r["board"])
+        sdf, sdup, ssfp = _df_dup_sfp(sb, metric_k=metric_k)
+        tdf, tdup, tsfp = _df_dup_sfp(tb, metric_k=metric_k)
         s_df.append(sdf); s_dup.append(sdup); s_sfp.append(ssfp)
         t_df.append(tdf); t_dup.append(tdup); t_sfp.append(tsfp)
 
-        sset = {w.lower() for w in sb[:METRIC_K]}
-        tset = {w.lower() for w in r["board"][:METRIC_K]}
+        sset = {w.lower() for w in sb[:metric_k]}
+        tset = {w.lower() for w in tb[:metric_k]}
         if tset:
             full_overlaps.append(len(sset & tset) / len(tset))
 
-        teacher_dyn = {w.lower() for w in r["board"][:METRIC_K]
+        teacher_dyn = {w.lower() for w in tb[:metric_k]
                        if w.lower() not in core_lower}
         student_dyn = {w.lower() for w in sb_dynamic}
         if teacher_dyn:
@@ -291,6 +306,7 @@ def held_out_eval(model, vocab, k, k_dyn, core_words,
     diversity_verdict = _combine_verdict([df_margin, sfp_margin], absolutes_ok)
     coverage_verdict = _combine_verdict([cov_margin], True)
     return {
+        "metric_window": {"k": metric_k, "dynamic_only": dynamic_only},
         "diversity_retention": {
             "n_heldout": n,
             "student_distinct_functions": round(sd, 3),
@@ -319,7 +335,14 @@ def held_out_eval(model, vocab, k, k_dyn, core_words,
         # MMR discipline); coverage-of-intent is the product bar, so a word-
         # parroting gate would contradict the report's own thesis.
         "agreement": {
-            "full_overlap_top7": round(full_overlap, 3),
+            # Historical key remains only for the historical full@7 window.
+            **({"full_overlap_top7": round(full_overlap, 3)}
+               if metric_k == 7 and not dynamic_only else {}),
+            "full_overlap": round(full_overlap, 3),
+            "dynamic_student_window": (f"core-filtered first {metric_k}"
+                                       if dynamic_only else "all non-core entries"),
+            "dynamic_teacher_window": (f"core-filtered first {metric_k}"
+                                       if dynamic_only else f"non-core within first {metric_k}"),
             "dynamic_overlap": round(dyn_overlap, 3),
             "n_heldout": len(dynamic_overlaps),
             "pass": None,
@@ -329,9 +352,12 @@ def held_out_eval(model, vocab, k, k_dyn, core_words,
             "student": round(float(np.mean(s_cov)), 3) if s_cov else None,
             "teacher": round(float(np.mean(t_cov)), 3) if t_cov else None,
             "n_scored": len(s_cov),
-            # The gated number: dynamic-within-top-7 words vs non-hedge moves.
+            # The gated number: dynamic entries in the selected window vs non-hedge moves.
             # The full-board number above is reported but NOT gated — 15.5% of
             # its passes came from the pinned core matching a move (§3).
+            "paired_counts_student_teacher": {
+                pair: sum(f"{int(s)}{int(t)}" == pair for s, t in zip(s_cov_dyn, t_cov_dyn))
+                for pair in ("11", "01", "10", "00")},
             "student_dynamic": round(cov_dyn, 3) if s_cov_dyn else None,
             "teacher_dynamic": round(float(np.mean(t_cov_dyn)), 3) if t_cov_dyn else None,
             "n_scored_dynamic": len(s_cov_dyn),
@@ -343,7 +369,8 @@ def held_out_eval(model, vocab, k, k_dyn, core_words,
                          * float(np.mean(t_cov_dyn))),
             "verdict": coverage_verdict,
             "margin": cov_margin,
-            "need": (f"HELD-OUT: student DYNAMIC top-7 non-hedge coverage >= "
+            "need": (f"HELD-OUT: student dynamic coverage in {metric_k}-entry "
+                     f"{'core-filtered' if dynamic_only else 'full'} window >= "
                      f"{DYNAMIC_COVERAGE_GATE:.0%} of the teacher's"),
         },
     }
@@ -502,7 +529,18 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--teacher-samples", type=int, default=8,
                    help="how many scenarios to time the real teacher on (0 = skip)")
+    p.add_argument("--metric-k", type=int, default=None,
+                   help="score first K entries (default: historical 7)")
+    p.add_argument("--dynamic-only", action="store_true",
+                   help="remove core entries BEFORE applying --metric-k")
+    p.add_argument("--output", type=Path, help="new JSON path; refuses overwrite, skips legacy report")
     args = p.parse_args()
+    if args.metric_k is not None and args.metric_k < 1:
+        p.error("--metric-k must be positive")
+    if (args.metric_k is not None or args.dynamic_only) and not args.output:
+        p.error("explicit scoring windows require --output to preserve historical artifacts")
+    if args.output and args.output.exists():
+        p.error("--output already exists")
 
     import yaml
     cfg = yaml.safe_load((HERE / "config.yaml").read_text())
@@ -510,8 +548,10 @@ def main() -> int:
     ck = torch.load(CKPT, map_location="cpu", weights_only=False)
     model, vocab, core_words, k_dyn = load_student()
 
-    held = held_out_eval(model, vocab, k, k_dyn, core_words)
+    held = held_out_eval(model, vocab, k, k_dyn, core_words,
+                         metric_k=args.metric_k, dynamic_only=args.dynamic_only)
     res = {
+        "metric_window": held["metric_window"],
         "meta": {"n_rows": ck.get("n_rows"), "vocab": ck.get("vocab_size"),
                  "config_hash": ck.get("config_hash")},
         "diversity_retention": held["diversity_retention"],
@@ -527,8 +567,11 @@ def main() -> int:
         res["deictic"] = {k_: dq[k_] for k_ in ("overall", "by_question_type")}
     except Exception as exc:  # pragma: no cover - report-only block
         res["deictic"] = {"error": f"{type(exc).__name__}: {exc}"}
-    (HERE / "phase4_results.json").write_text(json.dumps(res, indent=2))
-    write_report(res)
+    output = args.output or HERE / "phase4_results.json"
+    with output.open("x" if args.output else "w") as f:
+        f.write(json.dumps(res, indent=2))
+    if not args.output:
+        write_report(res)
 
     g1, g3 = res["diversity_retention"], res["speedup"]
     bar = "=" * 74
