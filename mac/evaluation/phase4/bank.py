@@ -24,6 +24,8 @@ across them.
 
 from __future__ import annotations
 
+import os
+
 import hashlib
 import json
 from pathlib import Path
@@ -32,7 +34,8 @@ import numpy as np
 
 from evaluation.phase4.data import CORE_SET, dedup_vocab
 
-BANK_PATH = Path(__file__).resolve().parent / "phrase_bank.json"
+BANK_PATH = (Path(__file__).resolve().parent
+             / os.environ.get("VOICELINK_PHASE4_ARTIFACTS", "") / "phrase_bank.json")
 
 
 def dedup_bank(ranked: list[str], tau: float,

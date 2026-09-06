@@ -1,0 +1,23 @@
+{
+  "student": "v2",
+  "distinct_functions": 4.143,
+  "teacher_distinct_functions": 4.667,
+  "retention_ratio": 0.888,
+  "same_function_pair": 0.1723,
+  "teacher_same_function_pair": 0.1434,
+  "near_dup": 0.0011,
+  "board_variety": 0.94,
+  "dynamic_overlap": 0.06,
+  "coverage_dynamic": 0.667,
+  "teacher_coverage_dynamic": 0.861,
+  "coverage_margin": {
+    "margin": -0.1083,
+    "ci": [
+      -0.2306,
+      0.0111
+    ],
+    "n": 72,
+    "verdict": "INCONCLUSIVE"
+  },
+  "n_scored_dynamic": 72
+}

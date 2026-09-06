@@ -1,0 +1,286 @@
+{
+  "n_heldout": 84,
+  "k": 7,
+  "overall": {
+    "student_distinct_functions": 4.0,
+    "teacher_distinct_functions": 4.298,
+    "retention_ratio": 0.931,
+    "dynamic_overlap": 0.131,
+    "full_overlap_top7": 0.616,
+    "function_jaccard": 0.716,
+    "function_jaccard_ci95": [
+      0.683,
+      0.75
+    ],
+    "word_jaccard": 0.063,
+    "word_jaccard_ci95": [
+      0.043,
+      0.086
+    ],
+    "functions_with_zero_lexical_overlap": [
+      "comment",
+      "emotion",
+      "question-back",
+      "request-clarification",
+      "social",
+      "specific-answer"
+    ]
+  },
+  "per_function": {
+    "question-back": {
+      "teacher_presence": 0.0357,
+      "student_presence": 0.0,
+      "retention": 0.0,
+      "presence_margin": -0.0357,
+      "presence_margin_ci95": [
+        -0.0833,
+        0.0
+      ],
+      "teacher_slots_per_board": 0.036,
+      "student_slots_per_board": 0.0,
+      "teacher_dynamic_items": 3,
+      "lexical_overlap": 0.0
+    },
+    "specific-answer": {
+      "teacher_presence": 0.2619,
+      "student_presence": 0.0,
+      "retention": 0.0,
+      "presence_margin": -0.2619,
+      "presence_margin_ci95": [
+        -0.3571,
+        -0.1667
+      ],
+      "teacher_slots_per_board": 0.31,
+      "student_slots_per_board": 0.0,
+      "teacher_dynamic_items": 26,
+      "lexical_overlap": 0.0
+    },
+    "I-dont-know": {
+      "teacher_presence": 0.4167,
+      "student_presence": 1.0,
+      "retention": 2.4,
+      "presence_margin": 0.5833,
+      "presence_margin_ci95": [
+        0.4762,
+        0.6905
+      ],
+      "teacher_slots_per_board": 0.476,
+      "student_slots_per_board": 3.0,
+      "teacher_dynamic_items": 40,
+      "lexical_overlap": 0.65
+    },
+    "request-help": {
+      "teacher_presence": 1.0,
+      "student_presence": 1.0,
+      "retention": 1.0,
+      "presence_margin": 0.0,
+      "presence_margin_ci95": [
+        0.0,
+        0.0
+      ],
+      "teacher_slots_per_board": 1.464,
+      "student_slots_per_board": 1.0,
+      "teacher_dynamic_items": 39,
+      "lexical_overlap": 0.077
+    },
+    "comment": {
+      "teacher_presence": 1.0,
+      "student_presence": 1.0,
+      "retention": 1.0,
+      "presence_margin": 0.0,
+      "presence_margin_ci95": [
+        0.0,
+        0.0
+      ],
+      "teacher_slots_per_board": 2.655,
+      "student_slots_per_board": 2.0,
+      "teacher_dynamic_items": 55,
+      "lexical_overlap": 0.0
+    },
+    "refuse/redirect": {
+      "teacher_presence": 1.0,
+      "student_presence": 1.0,
+      "retention": 1.0,
+      "presence_margin": 0.0,
+      "presence_margin_ci95": [
+        0.0,
+        0.0
+      ],
+      "teacher_slots_per_board": 1.31,
+      "student_slots_per_board": 1.0,
+      "teacher_dynamic_items": 26,
+      "lexical_overlap": 0.154
+    },
+    "emotion": {
+      "teacher_presence": 0.381,
+      "student_presence": 0.0,
+      "retention": 0.0,
+      "presence_margin": -0.381,
+      "presence_margin_ci95": [
+        -0.4881,
+        -0.2857
+      ],
+      "teacher_slots_per_board": 0.5,
+      "student_slots_per_board": 0.0,
+      "teacher_dynamic_items": 42,
+      "lexical_overlap": 0.0
+    },
+    "request-clarification": {
+      "teacher_presence": 0.0119,
+      "student_presence": 0.0,
+      "retention": 0.0,
+      "presence_margin": -0.0119,
+      "presence_margin_ci95": [
+        -0.0357,
+        0.0
+      ],
+      "teacher_slots_per_board": 0.012,
+      "student_slots_per_board": 0.0,
+      "teacher_dynamic_items": 1,
+      "lexical_overlap": 0.0
+    },
+    "social": {
+      "teacher_presence": 0.1905,
+      "student_presence": 0.0,
+      "retention": 0.0,
+      "presence_margin": -0.1905,
+      "presence_margin_ci95": [
+        -0.2738,
+        -0.1071
+      ],
+      "teacher_slots_per_board": 0.238,
+      "student_slots_per_board": 0.0,
+      "teacher_dynamic_items": 20,
+      "lexical_overlap": 0.0
+    }
+  },
+  "confusion_dynamic_slots": {
+    "question-back": {
+      "question-back": 0,
+      "specific-answer": 0,
+      "I-dont-know": 3,
+      "request-help": 0,
+      "comment": 0,
+      "refuse/redirect": 0,
+      "emotion": 0,
+      "request-clarification": 0,
+      "social": 0
+    },
+    "specific-answer": {
+      "question-back": 0,
+      "specific-answer": 0,
+      "I-dont-know": 26,
+      "request-help": 0,
+      "comment": 0,
+      "refuse/redirect": 0,
+      "emotion": 0,
+      "request-clarification": 0,
+      "social": 0
+    },
+    "I-dont-know": {
+      "question-back": 0,
+      "specific-answer": 0,
+      "I-dont-know": 40,
+      "request-help": 0,
+      "comment": 0,
+      "refuse/redirect": 0,
+      "emotion": 0,
+      "request-clarification": 0,
+      "social": 0
+    },
+    "request-help": {
+      "question-back": 0,
+      "specific-answer": 0,
+      "I-dont-know": 39,
+      "request-help": 0,
+      "comment": 0,
+      "refuse/redirect": 0,
+      "emotion": 0,
+      "request-clarification": 0,
+      "social": 0
+    },
+    "comment": {
+      "question-back": 0,
+      "specific-answer": 0,
+      "I-dont-know": 55,
+      "request-help": 0,
+      "comment": 0,
+      "refuse/redirect": 0,
+      "emotion": 0,
+      "request-clarification": 0,
+      "social": 0
+    },
+    "refuse/redirect": {
+      "question-back": 0,
+      "specific-answer": 0,
+      "I-dont-know": 26,
+      "request-help": 0,
+      "comment": 0,
+      "refuse/redirect": 0,
+      "emotion": 0,
+      "request-clarification": 0,
+      "social": 0
+    },
+    "emotion": {
+      "question-back": 0,
+      "specific-answer": 0,
+      "I-dont-know": 42,
+      "request-help": 0,
+      "comment": 0,
+      "refuse/redirect": 0,
+      "emotion": 0,
+      "request-clarification": 0,
+      "social": 0
+    },
+    "request-clarification": {
+      "question-back": 0,
+      "specific-answer": 0,
+      "I-dont-know": 1,
+      "request-help": 0,
+      "comment": 0,
+      "refuse/redirect": 0,
+      "emotion": 0,
+      "request-clarification": 0,
+      "social": 0
+    },
+    "social": {
+      "question-back": 0,
+      "specific-answer": 0,
+      "I-dont-know": 20,
+      "request-help": 0,
+      "comment": 0,
+      "refuse/redirect": 0,
+      "emotion": 0,
+      "request-clarification": 0,
+      "social": 0
+    }
+  },
+  "meta": {
+    "n_rows": 84,
+    "vocab": 45,
+    "k": 10,
+    "k_dyn": 6,
+    "core_words": [
+      "yes",
+      "no",
+      "I need help",
+      "wait"
+    ],
+    "split": "test",
+    "student": "prior",
+    "prior_board": [
+      "yes",
+      "no",
+      "I need help",
+      "wait",
+      "i don't know",
+      "i am not sure",
+      "i'm not sure",
+      "more",
+      "not now",
+      "i need to use the restroom."
+    ],
+    "generated": "2026-09-05 20:16:44",
+    "labeller": "taxonomy.classify_functions (MiniLM nearest exemplar)"
+  }
+}
