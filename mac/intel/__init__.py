@@ -20,6 +20,26 @@ STUDENT_INT8_XML = ARTIFACTS_DIR / "student_int8.xml"
 MINILM_OV_DIR = ARTIFACTS_DIR / "minilm-ov"
 WHISPER_OV_DIR = ARTIFACTS_DIR / "whisper-base.en-ov-int8"
 
+# Every file OpenVinoEmbedder needs. The whole directory is gitignored (~90 MB
+# .bin), so a checkout has NONE of these until intel/convert.py is run; a partial
+# bundle (xml without bin — the state the repo was found in, I-12) must fail as
+# loudly as an absent one.
+MINILM_BUNDLE_FILES = ("openvino_model.xml", "openvino_model.bin",
+                       "openvino_tokenizer.xml", "openvino_tokenizer.bin")
+
+
+def minilm_bundle_status(model_dir: Path | None = None) -> dict:
+    """{'complete': bool, 'missing': [...], 'files': {name: bytes|None}} for the
+    MiniLM IR bundle — used by the loader, convert.py's post-export validation
+    and the benchmarks, so 'is the torch-free embedder actually available' has
+    one answer everywhere. MINILM_OV_DIR is read at call time (not bound as a
+    default) so tests can point it elsewhere."""
+    model_dir = Path(model_dir) if model_dir is not None else MINILM_OV_DIR
+    files = {f: ((model_dir / f).stat().st_size if (model_dir / f).exists() else None)
+             for f in MINILM_BUNDLE_FILES}
+    missing = [f for f, n in files.items() if n is None]
+    return {"dir": str(model_dir), "complete": not missing, "missing": missing, "files": files}
+
 
 def ov_device() -> str:
     """OpenVINO target for the student head. VOICELINK_OV_DEVICE=CPU|GPU|NPU|AUTO.
@@ -140,9 +160,11 @@ class OpenVinoEmbedder:
         import openvino as ov
         model_dir = Path(model_dir)
         xml = model_dir / "openvino_model.xml"
-        if not (xml.exists() and xml.with_suffix(".bin").exists()):
+        status = minilm_bundle_status(model_dir)
+        if not status["complete"]:
             raise FileNotFoundError(
-                f"MiniLM IR missing under {model_dir} — run mac/intel/convert.py")
+                f"MiniLM IR bundle incomplete under {model_dir} (missing "
+                f"{status['missing']}) — run mac/intel/convert.py --skip-student")
         core = ov.Core()
         self._tok = core.compile_model(str(model_dir / "openvino_tokenizer.xml"), "CPU")
         self._enc = core.compile_model(str(xml), "CPU", {"INFERENCE_PRECISION_HINT": "f32"})

@@ -32,10 +32,27 @@ def _backend() -> str:
 _ov_failed = False  # remember an OpenVINO load failure so we warn ONCE, not per call
 
 
+def _strict() -> bool:
+    """VOICELINK_EMBED_STRICT=1 turns the permissive (warned) torch fallback into a
+    hard error. Off by default so the live device keeps serving boards; benchmarks
+    and quality evaluations that LABEL a run by its embedding backend must set it,
+    otherwise a missing MiniLM IR silently produces a torch row under an OpenVINO
+    label (I-12 / audit C-10: exactly what happened to the ov-full row)."""
+    import os
+    return os.environ.get("VOICELINK_EMBED_STRICT", "").strip() in ("1", "true", "yes")
+
+
+class EmbedBackendError(RuntimeError):
+    """The requested embedding backend is not the one actually serving vectors."""
+
+
 def _get_model():
     global _model, _backend_loaded, _ov_failed
     want = _backend()
     if want == "openvino" and _ov_failed:
+        if _strict():
+            raise EmbedBackendError("OpenVINO MiniLM backend requested but it failed to "
+                                    "load earlier in this process (VOICELINK_EMBED_STRICT=1)")
         want = "torch"  # already fell back; don't retry (and re-warn) every call
     if _model is None or _backend_loaded != want:
         if want == "openvino":
@@ -43,6 +60,11 @@ def _get_model():
                 from intel import OpenVinoEmbedder  # torch-free
                 _model = OpenVinoEmbedder()
             except Exception as e:  # IR missing / openvino absent -> torch
+                if _strict():
+                    raise EmbedBackendError(
+                        f"OpenVINO MiniLM backend requested but unavailable ({e}); refusing "
+                        f"the torch fallback because VOICELINK_EMBED_STRICT=1 — run "
+                        f"mac/intel/convert.py --skip-student to export the bundle") from e
                 print(f"[embed] OpenVINO MiniLM unavailable ({e}); using torch "
                       "(this message prints once)")
                 _ov_failed = True
@@ -57,6 +79,21 @@ def _get_model():
 def backend_in_use() -> str | None:
     """Which runtime actually produced embeddings so far (None before first call)."""
     return _backend_loaded
+
+
+def assert_backend(expected: str) -> str:
+    """Hard check that `expected` ('torch'|'openvino') is the runtime that actually
+    served embeddings. Loads the model if nothing has been embedded yet. Any run
+    that reports a number under a backend label must call this (bench_e2e does;
+    quality evaluations on the exported path should too), so a warned fallback
+    can never survive into a labelled row."""
+    _get_model()
+    got = _backend_loaded
+    if got != expected:
+        raise EmbedBackendError(
+            f"embedding backend mismatch: expected {expected!r} but {got!r} is serving "
+            f"(VOICELINK_EMBED_BACKEND={__import__('os').environ.get('VOICELINK_EMBED_BACKEND')!r})")
+    return got
 
 
 # Memo of text -> vector, keyed by backend. The student path embeds the SAME

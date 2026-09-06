@@ -57,3 +57,37 @@ def test_embed_memo_is_exact_and_order_preserving(monkeypatch):
     ref = em._encode(em._get_model(), ["water"])[0]
     np.testing.assert_allclose(b[2], ref, atol=1e-6)
     assert b.shape == (4, 384)
+
+
+def test_embed_strict_mode_refuses_torch_fallback(monkeypatch, tmp_path):
+    """I-12: with VOICELINK_EMBED_STRICT=1 a missing MiniLM IR must raise, not
+    silently serve torch vectors under an 'openvino' label."""
+    import intel
+    monkeypatch.setenv("VOICELINK_EMBED_STRICT", "1")
+    em = _fresh_embed(monkeypatch, "openvino")
+    monkeypatch.setattr(intel.OpenVinoEmbedder, "__init__",
+                        lambda self, model_dir=None: (_ for _ in ()).throw(FileNotFoundError("x")))
+    with pytest.raises(em.EmbedBackendError):
+        em.embed(["hello"])
+    with pytest.raises(em.EmbedBackendError):  # sticky: the retry path raises too
+        em.assert_backend("openvino")
+    assert em.backend_in_use() is None
+
+
+def test_assert_backend_matches_actual_runtime(monkeypatch):
+    em = _fresh_embed(monkeypatch, "torch")
+    assert em.assert_backend("torch") == "torch"
+    with pytest.raises(em.EmbedBackendError):
+        em.assert_backend("openvino")
+
+
+def test_minilm_bundle_status_reports_missing_files(tmp_path):
+    import intel
+    d = tmp_path / "minilm-ov"
+    d.mkdir()
+    (d / "openvino_model.xml").write_text("<net/>")  # the state the repo was found in
+    s = intel.minilm_bundle_status(d)
+    assert s["complete"] is False
+    assert "openvino_model.bin" in s["missing"]
+    with pytest.raises(FileNotFoundError, match="openvino_model.bin"):
+        intel.OpenVinoEmbedder(d)

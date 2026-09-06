@@ -23,7 +23,8 @@ MAC = HERE.parent
 if str(MAC) not in sys.path:
     sys.path.insert(0, str(MAC))
 
-from intel import ARTIFACTS_DIR, MINILM_OV_DIR, STUDENT_FP32_XML  # noqa: E402
+from intel import (ARTIFACTS_DIR, MINILM_OV_DIR, STUDENT_FP32_XML,  # noqa: E402
+                   minilm_bundle_status)
 
 STUDENT_ONNX = MAC / "evaluation" / "phase4" / "student.onnx"
 MINILM_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
@@ -100,6 +101,65 @@ def export_minilm(out_dir: Path = MINILM_OV_DIR) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
+MINILM_PROBES = ["what do plants take in from the air", "I need help", "carbon dioxide",
+                 "A teacher stands at a whiteboard in a classroom", "yes", "wait"]
+
+
+def validate_minilm_bundle(out_dir: Path = MINILM_OV_DIR, min_cos: float = 0.999) -> dict:
+    """Prove the exported bundle is usable BEFORE any benchmark labels a run with it
+    (I-12): every file present, the IR compiles under openvino_tokenizers, an
+    encoding succeeds, the seam's embed helper reports 'openvino' as the backend
+    actually in use, the vectors are 384-d unit vectors and agree with the torch
+    sentence-transformers path (cosine > min_cos). Returns the evidence as a dict;
+    raises RuntimeError on the first failed check."""
+    import importlib
+    import os
+
+    status = minilm_bundle_status(out_dir)
+    if not status["complete"]:
+        raise RuntimeError(f"MiniLM bundle incomplete: missing {status['missing']} in {out_dir}")
+    from intel import OpenVinoEmbedder
+    ov_vecs = OpenVinoEmbedder(out_dir)(MINILM_PROBES)
+    if ov_vecs.shape != (len(MINILM_PROBES), OpenVinoEmbedder.DIM):
+        raise RuntimeError(f"unexpected embedding shape {ov_vecs.shape}")
+    norms = np.linalg.norm(ov_vecs, axis=1)
+    if not np.allclose(norms, 1.0, atol=1e-4):
+        raise RuntimeError(f"embeddings not unit-norm: {norms}")
+    # The seam's helper must pick the bundle up too (that is what bench_e2e and
+    # rank_vocabulary use), not just the class above with an explicit path.
+    prev = os.environ.get("VOICELINK_EMBED_BACKEND")
+    os.environ["VOICELINK_EMBED_BACKEND"] = "openvino"
+    try:
+        import evaluation.embed as em
+        em = importlib.reload(em)
+        em.cache_clear()
+        seam_vecs = em.embed(MINILM_PROBES)
+        backend = em.backend_in_use()
+    finally:
+        if prev is None:
+            os.environ.pop("VOICELINK_EMBED_BACKEND", None)
+        else:
+            os.environ["VOICELINK_EMBED_BACKEND"] = prev
+        em.reset_backend()
+    if backend != "openvino":
+        raise RuntimeError(f"evaluation.embed did not use the bundle (backend_in_use={backend!r})")
+    if Path(out_dir).resolve() == MINILM_OV_DIR.resolve() and not np.allclose(seam_vecs, ov_vecs, atol=1e-5):
+        raise RuntimeError("seam embeddings differ from the direct OpenVinoEmbedder output")
+    result = {"dir": str(out_dir), "files": status["files"], "backend_in_use": backend,
+              "dim": int(ov_vecs.shape[1]), "n_probes": len(MINILM_PROBES)}
+    try:
+        from sentence_transformers import SentenceTransformer
+        ref = SentenceTransformer(MINILM_MODEL).encode(MINILM_PROBES, normalize_embeddings=True)
+        cos = (np.asarray(ref, dtype=np.float32) * ov_vecs).sum(1)
+        result["cos_min_vs_torch"] = float(cos.min())
+        result["max_abs_delta_vs_torch"] = float(np.abs(ref - ov_vecs).max())
+        if cos.min() <= min_cos:
+            raise RuntimeError(f"OpenVINO MiniLM disagrees with torch: cosine min {cos.min():.5f}")
+    except ImportError:  # torch-free box: file/compile/encode checks still count
+        result["cos_min_vs_torch"] = None
+    return result
+
+
 def main() -> int:
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -115,6 +175,13 @@ def main() -> int:
             print(">>> student conversion FAILED parity <<<")
             return 1
 
+    # --validate-minilm-only: re-check an existing bundle without re-exporting
+    # (what a benchmark or quality run should do before trusting an ov-full label).
+    if "--validate-minilm-only" in sys.argv:
+        v = validate_minilm_bundle()
+        print(f"minilm bundle OK: {v}")
+        return 0
+
     if "--skip-minilm" not in sys.argv:
         r = export_minilm()
         if r.returncode == 0 and (MINILM_OV_DIR / "openvino_model.xml").exists():
@@ -122,6 +189,15 @@ def main() -> int:
         else:
             print(f"minilm export FAILED (rc={r.returncode}):\n{r.stderr[-2000:]}")
             return 1
+        # An xml on disk is not a usable bundle (the .bin alone is 90 MB and was
+        # the file found missing): validate the whole thing before reporting success.
+        try:
+            v = validate_minilm_bundle()
+        except Exception as e:
+            print(f"minilm bundle validation FAILED: {type(e).__name__}: {e}")
+            return 1
+        print(f"minilm bundle validated: backend={v['backend_in_use']} dim={v['dim']} "
+              f"cos_min_vs_torch={v['cos_min_vs_torch']}")
     return 0
 
 
