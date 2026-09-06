@@ -112,6 +112,11 @@ def _context_candidates(scene: str | None, transcript: str | None) -> list[str]:
 # dynamic coverage 0.563 -> 0.803). Off until a multi-word answer extractor exists.
 CONTEXT_UNION = False
 
+# I-02 ablation: opt in per call; normal callers keep the learned candidate head.
+# Frequency counts must be fitted on training labels in this exact vocab order.
+# Random callers own the Generator and row traversal; inference never reseeds it.
+POOL_SOURCE = "learned"
+
 # RC-3: that multi-word answer extractor now exists (answers.py). It fixes both
 # defects that sank CONTEXT_UNION — it emits multi-word spans, and it never
 # scores candidates against the question vector. Its picks enter the pool tagged
@@ -143,9 +148,43 @@ def _open_answers(scene: str, transcript: str,
 
 
 def _candidate_pool(model, vocab: list[str], scene: str, transcript: str,
-                    is_question: bool, k_dyn: int) -> list[str]:
+                    is_question: bool, k_dyn: int, *, pool_source: str | None = None,
+                    pool_frequency=None, pool_rng=None) -> list[str]:
     """Vocab top-N by sigmoid score (+ context terms when CONTEXT_UNION)."""
     from evaluation.phase4 import data as d
+    source = POOL_SOURCE if pool_source is None else pool_source
+    pool_n = min(len(vocab), _pool_mult() * k_dyn)
+    if source != "learned":
+        if source == "cosine":
+            from evaluation.embed import embed
+            from selection import build_query_vector
+            scores = embed(vocab) @ build_query_vector(embed, scene, transcript, None)
+            top = np.argsort(-scores, kind="quicksort")[:pool_n]
+        elif source == "frequency":
+            counts = np.asarray(pool_frequency)
+            if (counts.shape != (len(vocab),) or
+                    not np.issubdtype(counts.dtype, np.number) or
+                    not np.isfinite(counts).all() or (counts < 0).any()):
+                raise ValueError("pool_frequency requires finite nonnegative counts in vocab order")
+            top = np.argsort(-counts, kind="quicksort")[:pool_n]
+        elif source == "vocab_order":
+            top = range(pool_n)
+        elif source == "full":
+            top = range(len(vocab))
+        elif source == "random":
+            if not isinstance(pool_rng, np.random.Generator):
+                raise ValueError("random pool requires an explicit numpy Generator")
+            top = pool_rng.choice(len(vocab), size=pool_n, replace=False)
+        else:
+            raise ValueError(f"Unknown POOL_SOURCE: {source!r}")
+        pool = [vocab[int(i)] for i in top]
+        if CONTEXT_UNION:
+            seen = {_normalize(w) for w in pool}
+            for term in _context_candidates(scene, transcript):
+                if term not in seen and term not in d.CORE_SET:
+                    seen.add(term)
+                    pool.append(term)
+        return pool
     feats = d.row_features(scene, transcript, is_question)[None, :]
     # Codex P1: torch is imported ONLY for the torch student, so a runtime-only
     # OpenVINO install (no torch) can still serve boards instead of silently
@@ -209,13 +248,17 @@ def _reserve_open(cand_vecs: np.ndarray, open_idx: list[int],
 
 
 def student_dynamic_words(model, vocab: list[str], scene: str, transcript: str,
-                          is_question: bool, k_dyn: int) -> list[str]:
+                          is_question: bool, k_dyn: int, *, pool_source=None,
+                          pool_frequency=None, pool_rng=None) -> list[str]:
     """The k_dyn dynamic board words: pooled, unioned, MMR-selected, hedge-capped."""
     from evaluation.embed import embed
     from selection import build_query_vector, mmr_select
 
+    # Preserve the original call shape for existing adapters on the default path.
+    options = {} if pool_source is None and pool_frequency is None and pool_rng is None else dict(
+        pool_source=pool_source, pool_frequency=pool_frequency, pool_rng=pool_rng)
     candidates = _candidate_pool(model, vocab, scene, transcript,
-                                 is_question, k_dyn)
+                                 is_question, k_dyn, **options)
     if not candidates:
         return []
     cand_vecs = embed(candidates)
@@ -281,7 +324,8 @@ def student_dynamic_words(model, vocab: list[str], scene: str, transcript: str,
 
 def student_board(model, vocab: list[str], scene: str, transcript: str,
                   is_question: bool, k: int, k_dyn: int,
-                  core_words: list[str]) -> list[str]:
+                  core_words: list[str], *, pool_source=None,
+                  pool_frequency=None, pool_rng=None) -> list[str]:
     """Full board: core safety words pinned first, MMR-selected dynamic after.
 
     Same signature as evaluate.py's inline helper so the eval harness (Track 2)
@@ -289,5 +333,6 @@ def student_board(model, vocab: list[str], scene: str, transcript: str,
     """
     from evaluation.phase4 import data as d
     dynamic = student_dynamic_words(model, vocab, scene, transcript,
-                                    is_question, k_dyn)
+                                    is_question, k_dyn, pool_source=pool_source,
+                                    pool_frequency=pool_frequency, pool_rng=pool_rng)
     return d.assemble_board(core_words, dynamic, k)
