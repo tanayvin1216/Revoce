@@ -38,7 +38,7 @@ from evaluation.phase3 import metrics3, scengen, selftest  # noqa: E402
 from evaluation.phase4 import data as d, train as train_mod  # noqa: E402
 from evaluation.phase4.student import StudentRanker          # noqa: E402
 
-CKPT = HERE / "student.pt"
+CKPT = d.ART / "student.pt"
 REPORT = HERE / "PHASE4_REPORT.md"
 METRIC_K = metrics3.TOPK  # 7
 BOARD_VARIETY_FLOOR = 0.5

@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from collections import defaultdict
@@ -56,7 +57,8 @@ if str(MAC) not in sys.path:
 from evaluation.phase3 import metrics3, taxonomy  # noqa: E402
 from evaluation.coverage_metrics import bootstrap_ci  # noqa: E402
 
-OUT = HERE / "function_transfer.json"
+ART = HERE / os.environ.get("VOICELINK_PHASE4_ARTIFACTS", "")  # see data.ART
+OUT = ART / "function_transfer.json"
 METRIC_K = metrics3.TOPK
 FUNCTIONS = list(taxonomy.FUNCTION_EXEMPLARS_V3.keys())
 
@@ -449,17 +451,17 @@ def main() -> int:
     args = p.parse_args()
     if args.out is None:
         args.out = str(OUT if args.student == "v2"
-                       else HERE / f"function_transfer_{args.student}.json")
+                       else ART / f"function_transfer_{args.student}.json")
     if args.latency:
         res = latency_for()
         res["generated"] = time.strftime("%Y-%m-%d %H:%M:%S")
-        out = HERE / "function_transfer_latency.json"
+        out = ART / "function_transfer_latency.json"
         out.write_text(json.dumps(res, indent=2))
         print(json.dumps(res, indent=2))
         return 0
     if args.gates:
         g = gates_for(args.student, args.split)
-        out = HERE / f"function_transfer_gates_{args.student}.json"
+        out = ART / f"function_transfer_gates_{args.student}.json"
         out.write_text(json.dumps(g, indent=2))
         print(json.dumps(g, indent=2))
         print(f"wrote {out}")

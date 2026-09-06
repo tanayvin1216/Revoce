@@ -27,7 +27,7 @@ if str(MAC) not in sys.path:
 from evaluation.phase4 import data as d        # noqa: E402
 from evaluation.phase4.student import StudentRanker  # noqa: E402
 
-ONNX_PATH = HERE / "student.onnx"
+ONNX_PATH = d.ART / "student.onnx"
 BOARDS = MAC / "evaluation" / "phase3" / "boards.jsonl"
 
 

@@ -11,6 +11,7 @@ model capacity for situation-specific vocabulary.
 """
 
 from __future__ import annotations
+import os
 
 import hashlib
 import json
@@ -19,9 +20,15 @@ from pathlib import Path
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
-VOCAB_PATH = HERE / "vocab.json"
-SPLITS_PATH = HERE / "splits.json"
-CANONICAL_PATH = HERE / "canonical.json"
+# Artifact directory switch (2026-09-05 audit). Default "" keeps every path exactly
+# as shipped. VOICELINK_PHASE4_ARTIFACTS=clean puts checkpoints, vocab, bank,
+# splits and analysis outputs under evaluation/phase4/clean/ so a re-trained
+# student can be evaluated without overwriting the served one.
+ART = HERE / os.environ.get("VOICELINK_PHASE4_ARTIFACTS", "")
+ART.mkdir(parents=True, exist_ok=True)
+VOCAB_PATH = ART / "vocab.json"
+SPLITS_PATH = ART / "splits.json"
+CANONICAL_PATH = ART / "canonical.json"
 
 # Import here so CORE_SET is available at module level without loading heavy models.
 from rank_vocabulary import GUARANTEED_CORE  # noqa: E402 (after stdlib)

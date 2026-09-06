@@ -25,15 +25,16 @@ from pathlib import Path
 import torch
 
 from evaluation.phase4 import bank as bank_mod
+from evaluation.phase4 import data as d
 from evaluation.phase4 import evaluate as ev
 from evaluation.phase4 import infer_biencoder as ib
 from evaluation.phase4.student_biencoder import BiEncoderRanker
 from rank_vocabulary import GUARANTEED_CORE
 
 HERE = Path(__file__).resolve().parent
-CKPT = HERE / "student_biencoder.pt"
-SPLITS = HERE / "splits_biencoder.json"
-RESULTS = HERE / "phase4_v3_results.json"
+CKPT = d.ART / "student_biencoder.pt"
+SPLITS = d.ART / "splits_biencoder.json"
+RESULTS = d.ART / "phase4_v3_results.json"
 
 
 def load_v3():
