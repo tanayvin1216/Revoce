@@ -2,6 +2,10 @@
 or the Intel entry may quote as "time to a board".
 
     VOICELINK_PERCEPTION=0 python3 intel/bench_e2e.py [--n 40] [--device CPU|NPU|GPU]
+        [--repeats 3] [--warmup 3] [--evict round|board] [--full-reset] [--out PATH]
+
+The bracketed flags (I-10) default to the historical protocol; every result row
+now also carries p25/p75, min/max and the raw per-round `samples_ms` vector.
 
 Unlike intel/bench.py (bare MLP forward pass, ~0.03 ms — NOT a board), this
 times rank_vocabulary(strategy="student") on REAL held-out scenarios: MiniLM
@@ -69,9 +73,16 @@ def load_scenarios(n: int) -> tuple[list[dict], str]:
     return rows[:n], source
 
 
-def _reset_seam(env: dict[str, str]) -> None:
+def _reset_seam(env: dict[str, str], full: bool = False) -> None:
     """Apply a backend env and drop every cached singleton so the next call
-    actually loads the requested runtime."""
+    actually loads the requested runtime.
+
+    full=True (I-10) additionally puts the process in the SAME state every
+    session starts from, whatever ran before it: the embedding memo, the
+    remembered OpenVINO-load failure (`_ov_failed`), the seam's one-shot
+    fallback flag, the taxonomy exemplar matrix and the answer-prototype memo
+    are all cleared. Default off so the historical protocol is unchanged.
+    """
     for k, v in env.items():
         os.environ[k] = v
     import ranker_config
@@ -81,12 +92,66 @@ def _reset_seam(env: dict[str, str]) -> None:
     import evaluation.embed as em
     em._model = None
     em._backend_loaded = None
+    if full:
+        em.reset_backend()          # also forgets _ov_failed
+        em.cache_clear()
+        rv._student_failure_reported = False
+        from evaluation.phase3 import taxonomy
+        taxonomy._proto_vecs = None
+        taxonomy._proto_funcs = []
+        from evaluation.phase4 import answers, infer
+        answers._prototype_vec.cache_clear()
+        infer._pool_mult.cache_clear()
 
 
-def bench_backend(name: str, scenarios: list[dict], warmup: int = 3, repeats: int = 3) -> dict:
-    _reset_seam(BACKENDS[name])
+def _static_texts(vocab: list[str], core: list[str]) -> list[str]:
+    """Everything a live device has memoised before the first board: the closed
+    vocabulary, the pinned core words, the taxonomy exemplars and the answer
+    prototypes. Pre-warming these explicitly (evict='board') makes round 1 as
+    warm as round N; the historical protocol warmed the vocabulary only as far
+    as the first warmup+round happened to reach into it."""
+    from evaluation.phase3 import taxonomy
+    texts = list(vocab) + list(core)
+    for exs in taxonomy.FUNCTION_EXEMPLARS_V3.values():
+        texts.extend(exs)
+    return texts
+
+
+def bench_backend(name: str, scenarios: list[dict], warmup: int = 3, repeats: int = 3,
+                  student: tuple | None = None, full_reset: bool = False,
+                  evict: str = "round") -> dict:
+    """One backend session.
+
+    student     — optional (model, vocab, core, k_dyn) tuple injected into the
+                  seam after the reset, so a head that is NOT under
+                  mac/intel/artifacts (a revision export) can be timed through
+                  the same rank_vocabulary path. None = the native loader.
+    full_reset  — see _reset_seam(full=True).
+    evict       — 'round' (historical): forget the raw scene/transcript strings
+                  once before each round; texts a board encodes on the side
+                  (stripped transcript, open-answer spans) stay memoised, and a
+                  scene shared by two held-out rows is warm for the second.
+                  'board': pre-warm the static set, then evict after EVERY
+                  timed board every (backend, text) key that board added, so
+                  each context is encoded fresh on every call.
+    """
+    if evict not in ("round", "board"):
+        raise ValueError(f"evict must be 'round' or 'board', got {evict!r}")
+    _reset_seam(BACKENDS[name], full=full_reset)
     import rank_vocabulary as rv
     from evaluation import embed as em
+    if student is not None:
+        rv._student_singleton = tuple(student)
+    if BACKENDS[name]["VOICELINK_EMBED_BACKEND"] == "openvino":
+        # Cheap file check BEFORE the first call: if the bundle is incomplete the
+        # seam would otherwise catch the strict embed error inside _student_board
+        # and serve the LLM path for one board before assert_backend fires.
+        from intel import minilm_bundle_status
+        st = minilm_bundle_status()
+        if not st["complete"]:
+            raise FileNotFoundError(
+                f"MiniLM IR bundle incomplete ({st['missing']} missing in {st['dir']}); "
+                f"'{name}' cannot be measured — run intel/convert.py --skip-student")
 
     def one(s):
         ctx = {"last_utterance": s.get("transcript", ""),
@@ -97,33 +162,72 @@ def bench_backend(name: str, scenarios: list[dict], warmup: int = 3, repeats: in
     t_load = time.perf_counter()
     one(scenarios[0])
     load_s = time.perf_counter() - t_load
+    # Hard label check (I-12): the embedder that ACTUALLY served this row must be
+    # the one the backend name promises. With VOICELINK_EMBED_STRICT set in main()
+    # the fallback already raises at load; this catches the remaining case where
+    # a stale singleton or an unset env slipped through. A mismatch becomes an
+    # error row, never a mislabelled timing.
+    em.assert_backend(BACKENDS[name]["VOICELINK_EMBED_BACKEND"])
+    model, vocab, core, _k_dyn = rv._load_student()
+    if student is not None and model is not student[0]:
+        raise RuntimeError("injected student was not the one the seam served")
+    static_keys: set = set()
+    if evict == "board":
+        static_texts = set(_static_texts(vocab, core))
+        em.embed(sorted(static_texts))         # the live device's warm set
+        # Only the static texts count as warm. (An earlier draft snapshotted every
+        # key here, which silently kept the load call's scenario — scenarios[0] —
+        # warm for the whole session: 1 of n boards then timed at ~0.3 ms.)
+        static_keys = {key for key in em._cache if key[1] in static_texts}
     for s in scenarios[:warmup]:
         one(s)
+    if evict == "board":                       # warmup contexts must not stay warm
+        for key in set(em._cache.keys()) - static_keys:
+            em._cache.pop(key, None)
     lat, boards = [], []
+    rounds: list[list[float]] = []
     ctx_texts = [s.get("scene", "") for s in scenarios] + \
                 [s.get("transcript", "") for s in scenarios]
     for _ in range(repeats):
         # Vocabulary embeddings stay memoised (they are static on a device);
         # the scene/transcript of each board must be encoded fresh every time.
-        em.cache_forget(ctx_texts)
+        if evict == "round":
+            em.cache_forget(ctx_texts)
         lat_round = []
         for s in scenarios:
+            if evict == "board":
+                before = set(em._cache.keys())
             t0 = time.perf_counter()
             b = one(s)
             lat_round.append((time.perf_counter() - t0) * 1000.0)
+            if evict == "board":
+                for key in set(em._cache.keys()) - before:
+                    em._cache.pop(key, None)
             if len(boards) < len(scenarios):
                 boards.append(b)
         lat.extend(lat_round)
-    model, *_ = rv._load_student()
+        rounds.append(lat_round)
+    if rv._student_failure_reported:
+        raise RuntimeError("seam fell back to the LLM path during the session")
+    em.assert_backend(BACKENDS[name]["VOICELINK_EMBED_BACKEND"])
+    head_artifact = str(getattr(model, "xml_path", None) or "student.pt (torch checkpoint)")
     return {
         "backend": name, "env": BACKENDS[name],
         "embed_backend_used": em.backend_in_use(),
         "student_runtime": type(model).__name__,
         "ov_device": getattr(model, "device", None),
-        "n": len(scenarios), "repeats": repeats,
+        "head_artifact": head_artifact, "vocab_size": len(vocab),
+        "n": len(scenarios), "repeats": repeats, "warmup": warmup,
+        "evict": evict, "full_reset": full_reset,
         "first_call_incl_load_s": round(load_s, 3),
-        "p50_ms": float(np.percentile(lat, 50)), "p90_ms": float(np.percentile(lat, 90)),
-        "mean_ms": float(np.mean(lat)), "boards": boards,
+        "p25_ms": float(np.percentile(lat, 25)),
+        "p50_ms": float(np.percentile(lat, 50)),
+        "p75_ms": float(np.percentile(lat, 75)),
+        "p90_ms": float(np.percentile(lat, 90)),
+        "mean_ms": float(np.mean(lat)),
+        "min_ms": float(np.min(lat)), "max_ms": float(np.max(lat)),
+        "samples_ms": rounds,          # [round][scenario], raw, unsorted
+        "boards": boards,
     }
 
 
@@ -142,11 +246,25 @@ def main() -> int:
     ap.add_argument("--device", default=None, help="OpenVINO device for the head")
     ap.add_argument("--backends", default=",".join(BACKENDS))
     ap.add_argument("--no-md", action="store_true", help="don't touch BENCHMARKS.md")
+    # I-10 additions — every default reproduces the historical protocol exactly.
+    ap.add_argument("--repeats", type=int, default=3, help="timed rounds per backend")
+    ap.add_argument("--warmup", type=int, default=3, help="untimed boards before the rounds")
+    ap.add_argument("--evict", choices=("round", "board"), default="round",
+                    help="cache eviction rule (see bench_backend)")
+    ap.add_argument("--full-reset", action="store_true",
+                    help="clear memo/failure/taxonomy state before every backend session")
+    ap.add_argument("--out", default=None,
+                    help="write the JSON here instead of intel/artifacts/e2e_<host>.json "
+                         "(refuses to overwrite an existing file)")
     args = ap.parse_args()
+    if args.out and Path(args.out).exists():
+        ap.error(f"--out {args.out} exists; choose a new path (artifacts are never overwritten)")
     if args.device:
         os.environ["VOICELINK_OV_DEVICE"] = args.device
     os.environ.setdefault("VOICELINK_PERCEPTION", "0")
     os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+    # Never let a warned torch fallback be timed under an OpenVINO label (I-12).
+    os.environ["VOICELINK_EMBED_STRICT"] = "1"
 
     from intel import hardware_fingerprint
     hw = hardware_fingerprint()
@@ -158,7 +276,8 @@ def main() -> int:
     results = []
     for name in args.backends.split(","):
         try:
-            r = bench_backend(name, scenarios)
+            r = bench_backend(name, scenarios, warmup=args.warmup, repeats=args.repeats,
+                              full_reset=args.full_reset, evict=args.evict)
         except Exception as e:  # an unavailable runtime is a row, not a crash
             r = {"backend": name, "error": f"{type(e).__name__}: {e}"}
         results.append(r)
@@ -172,14 +291,16 @@ def main() -> int:
     out = {"hardware": hw, "n_scenarios": len(scenarios),
            "scenario_source": scenario_source,
            "ov_device_requested": args.device or "CPU (default)",
+           "protocol": {"repeats": args.repeats, "warmup": args.warmup, "evict": args.evict,
+                        "full_reset": args.full_reset, "backend_order": args.backends.split(",")},
            "results": [{k: v for k, v in r.items() if k != "boards"} for r in results]}
     host = socket.gethostname().split(".")[0]
     # Scope the filename by device: three --device runs on one box used to write
     # the same path, so CPU/GPU/NPU silently overwrote each other and only the
     # last survived.
     suffix = f"_{args.device.lower()}" if args.device else ""
-    out_path = HERE / "artifacts" / f"e2e_{host}{suffix}.json"
-    out_path.parent.mkdir(exist_ok=True)
+    out_path = Path(args.out) if args.out else HERE / "artifacts" / f"e2e_{host}{suffix}.json"
+    out_path.parent.mkdir(exist_ok=True, parents=True)
     out_path.write_text(json.dumps(out, indent=2))
     print(f"wrote {out_path}")
 
