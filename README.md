@@ -1,8 +1,8 @@
 <div align="center">
 
-<img width="240" alt="VoiceLink — a ten-slot AAC board, four pinned and six chosen for the moment" src="docs/figures/logo.png" />
+<img width="240" alt="Revoce — a ten-slot AAC board, four pinned and six chosen for the moment" src="docs/figures/logo.png" />
 
-# VoiceLink
+# Revoce
 
 A wearable that senses the room and the conversation, and puts the words a
 nonverbal person needs onto their AAC board before they have to ask for them.
