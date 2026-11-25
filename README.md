@@ -117,10 +117,7 @@ versions of the same answer. So instead, Revoce generates candidates across nine
 communicative functions and then picks six that are relevant *and* different from
 each other.
 
-<details>
-<summary>See the full pipeline</summary>
-
-<br>
+Here's the full path from the camera and mic to the board:
 
 ```mermaid
 flowchart TD
@@ -162,7 +159,6 @@ flowchart TD
     class Q,R,S out
 ```
 
-</details>
 
 ## How well it works
 
@@ -210,10 +206,7 @@ difference.
   <img alt="Board latency on Apple M4: 9.70 ms with PyTorch, 9.65 ms with only the head on OpenVINO, 5.51 ms with both on OpenVINO" src="docs/figures/latency.png">
 </picture>
 
-<details>
-<summary>See the small model's architecture</summary>
-
-<br>
+And here's what the small model looks like inside:
 
 ```mermaid
 flowchart TD
@@ -237,7 +230,6 @@ flowchart TD
     class H out
 ```
 
-</details>
 
 ### Checking it actually listens
 
