@@ -168,10 +168,9 @@ We tested the diverse selection against plain top-k ranking on 120 scenarios.
 Both drew from the exact same candidates, so the only difference is how the six
 words get picked.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/diversity-dark.png">
+<p align="center">
   <img alt="Top-k vs diverse selection: distinct functions 3.88 to 4.68, near-duplicate rate 0.0274 to 0.0004, coverage of intent 0.78 to 1.00, exact match 0.33 to 0.53" src="docs/figures/diversity.png">
-</picture>
+</p>
 
 Picking for variety covered more of what the user might want to say and almost
 got rid of repeated suggestions entirely.
@@ -201,10 +200,9 @@ board. The scoring network is only about 190 KB and runs in roughly 0.1 ms. Almo
 all the remaining time is MiniLM, which is why moving it to OpenVINO made such a
 difference.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/latency-dark.png">
+<p align="center">
   <img alt="Board latency on Apple M4: 9.70 ms with PyTorch, 9.65 ms with only the head on OpenVINO, 5.51 ms with both on OpenVINO" src="docs/figures/latency.png">
-</picture>
+</p>
 
 And here's what the small model looks like inside:
 
@@ -263,10 +261,9 @@ wants, but the small one picks from a fixed list of 95. That list can only cover
 about a third of what the big model says, and making it 8.5× longer only gets you
 to 57%.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/ceiling-dark.png">
+<p align="center">
   <img alt="Coverage against vocabulary size: 95 words reaches 33% of the teacher's words, and an 8.5x larger vocabulary still only reaches 57%" src="docs/figures/ceiling.png">
-</picture>
+</p>
 
 So matching the big model word for word wasn't a fair test. We switched to
 measuring whether the board covers what the user might mean, and kept word
@@ -278,10 +275,9 @@ up at dinner. We tested it on 60 questions where the answer is somewhere in the
 scene or conversation. It got every *who* and *this-or-that* question right,
 where the fixed list alone got at most 8%.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/deictic-dark.png">
+<p align="center">
   <img alt="Correct answer placed on the board by question type: alternative 100%, who 100%, where 88%, colour 83%, which 83%, count 0%. The closed vocabulary alone reaches 8% on who questions and 0% elsewhere" src="docs/figures/deictic.png">
-</picture>
+</p>
 
 The full write-up is in [`docs/overview/`](docs/overview/).
 
@@ -295,10 +291,9 @@ loudly instead of quietly showing the wrong words.
 
 Then we ran the exact same file on an Apple M4 and an Intel Core Ultra 9 185H.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/inversion-dark.png">
+<p align="center">
   <img alt="Student head speedup relative to PyTorch on the same machine: 0.60x on Apple M4 through the ARM CPU plugin, 2.66x on an Intel Core Ultra 9 185H" src="docs/figures/inversion.png">
-</picture>
+</p>
 
 Each number compares OpenVINO to PyTorch on the same machine, so differences
 between the two computers don't skew it. Moving MiniLM to OpenVINO as well sped
