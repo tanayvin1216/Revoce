@@ -166,38 +166,29 @@ def fig_diversity(t, dark):
 def fig_inversion(t, dark):
     hb = json.load(open(ART / "head_bench_tanishlaptop.json"))
     intel = {r["name"]: r["p50_ms"] for r in hb["results"]}
-    i_torch = intel["torch CPU (student.pt)"]
-    i_ov = intel["OpenVINO FP32 IR"]
-    m_torch, m_ov = 0.015, 0.025          # mac/intel/BENCHMARKS.md, quiet run
+    i_ratio = intel["torch CPU (student.pt)"] / intel["OpenVINO FP32 IR"]
+    m_ratio = 0.015 / 0.025          # mac/intel/BENCHMARKS.md, quiet run
 
-    rows = [("Apple M4\nARM CPU plugin", m_torch / m_ov, m_torch, m_ov),
-            ("Intel Core Ultra 9 185H\nnative CPU plugin", i_torch / i_ov, i_torch, i_ov)]
+    rows = [("Apple M4", m_ratio), ("Intel Core Ultra 9", i_ratio)]
     style(t)
-    fig, ax = plt.subplots(figsize=(7.8, 3.4))
+    fig, ax = plt.subplots(figsize=(7.4, 3.2))
     ys = [1, 0]
-    for y, (lab, ratio, tt, ov) in zip(ys, rows):
+    for y, (lab, ratio) in zip(ys, rows):
         col = t["s3"] if ratio >= 1 else t["s2"]
-        ax.barh([y], [ratio - 1], left=1, height=.34, color=col, zorder=3,
-                edgecolor=t["surface"], linewidth=2)
-        mid = (1 + ratio) / 2
-        # ratio above the bar, raw timings below it -- nothing sits beside the
-        # bar end, where it would collide with the y tick labels
-        ax.text(mid, y + .26, f"{ratio:.2f}x  " + ("faster" if ratio >= 1 else "slower"),
-                va="bottom", ha="center", fontsize=10.5, fontweight="600",
-                color=t["primary"])
-        ax.text(mid, y - .26, f"{tt:.4f} ms torch   {ov:.4f} ms OpenVINO",
-                va="top", ha="center", fontsize=8.1, color=t["secondary"])
-    ax.axvline(1, color=t["primary"], lw=1.2, zorder=4)
-    ax.text(1, 1.68, "parity with PyTorch", ha="center", fontsize=8.2,
-            color=t["secondary"])
-    ax.set_yticks(ys); ax.set_yticklabels([r[0] for r in rows], fontsize=9)
-    ax.set_xlim(0.42, 3.05); ax.set_ylim(-.62, 1.82)
-    ax.set_xticks([0.5, 1, 2, 3]); ax.set_xticklabels(["0.5x", "1x", "2x", "3x"])
+        ax.barh([y], [ratio], height=.5, color=col, zorder=3)
+        word = "faster" if ratio >= 1 else "slower"
+        ax.text(max(ratio, 1) + .06, y, f"{ratio:.2f}x  ({word})", va="center", ha="left",
+                fontsize=10.5, fontweight="600", color=t["primary"])
+    ax.axvline(1, color=t["secondary"], lw=1, ls=(0, (4, 3)), zorder=4)
+    ax.text(1.04, 1.52, "same speed as PyTorch", ha="left", va="bottom",
+            fontsize=8.4, color=t["secondary"])
+    ax.set_yticks(ys); ax.set_yticklabels([r[0] for r in rows], fontsize=10)
+    ax.set_xlim(0, 3.4); ax.set_ylim(-.5, 1.75)
+    ax.set_xticks([0, 1, 2, 3]); ax.set_xticklabels(["0x", "1x", "2x", "3x"])
     ax.grid(axis="y", visible=False)
     ax.spines["left"].set_visible(False)
-    title(ax, "The same IR, converted once, inverts by CPU vendor",
-          "Student head, 500 iterations after 50 warmup. Ratio is PyTorch ÷ OpenVINO "
-          "on the same machine.", t)
+    title(ax, "The same model runs faster on Intel, slower on Mac",
+          "How many times faster OpenVINO runs than PyTorch on each machine", t)
     save(fig, "inversion", dark)
 
 
@@ -207,33 +198,36 @@ def fig_inversion(t, dark):
 def fig_deictic(t, dark):
     d = json.load(open(P4 / "phase4_results.json"))["deictic"]
     by = d["by_question_type"]
+    names = {"alternative": "This or that?", "who": "Who?", "where": "Where?",
+             "colour": "What colour?", "which": "Which one?", "count": "How many?"}
     order = sorted(by, key=lambda k: (-by[k]["student_answer_hit"], k))
     style(t)
     fig, ax = plt.subplots(figsize=(7.6, 3.9))
     y = np.arange(len(order))[::-1]
     open_v = [by[k]["student_answer_hit"] for k in order]
     closed = [by[k]["closed_answer_hit"] for k in order]
-    ax.barh(y + .17, open_v, height=.32, color=t["s1"], zorder=3,
-            edgecolor=t["surface"], linewidth=2, label="open-vocabulary extractor")
-    ax.barh(y - .17, closed, height=.32, color=t["muted"], zorder=3,
-            edgecolor=t["surface"], linewidth=2, label="closed vocabulary alone")
-    for yy, v in zip(y, open_v):
-        if v > 0:
-            ax.text(v + .015, yy + .17, f"{v:.0%}", va="center", fontsize=8.6,
-                    fontweight="600", color=t["primary"])
-    ax.text(.03, y[order.index("count")] + .17, "0% — counting is not attempted",
-            va="center", fontsize=8.4, color=t["secondary"], style="italic")
+    ax.barh(y + .18, open_v, height=.34, color=t["s1"], zorder=3, label="Revoce")
+    ax.barh(y - .18, closed, height=.34, color=t["muted"], zorder=3,
+            label="Fixed word list only")
+    for yy, v, c, k in zip(y, open_v, closed, order):
+        txt = f"{v:.0%}" if k != "count" else "0%  (not supported yet)"
+        ax.text(v + .015, yy + .18, txt, va="center", fontsize=8.8,
+                fontweight="600" if v else "normal",
+                color=t["primary"] if v else t["secondary"])
+        if c > 0:
+            ax.text(c + .015, yy - .18, f"{c:.0%}", va="center", fontsize=8.2,
+                    color=t["secondary"])
     ax.set_yticks(y)
-    ax.set_yticklabels([f"{k}   n={by[k]['n']}" for k in order], fontsize=9)
-    ax.set_xlim(0, 1.12); ax.set_xticks(np.arange(0, 1.01, .25))
+    ax.set_yticklabels([names.get(k, k) for k in order], fontsize=9.6)
+    ax.set_xlim(0, 1.15); ax.set_xticks(np.arange(0, 1.01, .25))
     ax.set_xticklabels([f"{v:.0%}" for v in np.arange(0, 1.01, .25)])
-    ax.set_xlabel("correct answer placed on the board")
+    ax.set_xlabel("questions where the right answer made it onto the board")
     ax.grid(axis="y", visible=False)
     ax.spines["left"].set_visible(False)
-    ax.legend(loc="lower right", frameon=False, fontsize=8.4, handlelength=1.2)
-    title(ax, "Reading answers out of context, not out of a word list",
-          "60 authored where/who/which/colour/alternative questions whose answer "
-          "is present in the scene or transcript", t)
+    ax.legend(loc="upper center", bbox_to_anchor=(.5, -.2), ncol=2, frameon=False,
+              fontsize=8.8, handlelength=1.2)
+    title(ax, "Answers pulled from what Revoce sees and hears",
+          "60 test questions where the answer is somewhere in the scene or conversation", t)
     save(fig, "deictic", dark)
 
 
