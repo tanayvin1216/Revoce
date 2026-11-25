@@ -1,139 +1,243 @@
 <div align="center">
 
-<img width="240" alt="Revoce — a ten-slot AAC board, four pinned and six chosen for the moment" src="docs/figures/logo.png" />
+<img width="200" alt="Revoce logo: a ten-slot AAC board" src="docs/figures/logo.png" />
 
 # Revoce
 
-**The right words, already on the board.**
+## The right words, already on the board.
 
-Revoce is a wearable that listens to the conversation and looks at the room, so a
-nonverbal person's AAC board already has the words they need by the time they
-need them. No one has to program it in advance.
+Revoce is a small wearable that listens to the conversation and looks at the room,
+so a nonverbal person's AAC board has the words they need before they need them.
 
-### [revoce.ai](https://revoce.ai/)
+**[revoce.ai](https://revoce.ai/)**
 
-[![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/)
-[![OpenVINO](https://img.shields.io/badge/OpenVINO-0071C5?style=for-the-badge&logo=intel&logoColor=white)](https://docs.openvino.ai/)
-[![ONNX](https://img.shields.io/badge/ONNX-005CED?style=for-the-badge&logo=onnx&logoColor=white)](https://onnx.ai/)
-[![Espressif](https://img.shields.io/badge/ESP32--S3-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://www.espressif.com/)
-
-Recognized by
+<br>
 
 **Intel Global AI Impact Festival 2026 Global Award Winner** · **AI for Education Global Award Finalist** · **NeurIPS 2026 Workshops: SLM, ODI and GenAI4Health** · **International Society for Augmentative and Alternative Communication (ISAAC)**
 
+<br>
+
+<table>
+<tr>
+<td align="center" width="200"><h2>10 ms</h2>to build a new board</td>
+<td align="center" width="200"><h2>400×+</h2>faster than the model it learned from</td>
+<td align="center" width="200"><h2>190 KB</h2>distilled model</td>
+<td align="center" width="200"><h2>0</h2>bytes of audio or video sent to the cloud</td>
+</tr>
+</table>
+
 </div>
 
----
+<br>
 
-## Abstract
+## A board that keeps up with your day
 
-Augmentative and alternative communication (AAC) boards only contain the words
-someone programmed into them ahead of time, which breaks down the moment a user
-walks into a situation nobody planned for. Revoce is a context-aware AAC system
-built from three devices: an ESP32-S3 wearable that captures audio and images,
-a computer that runs every model locally, and a tablet that shows a ten-slot
-board. Instead of picking the single most likely reply, Revoce generates
-candidates across nine communicative functions and selects six that are both
-relevant and different from each other. On 120 scenarios this raises coverage
-of communicative intent from 0.78 to 1.00 compared with top-k ranking over the
-same candidates. We then distill a 3B-parameter teacher into a 190 KB student
-that builds a board in about 10 ms instead of 7 s, while keeping 95.3% of the
-teacher's functional diversity. Finally, we export the student to OpenVINO and
-find that the same IR is 2.66× faster than PyTorch on an Intel Core Ultra 9
-but 0.60× on an Apple M4. We report the two evaluation gates the student still
-fails alongside the ones it passes.
+An AAC board is a grid of words someone has to program in advance. Nobody can
+program a board for every moment of a person's day, so when the word you need
+isn't there, you can't say it.
 
-## Contents
+Around 4–5 million people in the U.S. can't reliably meet their daily
+communication needs through speech. Speech-generating devices cost $4,000 to
+$12,000, and 30–35% of them are abandoned within a year, often because the
+vocabulary doesn't fit the user's life.
+([sources](docs/COMPETITION_EVIDENCE.md))
 
-1. [The problem](#1-the-problem)
-2. [What it does](#2-what-it-does)
-3. [System architecture](#3-system-architecture)
-4. [How the board is generated](#4-how-the-board-is-generated)
-5. [Results](#5-results)
-6. [Intel and OpenVINO](#6-intel-and-openvino)
-7. [Quickstart](#7-quickstart)
-8. [Repository structure](#8-repository-structure)
-9. [Privacy](#9-privacy)
-10. [Citation and attribution](#10-citation-and-attribution)
+Revoce changes the board as the day changes. Four words are always there:
+*yes*, *no*, *I need help* and *wait*. The other six update with what's
+happening around you.
 
----
+<table>
+<tr>
+<td width="50%" valign="top">
 
-## 1. The problem
+**In class.** The teacher asks *"What do plants take in from the air?"*
 
-A traditional AAC board is a grid of words and phrases that a user taps to
-communicate. Someone has to program that grid ahead of time, and it is very hard
-to anticipate every situation a person will run into over the course of a day.
-If the word they need isn't there, they can't say it.
+> **carbon dioxide** · oxygen and water · sun
+> I am not sure · can you repeat that? · I know this one
 
-Around 4–5 million people in the United States cannot reliably meet their daily
-communication needs through speech. Dedicated speech-generating devices cost
-between $4,000 and $12,000, with reimbursement cycles of 3 to 18 months. Roughly
-30–35% of these devices are abandoned within the first year, partly because the
-vocabulary on them doesn't match what users actually need to say. AAC users also
-communicate at about one-tenth of typical conversational speed.
+</td>
+<td width="50%" valign="top">
 
-Sources for these figures are in
-[`docs/COMPETITION_EVIDENCE.md`](docs/COMPETITION_EVIDENCE.md).
+**At dinner.** Someone asks *"Who do you want to sit next to?"*
 
-## 2. What it does
+> **aunt** · ...
 
-The board has ten slots. Four of them are always there: *yes*, *no*,
-*I need help* and *wait*. We picked these because each one covers a different
-communicative function, and we didn't want a bad model prediction to ever take
-them away.
+*"Aunt" was never in the vocabulary. Revoce read it from the conversation.*
 
-The other six slots change based on what's happening around the user.
+</td>
+</tr>
+</table>
 
-For example, if a student is in a classroom and the teacher asks *"What do
-plants take in from the air?"*, the board might show:
+<br>
 
-| Answers | Other ways to respond |
-|---|---|
-| **carbon dioxide** | I am not sure |
-| oxygen and water | can you repeat that? |
-| sun | I know this one |
+## More ways to answer, not just one answer
 
-We wanted the board to offer more than just answers. A user should also be able
-to say they're unsure, ask for the question again, or join in some other way.
+Most ranking systems show you the most likely words. That usually gives you six
+versions of the same reply. Revoce generates candidates across nine
+communicative functions and picks six that are relevant *and* different from
+each other, so you can answer, hedge, ask for clarification or just join in.
 
-The system can also suggest words that aren't in its fixed vocabulary. At a
-family meal, *"Who do you want to sit next to?"* can bring up **aunt**, even
-though that word was never on the list. Section 5.4 explains how.
+Same candidates, 120 scenarios, only the selection changed:
 
-## 3. System architecture
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/diversity-dark.png">
+  <img alt="Top-k vs Revoce: distinct functions 3.88 vs 4.68, near-duplicate rate 0.0274 vs 0.0004, coverage of intent 0.78 vs 1.00, exact match 0.33 vs 0.53" src="docs/figures/diversity.png">
+</picture>
 
-The system has three devices. The wearable captures audio and images, the
-computer runs the models, and the tablet shows the board. Neither the wearable
-nor the tablet does any processing of its own.
+<br>
+
+## Fast enough for a real conversation
+
+Our first version used a 3B-parameter model and took about 7 seconds per board.
+By then the conversation has moved on. So we trained a tiny student model on the
+teacher's boards: 559 examples, with 84 held out and never trained on.
+
+The result builds a board in **10 ms** and keeps **95.3%** of the teacher's
+variety. The model itself is 190 KB and runs in about 0.1 ms. Nearly all the
+remaining time is the text encoder, which is why moving it to OpenVINO cut
+latency almost in half.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/latency-dark.png">
+  <img alt="Median board latency on Apple M4: 9.7 ms PyTorch, 9.7 ms with only the head on OpenVINO, 5.5 ms fully on OpenVINO" src="docs/figures/latency.png">
+</picture>
+
+We measured a 695× speedup over the teacher, but teacher timing moves with
+machine load (we've also seen 10.6 s and 11.7 s), so the number we stand behind
+is **over 400×**.
+
+<br>
+
+## Words that were never on the list
+
+Here's something that surprised us. The more data we trained on, the *less*
+often the student picked the teacher's exact words: 23%, then 16%, then 6.7%.
+
+The reason is that the student chooses from a fixed list of 95 words and the
+teacher doesn't. That list can only cover a third of what the teacher says, and
+making it 8.5× bigger only gets to 57%.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/ceiling-dark.png">
+  <img alt="Coverage of teacher words against vocabulary size: 95 words covers 33%, 800 words covers 57%" src="docs/figures/ceiling.png">
+</picture>
+
+A longer list wasn't the answer. Instead, Revoce pulls answers straight out of
+what it sees and hears. On 60 test questions where the answer is in the scene or
+conversation, it gets every *who* and *this-or-that* question right. A fixed
+vocabulary gets at most 8%.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/deictic-dark.png">
+  <img alt="Correct answer on the board by question type, Revoce vs fixed vocabulary: alternative 100% vs 0%, who 100% vs 8%, where 88% vs 0%, colour 83% vs 0%, which 83% vs 0%, count 0% vs 0%" src="docs/figures/deictic.png">
+</picture>
+
+Counting questions ("how many?") aren't handled yet.
+
+<br>
+
+## Built to run on Intel
+
+Every model call in Revoce goes through one function:
+
+```python
+rank_vocabulary(scene, transcript, context) -> ranked_words
+```
+
+Because of that, moving from PyTorch on a Mac to OpenVINO on Intel is a config
+flag. The firmware, the server and the board didn't change.
+
+The student converts to OpenVINO with outputs matching PyTorch to within
+`1.43e-6`. On an Intel Core Ultra 9 185H it runs **2.66×** faster than PyTorch.
+The exact same file runs slower than PyTorch on an Apple M4.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/inversion-dark.png">
+  <img alt="OpenVINO speedup over PyTorch on the same machine: 0.60x on Apple M4, 2.66x on Intel Core Ultra 9 185H" src="docs/figures/inversion.png">
+</picture>
+
+Moving the encoder to OpenVINO too speeds up the whole board by **2.02×** on
+Intel CPU, **1.85×** on the Arc iGPU and **1.76×** on the Mac. INT8 quantization
+shrinks the model from 662 KB to 236 KB, though it isn't any faster. The NPU
+doesn't work yet because it needs a fixed batch size and our export has a
+dynamic one.
+
+<br>
+
+## Private by design
+
+A camera and microphone worn around other people is a serious thing, so privacy
+is built into the hardware and the architecture, not added on later.
+
+<table>
+<tr>
+<td width="33%" valign="top"><b>Stays on your computer</b><br>Every model runs locally. Audio, video and transcripts never go to a server.</td>
+<td width="33%" valign="top"><b>Nothing is recorded</b><br>Audio and images live in short-lived buffers and are never saved to disk.</td>
+<td width="33%" valign="top"><b>A real off switch</b><br>A physical button pauses capture on the device itself.</td>
+</tr>
+<tr>
+<td valign="top"><b>You can see when it's on</b><br>An LED stays lit whenever the device is capturing.</td>
+<td valign="top"><b>Consent first</b><br>Pseudonymization tools and a proxy consent template for guardians.</td>
+<td valign="top"><b>Team-only testing</b><br>Until written consent is in place, we only test on ourselves.</td>
+</tr>
+</table>
+
+<br>
+
+## Where it still falls short
+
+We'd rather show you the full scorecard. These are measured on the 84 held-out
+examples.
+
+| | Student | Teacher | |
+|---|---:|---:|---|
+| Distinct functions @7 | 4.095 | 4.298 | ✅ Pass |
+| Near-duplicate rate | 0.000 | 0.0006 | ✅ Pass |
+| Board variety | 0.952 | — | ✅ Pass (80 of 84 boards distinct) |
+| Coverage of intent | 0.789 | 0.873 | ⚠️ Inconclusive |
+| Same-function-pair rate | 0.1893 | 0.1735 | ❌ Fail |
+| Teacher word agreement | 0.067 | — | Tracked, not gated |
+
+The same-function-pair rate has failed three rounds in a row, and every fix we've
+tried for it pushes coverage of intent below its own bar. Coverage of intent
+clears its bar by only 0.003 on 71 examples, so we don't call that a pass. We're
+still working on both.
+
+<br>
+
+## How it works
+
+Three devices. An ESP32-S3 wearable captures audio and images, a computer runs
+every model, and a tablet shows the board. The wearable and tablet never run a
+model themselves.
 
 ```mermaid
 flowchart LR
     subgraph W["WEARABLE · ESP32-S3"]
         direction TB
-        CAM["OV2640 camera<br/>VGA JPEG · 2000 ms"]
-        MIC["SPH0645 I²S mic<br/>16 kHz PCM · 512-sample chunks"]
-        BTN["capture button · GPIO 14<br/>recording LED"]
+        CAM["Camera"]
+        MIC["Microphone"]
+        BTN["Off button + LED"]
     end
 
-    subgraph M["COMPUTER · all inference, all local"]
+    subgraph M["COMPUTER · everything local"]
         direction TB
-        PERC["perception<br/>Whisper + VLM + change gate"]
-        SEAM["rank_vocabulary(scene, transcript, context)<br/><b>every model call passes here</b>"]
-        BACK["backend: PyTorch · OpenVINO<br/>selected by config flag"]
+        PERC["Whisper + Qwen2.5-VL"]
+        SEAM["rank_vocabulary()"]
+        BACK["PyTorch or OpenVINO"]
         PERC --> SEAM --> BACK
     end
 
-    subgraph T["TABLET · AAC board"]
+    subgraph T["TABLET"]
         direction TB
-        UI["10-slot board<br/>plain HTTP + WebSocket"]
-        TAP["tap log<br/>+ context snapshot"]
+        UI["10-slot board"]
+        TAP["Tap log"]
     end
 
-    CAM -- "frames" --> PERC
-    MIC -- "audio" --> PERC
-    BACK -- "ranked words" --> UI
-    TAP -- "logged" --> M
+    CAM --> PERC
+    MIC --> PERC
+    BACK -- "words" --> UI
+    TAP --> M
 
     classDef wear fill:#fdece4,stroke:#eb6834,color:#3a1d10
     classDef mac fill:#e3edfa,stroke:#2a78d6,color:#0e2440
@@ -143,34 +247,10 @@ flowchart LR
     class UI,TAP tab
 ```
 
-<p align="center"><sub><b>Figure 1.</b> System overview. The wearable streams
-frames and audio to the computer, which is the only device that runs models.
-The tablet receives ranked words over a WebSocket and logs every tap together
-with the context that produced the board.</sub></p>
+<details>
+<summary><b>The full board pipeline</b></summary>
 
-We designed the software so that every model call goes through a single
-function:
-
-```python
-rank_vocabulary(scene, transcript, context) -> ranked_words
-```
-
-Keeping inference behind this one function made it much easier to try
-different models and hardware. For example, we moved from PyTorch on Apple
-silicon to OpenVINO on Intel hardware by changing a configuration flag, without
-touching the firmware, the server routes or the UI.
-
-## 4. How the board is generated
-
-A lot of our work went into how the system decides which words to show.
-
-Picking the highest-scoring words seemed like the obvious approach at first. In
-practice it often gives you a board full of slightly different versions of the
-same answer, which doesn't leave the user much to actually say.
-
-So instead, the ranker generates candidates across nine communicative functions
-and then picks six phrases based on both relevance and how different they are
-from each other (maximal marginal relevance, or MMR).
+<br>
 
 ```mermaid
 flowchart TD
@@ -212,324 +292,87 @@ flowchart TD
     class Q,R,S out
 ```
 
-<p align="center"><sub><b>Figure 2.</b> Board generation pipeline. Orange:
-sensing and personal context. Blue: models. Purple: the selection policy, which
-is shared by the teacher and the student. Green: output to the tablet.</sub></p>
+</details>
 
----
+<details>
+<summary><b>The student model</b></summary>
 
-## 5. Results
-
-### 5.1 Vocabulary selection
-
-We compared standard top-k ranking with our diversity-based selection across 120
-scenarios. Both used exactly the same candidate pool, so the only thing that
-changes is the selection policy.
-
-<p align="center"><sub><b>Table 1.</b> Top-k vs. diverse selection over the same
-candidate pool (n = 120 scenarios).</sub></p>
-
-| Metric | Top-k | Diverse selection |
-|---|---:|---:|
-| Distinct communicative functions ↑ | 3.88 | **4.68** |
-| Near-duplicate rate ↓ | 0.0274 | **0.0004** |
-| Coverage of intent ↑ | 0.78 | **1.00** |
-| Exact match ↑ | 0.33 | **0.53** |
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/diversity-dark.png">
-  <img alt="Four panels comparing top-k ranking against diverse selection: distinct functions 3.88 to 4.68, near-duplicate rate 0.0274 to 0.0004, coverage of intent 0.78 to 1.00, exact match 0.33 to 0.53" src="docs/figures/diversity.png">
-</picture>
-
-<p align="center"><sub><b>Figure 3.</b> The same four metrics as Table 1.
-Selecting for diversity covers more of what the user might mean and almost
-eliminates near-duplicate suggestions.</sub></p>
-
-### 5.2 Model distillation
-
-Our original 3B-parameter teacher made good boards, but each one took about seven
-seconds. That's far too slow for a real conversation.
-
-To fix this, we used the teacher's outputs to train a much smaller student. We
-generated 600 training examples, which came down to 559 after deduplication. We
-held out 84 of them for evaluation and never trained on those.
-
-<p align="center"><sub><b>Table 2.</b> Student vs. teacher on the 84-example
-held-out split.</sub></p>
-
-| Metric | Student | Teacher |
-|---|---:|---:|
-| End-to-end board latency | **10.135 ms** | 7.05 s |
-| Functional diversity retained | 95.3% | — |
-| Measured speedup | **695×** | — |
-
-The 695× figure comes from eight teacher samples. Teacher latency moves around
-with machine load, and we also saw runs of 10.6 s and 11.7 s, so when we report
-the speedup we use the more conservative "over 400×".
-
-The student is made of three parts. MiniLM encodes the input, a small multilayer
-perceptron (MLP) scores the vocabulary, and the same selection policy the teacher
-uses builds the final board.
+<br>
 
 ```mermaid
 flowchart TD
     A["scene sentence"] --> C
     B["transcript"] --> C
-    C["MiniLM encoder<br/>all-MiniLM-L6-v2 · frozen · embeddings memoised"]
-    C --> D["769-d input vector<br/>384 scene ‖ 384 transcript ‖ 1 is_question"]
-    Q["is_question flag"] --> D
+    C["MiniLM encoder<br/>all-MiniLM-L6-v2 · frozen"]
+    C --> D["769-d input<br/>384 scene ‖ 384 transcript ‖ 1 is_question"]
     D --> E["LayerNorm → Linear 769→192 → ReLU → Dropout 0.3"]
-    E --> F["Linear 192→95<br/>logits over the 95-word dynamic vocabulary"]
-    F --> G["MMR + answer quota + hedge cap<br/>the unchanged symbolic selection policy"]
-    G --> H["10-slot board · 4 pinned core + 6 dynamic"]
+    E --> F["Linear 192→95<br/>scores over the 95-word vocabulary"]
+    F --> G["MMR + answer quota + hedge cap<br/>same selection policy as the teacher"]
+    G --> H["10-slot board"]
 
     classDef sense fill:#fdece4,stroke:#eb6834,color:#3a1d10
     classDef model fill:#e3edfa,stroke:#2a78d6,color:#0e2440
     classDef policy fill:#f2eefc,stroke:#4a3aa7,color:#1e1740
     classDef out fill:#e2f4ee,stroke:#1baf7a,color:#0d3325
-    class A,B,Q sense
+    class A,B sense
     class C,D,E,F model
     class G policy
     class H out
 ```
 
-<p align="center"><sub><b>Figure 4.</b> Student architecture. Only the MLP head
-is trained. The encoder is frozen and the selection policy is the same one the
-teacher uses.</sub></p>
+</details>
 
-The distilled head itself is about 190 KB and runs in roughly 0.1 ms. Almost all
-of the remaining latency comes from MiniLM, a 22M-parameter transformer, which is
-why moving the encoder to OpenVINO helped much more than moving the head
-(Figure 5).
+<br>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/latency-dark.png">
-  <img alt="Board latency p50 on Apple M4: 9.70 ms with PyTorch embed and head, 9.65 ms with an OpenVINO head and torch embedder, 5.51 ms with both on OpenVINO" src="docs/figures/latency.png">
-</picture>
+## Try it
 
-<p align="center"><sub><b>Figure 5.</b> Median board latency on an Apple M4 over
-the 84 held-out scenarios. Swapping only the head barely moves the number.
-Moving MiniLM to OpenVINO gives a 1.76× speedup.</sub></p>
-
-### 5.3 Evaluation gates
-
-We scored the student on the held-out split using several gates. A big part of
-what we wanted to check was whether the model was actually reacting to context,
-rather than producing the same generally useful board every time. A model that
-did that should score badly here.
-
-<p align="center"><sub><b>Table 3.</b> Evaluation gates on the held-out split.
-"Report only" metrics are tracked but don't gate a release.</sub></p>
-
-| Metric | Student | Teacher | Result |
-|---|---:|---:|---|
-| Distinct functions @7 ↑ | 4.095 | 4.298 | ✅ Pass |
-| Near-duplicate rate ↓ | 0.000 | 0.0006 | ✅ Pass |
-| Board variety ↑ | 0.952 | — | ✅ Pass |
-| Coverage of intent (dynamic) ↑ | 0.789 | 0.873 | ⚠️ Inconclusive |
-| Same-function-pair rate ↓ | 0.1893 | 0.1735 | ❌ Fail |
-| Teacher word agreement ↑ | 0.067 | — | Report only |
-
-The student kept 95.3% of the teacher's functional diversity and produced 80
-distinct boards across the 84 held-out examples.
-
-There are still two things we need to fix. The same-function-pair rate has
-failed its threshold across three rounds of testing, and every change we tried
-that improved it also pushed coverage of intent below its own threshold.
-Coverage of intent itself only clears its bar by 0.003, and with a sample size
-of 71 we don't think that counts as a pass, so we report it as inconclusive.
-We're still working on improving both without trading one for the other.
-
-### 5.4 Why more training data made word agreement worse
-
-One result surprised us. Adding more training data actually *lowered* how often
-the student picked the same words as the teacher.
-
-The first student agreed with the teacher's exact words 23% of the time, against
-a target of 45%. As we added data, that fell to 16% and then 6.7%, even though
-the student kept passing every speed and diversity gate.
-
-When we dug into it, most of the gap came down to vocabulary. The teacher can
-produce any word it wants, but the student can only choose from a fixed list of
-95.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/ceiling-dark.png">
-  <img alt="Coverage against vocabulary size on a log axis: 95 words reaches 33% of the teacher's word slots, and an 8.5x larger vocabulary still only reaches 57%" src="docs/figures/ceiling.png">
-</picture>
-
-<p align="center"><sub><b>Figure 6.</b> Fraction of the teacher's word slots
-that a closed vocabulary can represent, by vocabulary size. 95 words cover 33%.
-Making the list 8.5× bigger only gets to 57%.</sub></p>
-
-This made us question whether exact word agreement was a fair way to judge the
-student at all. We switched our main metric to coverage of communicative intent
-and kept reporting word agreement on the side.
-
-We also built an open-vocabulary extractor that pulls answers directly out of
-the scene description or the transcript. That's how a word like *aunt* can reach
-the board even though it was never in the vocabulary. We tested it on 60
-questions we wrote where the answer is present in the context.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/deictic-dark.png">
-  <img alt="Correct answer placed on the board by question type: alternative 100%, who 100%, where 88%, colour 83%, which 83%, count 0%. The closed vocabulary alone reaches 8% on who questions and 0% elsewhere" src="docs/figures/deictic.png">
-</picture>
-
-<p align="center"><sub><b>Figure 7.</b> Open-vocabulary extractor vs. the closed
-vocabulary on 60 authored deictic questions. On <i>who</i> and alternative
-questions the extractor gets 100%, compared with at most 8% for the closed
-vocabulary. Counting questions are not handled yet.</sub></p>
-
-The full evaluation is in [`docs/overview/`](docs/overview/).
-
-## 6. Intel and OpenVINO
-
-We exported the student to ONNX and converted it to OpenVINO IR, with logits
-matching PyTorch to within `1.43e-6`. We then used NNCF to quantize it to INT8,
-calibrating on 360 feature vectors taken from real inputs instead of random data.
-
-Every exported model ships with a hash of the vocabulary it was trained on. If
-it's loaded against a different word list, it fails loudly instead of quietly
-showing the wrong words.
-
-We ran the same IR on an Apple M4 and an Intel Core Ultra 9 185H.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/inversion-dark.png">
-  <img alt="Student head speedup relative to PyTorch on the same machine: 0.60x on Apple M4 through the ARM CPU plugin, 2.66x on an Intel Core Ultra 9 185H" src="docs/figures/inversion.png">
-</picture>
-
-<p align="center"><sub><b>Figure 8.</b> Speedup of the OpenVINO student head over
-PyTorch on the same machine. The same unmodified IR is slower than PyTorch on
-the M4 and 2.66× faster on the Intel CPU.</sub></p>
-
-These numbers compare OpenVINO with PyTorch on each machine. They are not a
-comparison of absolute times across the two machines, so OS and library
-differences between them don't affect the ratio.
-
-<p align="center"><sub><b>Table 4.</b> Whole-board speedup from moving the
-MiniLM embedder to OpenVINO.</sub></p>
-
-| Hardware | Board generation speedup |
-|---|---:|
-| Intel CPU | 2.02× |
-| Intel Arc iGPU | 1.85× |
-| Apple M4 | 1.76× |
-
-INT8 quantization shrank the model from 662 KB to 236 KB, but it ran slightly
-slower than FP32 on both machines. So the benefit there is storage, not speed.
-
-We haven't gotten the model running on the Intel NPU yet. The current IR has a
-dynamic batch axis, and the NPU needs statically shaped graphs. Exporting a
-fixed batch-size-one model is the obvious next step, but we haven't tried it.
-
----
-
-## 7. Quickstart
-
-You'll need Python 3.9 or newer. The local LLM and VLM currently run on Apple
-silicon. On Intel hardware you can serve the distilled student through OpenVINO
-instead; see [`mac/intel/`](mac/intel/).
+You'll need Python 3.9+. The LLM and VLM run on Apple silicon; on Intel, serve
+the student through OpenVINO (see [`mac/intel/`](mac/intel/)).
 
 ```bash
 git clone https://github.com/tanayvin1216/VoiceLink && cd VoiceLink
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r mac/requirements-dev.txt
+
+cd mac && VOICELINK_PERCEPTION=0 pytest tests/ -q    # 213 passed
 ```
-
-Run the tests (213 should pass):
-
-```bash
-cd mac
-VOICELINK_PERCEPTION=0 pytest tests/ -q
-```
-
-Start the system:
 
 ```bash
 bash mac/demo.sh              # real wearable, real models
 bash mac/demo.sh --fake       # no ESP32 needed
-bash mac/demo.sh --student    # distilled student instead of the LLM
+bash mac/demo.sh --student    # the distilled student instead of the LLM
 bash mac/demo.sh --intel      # student, MiniLM and Whisper on OpenVINO
 bash mac/demo.sh --mock       # no models at all
 ```
 
-The flags can be combined. The board is served at `http://<mac>:8080/`. We use
-plain HTTP on purpose so a tablet on the same network can open it without
-running into HTTPS mixed-content errors.
+Flags can be combined. Open the board at `http://<your-mac>:8080/` from any
+tablet on the same network.
 
-## 8. Repository structure
+<details>
+<summary><b>What's in the repo</b></summary>
 
-| Path | Description |
+<br>
+
+| Path | |
 |---|---|
 | [`mac/rank_vocabulary.py`](mac/rank_vocabulary.py) | Vocabulary ranking; every model call goes through here |
 | [`mac/server.py`](mac/server.py) | HTTP server, WebSocket and tap logging |
-| [`mac/evaluation/phase4/`](mac/evaluation/phase4/) | Student model, training scripts, evaluation gates and results |
-| [`mac/intel/`](mac/intel/) | ONNX → OpenVINO conversion, NNCF quantization and benchmarks |
-| [`firmware/voicelink_capture/`](firmware/voicelink_capture/) | ESP32-S3 firmware for capture, the button and the LED |
-| [`docs/VERIFIED_NUMBERS.md`](docs/VERIFIED_NUMBERS.md) | Every reported number and where it comes from |
-| [`docs/overview/`](docs/overview/) | Full technical write-up (LaTeX and PDF) |
-| [`docs/figures/make_figures.py`](docs/figures/make_figures.py) | Regenerates every figure in this README |
+| [`mac/evaluation/phase4/`](mac/evaluation/phase4/) | Student model, training, evaluation and results |
+| [`mac/intel/`](mac/intel/) | OpenVINO conversion, quantization and benchmarks |
+| [`firmware/voicelink_capture/`](firmware/voicelink_capture/) | ESP32-S3 firmware |
+| [`docs/VERIFIED_NUMBERS.md`](docs/VERIFIED_NUMBERS.md) | Every number on this page and where it comes from |
+| [`docs/overview/`](docs/overview/) | Full technical write-up |
+| [`docs/figures/make_figures.py`](docs/figures/make_figures.py) | Rebuilds every chart from the committed results |
 | [`paper/`](paper/) | NeurIPS 2026 workshop papers |
 
-### Reproducing the figures
+</details>
 
-Every chart in this README is generated from evaluation results committed to the
-repo. To rebuild them (light and dark versions):
+<br>
 
-```bash
-python3 docs/figures/make_figures.py
-```
+<div align="center">
 
-| Figure | Source artifact |
-|---|---|
-| Fig. 3 — selection policy | `mac/evaluation/phase3/selftest_results.json` |
-| Fig. 5 — board latency | `mac/intel/artifacts/e2e_mac.json` |
-| Fig. 6 — vocabulary ceiling | AXIOM paper, Table 2 (transcribed) |
-| Fig. 7 — open-vocabulary extractor | `mac/evaluation/phase4/phase4_results.json` |
-| Fig. 8 — OpenVINO head speedup | `mac/intel/artifacts/head_bench_tanishlaptop.json` |
+Pictograms by [ARASAAC](https://arasaac.org/), CC BY-NC-SA.
 
-If a figure ever disagrees with its JSON, trust the JSON and rerun the script.
+**[revoce.ai](https://revoce.ai/)**
 
-## 9. Privacy
-
-Revoce uses a body-worn camera and microphone, often around other people, so
-we've spent a lot of time thinking about the privacy of both the user and
-everyone near them. Most of the safeguards are built into the hardware and
-software rather than left to policy.
-
-- **Local processing.** Every model runs on the computer. Audio, video and
-  transcripts are never sent to an outside server.
-- **Nothing saved.** Audio and images live in temporary buffers and are never
-  written to disk. A privacy endpoint reports whether any media files exist on
-  disk.
-- **A physical off switch.** A button on GPIO 14 pauses and resumes capture.
-  While paused, the audio DMA keeps draining so timing stays consistent, but no
-  audio is converted or sent and no images are taken.
-- **A visible recording light.** An LED stays on whenever capture is active, so
-  people nearby can tell the device is listening.
-- **Consent and pseudonymization.** The repo includes tools for pseudonymizing
-  the tap log, plus a proxy consent template for guardians of people who can't
-  consent for themselves.
-
-Until written proxy consent and pseudonymization are in place, we only test with
-members of the project team.
-
-## 10. Citation and attribution
-
-If you use Revoce in your work, please cite:
-
-```bibtex
-@misc{revoce2026,
-  title        = {Revoce: Context-Aware AAC from a Wearable Camera and Microphone},
-  author       = {{The Revoce Team}},
-  year         = {2026},
-  howpublished = {\url{https://revoce.ai/}},
-  note         = {Code: \url{https://github.com/tanayvin1216/VoiceLink}}
-}
-```
-
-The pictograms come from [ARASAAC](https://arasaac.org/) under the CC BY-NC-SA
-license, which is non-commercial. A commercial deployment would need a different
-symbol set.
+</div>
