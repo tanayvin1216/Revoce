@@ -18,16 +18,11 @@ need them. No one has to program it in advance.
 [![ONNX](https://img.shields.io/badge/ONNX-005CED?style=for-the-badge&logo=onnx&logoColor=white)](https://onnx.ai/)
 [![Espressif](https://img.shields.io/badge/ESP32--S3-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://www.espressif.com/)
 
+Recognized by
+
+**Intel Global AI Impact Festival 2026 Global Award Winner** · **AI for Education Global Award Finalist** · **NeurIPS 2026 Workshops: SLM, ODI and GenAI4Health** · **International Society for Augmentative and Alternative Communication (ISAAC)**
+
 </div>
-
-### Recognized by
-
-| | |
-|---|---|
-| 🏆 | **Intel Global AI Impact Festival 2026** — Global Award Winner |
-| 🎓 | **AI for Education** — Global Award Finalist |
-| 📄 | **NeurIPS 2026 Workshops** — SLM, ODI and GenAI4Health |
-| 🗣️ | **International Society for Augmentative and Alternative Communication (ISAAC)** |
 
 ---
 
