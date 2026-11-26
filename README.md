@@ -34,8 +34,7 @@ communication needs through speech. Speech-generating devices
 cost $4,000 to $12,000 and can take 3 to 18 months to get reimbursed, and 30–35%
 of them are abandoned within the first year, often because the vocabulary doesn't
 match what the person needs to say. AAC users also communicate at about
-a tenth of normal conversational speed. Sources are in
-[`docs/COMPETITION_EVIDENCE.md`](docs/COMPETITION_EVIDENCE.md).
+a tenth of normal conversational speed.
 
 ## What it does
 
@@ -274,8 +273,6 @@ The fixed list alone got at most 8%.
   <img alt="Correct answer placed on the board by question type: alternative 100%, who 100%, where 88%, colour 83%, which 83%, count 0%. The closed vocabulary alone reaches 8% on who questions and 0% elsewhere" src="docs/figures/deictic.png">
 </p>
 
-The full write-up is in [`docs/overview/`](docs/overview/).
-
 ### Running on Intel
 
 We exported the small model to ONNX and converted it to OpenVINO, with outputs
@@ -340,8 +337,6 @@ HTTPS mixed-content errors.
 | [`mac/evaluation/phase4/`](mac/evaluation/phase4/) | The small model, training and test results |
 | [`mac/intel/`](mac/intel/) | OpenVINO conversion, quantization and benchmarks |
 | [`firmware/voicelink_capture/`](firmware/voicelink_capture/) | Code for the ESP32-S3 wearable |
-| [`docs/VERIFIED_NUMBERS.md`](docs/VERIFIED_NUMBERS.md) | Every number in this README and where it comes from |
-| [`docs/overview/`](docs/overview/) | The full technical write-up |
 | [`docs/figures/make_figures.py`](docs/figures/make_figures.py) | Rebuilds every chart here from the saved results |
 | [`paper/`](paper/) | Our NeurIPS 2026 workshop papers |
 

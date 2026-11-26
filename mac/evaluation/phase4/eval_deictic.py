@@ -2,7 +2,7 @@
 concrete answer on the board?
 
 The held-out corpus cannot measure answers.py: the open path fires on 2 of 84
-rows there (docs/claude/working-notes/rc3-open-answers/NOTES.md §6). This set
+rows there. This set
 is 60 authored scenarios (deictic_scenarios.jsonl) where the transcript ends in
 a where / who / which / what-colour / how-many / "A or B" question and the
 scene text contains the concrete answer. Each row is scored twice:

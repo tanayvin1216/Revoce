@@ -60,5 +60,6 @@ mac/intel/artifacts/biencoder/
 # built PDFs
 docs/overview/*.pdf
 
-# private working notes, never commit
-docs/claude/
+# docs/ is private apart from the README charts
+docs/*
+!docs/figures/
