@@ -24,16 +24,16 @@ No one has to program it in advance.
 
 ## Why we built it
 
-An AAC board is a grid of words and phrases that someone taps to communicate. The
-catch is that somebody has to program that grid ahead of time, and nobody can
-predict every situation a person will walk into during the day. If the word you
-need isn't on the board, you can't say it.
+An AAC board is a grid of words and phrases that someone taps to communicate.
+Somebody has to program that grid ahead of time, and nobody can predict every
+situation a person will be in during the day. If the word you need isn't on the
+board, you can't say it.
 
-This affects a lot of people. Around 4–5 million people in the U.S. can't reliably
-meet their daily communication needs through speech. Speech-generating devices
+Around 4–5 million people in the U.S. can't reliably meet their daily
+communication needs through speech. Speech-generating devices
 cost $4,000 to $12,000 and can take 3 to 18 months to get reimbursed, and 30–35%
 of them are abandoned within the first year, often because the vocabulary doesn't
-match what the person actually needs to say. AAC users also communicate at about
+match what the person needs to say. AAC users also communicate at about
 a tenth of normal conversational speed. Sources are in
 [`docs/COMPETITION_EVIDENCE.md`](docs/COMPETITION_EVIDENCE.md).
 
@@ -41,7 +41,7 @@ a tenth of normal conversational speed. Sources are in
 
 The board has ten slots. Four of them never change: *yes*, *no*, *I need help*
 and *wait*. We picked those because each one does a different job, and we didn't
-want a bad prediction to ever take them away. The other six update based on
+want a bad prediction to take them away. The other six update based on
 what's going on around the user.
 
 Say a student is in class and the teacher asks *"What do plants take in from the
@@ -49,30 +49,31 @@ air?"* The board might show:
 
 > **carbon dioxide** · oxygen and water · sun · I am not sure · can you repeat that? · I know this one
 
-We wanted the board to do more than offer answers. The student can also say
-they're not sure, ask to hear the question again, or just show they want to join in.
+Not everything on the board is an answer. The student can also say they're not
+sure, ask to hear the question again, or show they want to join in.
 
 Revoce can also suggest words that aren't in its built-in vocabulary. At a family
 dinner, *"Who do you want to sit next to?"* can bring up **aunt**, even though that
-word was never on the list. More on how that works [below](#the-vocabulary-problem).
+word was never on the list. [The vocabulary problem](#the-vocabulary-problem)
+explains how.
 
 ## How it works
 
 There are three devices. The wearable captures audio and images, a computer runs
-all the models, and a tablet shows the board. The wearable and the tablet never
-run a model themselves.
+all the models, and a tablet shows the board. Neither the wearable nor the
+tablet runs a model.
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph W["WEARABLE · ESP32-S3"]
-        direction TB
+        direction LR
         CAM["OV2640 camera<br/>VGA JPEG · 2000 ms"]
         MIC["SPH0645 I²S mic<br/>16 kHz PCM · 512-sample chunks"]
         BTN["capture button · GPIO 14<br/>recording LED"]
     end
 
     subgraph M["COMPUTER · all inference, all local"]
-        direction TB
+        direction LR
         PERC["perception<br/>Whisper + VLM + change gate"]
         SEAM["rank_vocabulary(scene, transcript, context)<br/><b>every model call passes here</b>"]
         BACK["backend: PyTorch · OpenVINO<br/>selected by config flag"]
@@ -80,7 +81,7 @@ flowchart LR
     end
 
     subgraph T["TABLET · AAC board"]
-        direction TB
+        direction LR
         UI["10-slot board<br/>plain HTTP + WebSocket"]
         TAP["tap log<br/>+ context snapshot"]
     end
@@ -104,20 +105,18 @@ Every model call in the project goes through one function:
 rank_vocabulary(scene, transcript, context) -> ranked_words
 ```
 
-Keeping all the model code behind that one function made it easy to try
-different models and hardware. When we moved from PyTorch on a Mac to OpenVINO on
-Intel, it was a config flag. We didn't have to touch the firmware, the server or
-the UI.
+Because of this, we could try different models and hardware without touching
+anything else. Moving from PyTorch on a Mac to OpenVINO on Intel was a config
+flag, with no changes to the firmware, the server or the UI.
 
 ### Picking the six words
 
-This is the part we spent the most time on. The obvious approach is to show the
-six highest-scoring words, but that tends to give you six slightly different
-versions of the same answer. So instead, Revoce generates candidates across nine
-communicative functions and then picks six that are relevant *and* different from
-each other.
+We started by showing the six highest-scoring words, but that often gave six
+versions of the same answer. Revoce now generates candidates across nine
+communicative functions and picks six that are relevant and different from each
+other.
 
-Here's the full path from the camera and mic to the board:
+The full path from the camera and mic to the board:
 
 ```mermaid
 flowchart TD
@@ -162,25 +161,24 @@ flowchart TD
 
 ## How well it works
 
-### A better board, not just a likelier one
+### Choosing the words
 
-We tested the diverse selection against plain top-k ranking on 120 scenarios.
-Both drew from the exact same candidates, so the only difference is how the six
-words get picked.
+We compared our selection method with plain top-k ranking on 120 scenarios. Both
+used the same candidates, so the only difference is how the six words are picked.
 
 <p align="center">
   <img alt="Top-k vs diverse selection: distinct functions 3.88 to 4.68, near-duplicate rate 0.0274 to 0.0004, coverage of intent 0.78 to 1.00, exact match 0.33 to 0.53" src="docs/figures/diversity.png">
 </p>
 
-Picking for variety covered more of what the user might want to say and almost
-got rid of repeated suggestions entirely.
+Choosing for variety covered more of what the user might want to say and nearly
+removed repeated suggestions.
 
-### Making it fast enough to talk with
+### Speed
 
 Our first version used a 3-billion-parameter model. The boards were good, but each
-one took about seven seconds, and by then the conversation has moved on.
+one took about seven seconds, which is too slow for a conversation.
 
-So we trained a much smaller model on the big one's boards. We generated 600
+We trained a much smaller model on the big one's boards. We generated 600
 examples, kept 559 after removing duplicates, and set aside 84 that it never
 trained on.
 
@@ -190,21 +188,20 @@ trained on.
 | Variety kept | 95.3% | — |
 | Speedup | **695×** | — |
 
-The 695× number comes from eight timing runs of the original model, and its speed
-moves around depending on how busy the machine is (we've also seen 10.6 s and
-11.7 s). So when we talk about the speedup, we say **over 400×** to be safe.
+The 695× figure is based on eight timing runs of the original model. Its speed
+depends on how busy the machine is (we've also measured 10.6 s and 11.7 s), so we
+report the speedup as **over 400×**.
 
-The small model is made of three pieces: MiniLM reads the input, a small neural
-network scores the words, and the same selection step from before builds the
-board. The scoring network is only about 190 KB and runs in roughly 0.1 ms. Almost
-all the remaining time is MiniLM, which is why moving it to OpenVINO made such a
-difference.
+The small model has three parts: MiniLM encodes the input, a small neural network
+scores the words, and the same selection step as before builds the board. The
+scoring network is about 190 KB and runs in roughly 0.1 ms. Most of the remaining
+time is spent in MiniLM, so moving MiniLM to OpenVINO cut the latency the most.
 
 <p align="center">
   <img alt="Board latency on Apple M4: 9.70 ms with PyTorch, 9.65 ms with only the head on OpenVINO, 5.51 ms with both on OpenVINO" src="docs/figures/latency.png">
 </p>
 
-And here's what the small model looks like inside:
+The small model's architecture:
 
 ```mermaid
 flowchart TD
@@ -229,11 +226,11 @@ flowchart TD
 ```
 
 
-### Checking it actually listens
+### Evaluation
 
-We wanted to make sure the small model was really reacting to what's happening,
-and not just showing the same generally useful board every time. A model that
-did that should do badly on these checks.
+These checks test whether the small model responds to the situation instead of
+showing the same general-purpose board every time. A model that did that would
+fail them.
 
 | Check | Small model | Original model | Result |
 |---|---:|---:|---|
@@ -245,19 +242,18 @@ did that should do badly on these checks.
 | Word agreement with original | 0.067 | — | Tracked only |
 
 Two of these still need work. The same-function-pair rate has failed three rounds
-in a row, and every fix we've tried for it drags coverage of intent below its own
-bar. Coverage of intent only clears its bar by 0.003 on 71 examples, which isn't
-enough for us to call it a pass. We're still working on getting both right
-without trading one for the other.
+of testing, and every fix we've tried pushes coverage of intent below its
+threshold. Coverage of intent clears its threshold by only 0.003 on 71 examples,
+so we count it as inconclusive. We're working on improving both.
 
 ### The vocabulary problem
 
-One result really surprised us. The more data we trained on, the *less* often the
-small model picked the same words as the big one. It went from 23% to 16% to
-6.7%, even though it kept passing every speed and variety check.
+As we added training data, the small model agreed *less* often with the big
+model's exact words: 23%, then 16%, then 6.7%. It kept passing every speed and
+variety check.
 
-When we looked into it, the reason was simple. The big model can say any word it
-wants, but the small one picks from a fixed list of 95. That list can only cover
+The cause is the vocabulary. The big model can use any word, but the small one
+picks from a fixed list of 95. That list can only cover
 about a third of what the big model says, and making it 8.5× longer only gets you
 to 57%.
 
@@ -265,15 +261,14 @@ to 57%.
   <img alt="Coverage against vocabulary size: 95 words reaches 33% of the teacher's words, and an 8.5x larger vocabulary still only reaches 57%" src="docs/figures/ceiling.png">
 </p>
 
-So matching the big model word for word wasn't a fair test. We switched to
-measuring whether the board covers what the user might mean, and kept word
-agreement around as a side number.
+Word-for-word agreement wasn't a fair test, so we switched our main metric to
+whether the board covers what the user might mean. We still report word
+agreement separately.
 
-A longer list wasn't going to fix it either. Instead, we added a step that pulls
-answers straight out of what the device sees and hears. That's how *aunt* shows
-up at dinner. We tested it on 60 questions where the answer is somewhere in the
-scene or conversation. It got every *who* and *this-or-that* question right,
-where the fixed list alone got at most 8%.
+We also added a step that takes answers directly from what the device sees and
+hears. That's how *aunt* appears at dinner. We tested it on 60 questions where the answer is somewhere in the
+scene or conversation. It got every *who* and *this-or-that* question right.
+The fixed list alone got at most 8%.
 
 <p align="center">
   <img alt="Correct answer placed on the board by question type: alternative 100%, who 100%, where 88%, colour 83%, which 83%, count 0%. The closed vocabulary alone reaches 8% on who questions and 0% elsewhere" src="docs/figures/deictic.png">
@@ -285,25 +280,23 @@ The full write-up is in [`docs/overview/`](docs/overview/).
 
 We exported the small model to ONNX and converted it to OpenVINO, with outputs
 matching PyTorch to within `1.43e-6`. We also quantized it to INT8 with NNCF,
-calibrated on 360 real inputs instead of random data. Every exported model comes
-with a hash of its word list, so if it's ever loaded with the wrong list it fails
-loudly instead of quietly showing the wrong words.
+calibrated on 360 real inputs instead of random data. Every exported model includes
+a hash of its word list, so loading it with the wrong list raises an error instead
+of showing the wrong words.
 
-Then we ran the exact same file on an Apple M4 and an Intel Core Ultra 9 185H.
+We ran the same model file on an Apple M4 and an Intel Core Ultra 9 185H.
 
 <p align="center">
   <img alt="Student head speedup relative to PyTorch on the same machine: 0.60x on Apple M4 through the ARM CPU plugin, 2.66x on an Intel Core Ultra 9 185H" src="docs/figures/inversion.png">
 </p>
 
-Each number compares OpenVINO to PyTorch on the same machine, so differences
-between the two computers don't skew it. Moving MiniLM to OpenVINO as well sped
-up the whole board by 2.02× on the Intel CPU, 1.85× on the Arc iGPU and 1.76× on
-the Mac.
+Each number compares OpenVINO with PyTorch on the same machine, not the two
+machines with each other. Moving MiniLM to OpenVINO as well made the whole board
+2.02× faster on the Intel CPU, 1.85× on the Arc iGPU and 1.76× on the Mac.
 
-A couple of things didn't go our way. INT8 made the model smaller (236 KB instead
-of 662 KB) but not any faster. And we haven't gotten it running on the Intel NPU
-yet, because the NPU needs a fixed batch size and our export uses a flexible one.
-A fixed-size export is the next thing to try.
+INT8 made the model smaller (236 KB instead of 662 KB) but not faster. The model
+doesn't run on the Intel NPU yet, because the NPU needs a fixed batch size and
+our export uses a dynamic one. A fixed-size export is the next step.
 
 ## Getting started
 
@@ -324,7 +317,7 @@ cd mac
 VOICELINK_PERCEPTION=0 pytest tests/ -q
 ```
 
-Then start everything up:
+Start the system:
 
 ```bash
 bash mac/demo.sh              # real wearable, real models
@@ -334,9 +327,9 @@ bash mac/demo.sh --intel      # small model, MiniLM and Whisper on OpenVINO
 bash mac/demo.sh --mock       # no models at all
 ```
 
-You can combine the flags. Open the board at `http://<your-mac>:8080/` on any
-tablet on the same Wi-Fi. It's plain HTTP on purpose, so the tablet can connect
-without running into HTTPS errors.
+The flags can be combined. Open the board at `http://<your-mac>:8080/` on a
+tablet on the same Wi-Fi. We use plain HTTP so the tablet can connect without
+HTTPS mixed-content errors.
 
 ## What's in the repo
 
@@ -352,27 +345,26 @@ without running into HTTPS errors.
 | [`docs/figures/make_figures.py`](docs/figures/make_figures.py) | Rebuilds every chart here from the saved results |
 | [`paper/`](paper/) | Our NeurIPS 2026 workshop papers |
 
-All the charts are generated from results saved in the repo. If a chart and its
-JSON ever disagree, the JSON is right. Run
-`python3 docs/figures/make_figures.py` to rebuild them.
+The charts are generated from results saved in the repo. If a chart and its JSON
+disagree, the JSON is correct. To rebuild them, run
+`python3 docs/figures/make_figures.py`.
 
 ## Privacy
 
-Revoce has a camera and a microphone, and it's worn around other people, so we've
-thought a lot about privacy for both the user and everyone near them. Most of it
-is built into the hardware and software.
+Revoce has a camera and a microphone and is worn around other people, so privacy
+for the user and the people near them is built into the hardware and software.
 
-- **Everything stays local.** All the models run on the computer. Audio, video and
-  transcripts are never sent anywhere.
-- **Nothing gets saved.** Audio and images are held briefly in memory and never
+- **Local processing.** All models run on the computer. Audio, video and
+  transcripts are never sent to a server.
+- **No recordings.** Audio and images are held briefly in memory and never
   written to disk.
-- **There's a real off button.** A physical button on the wearable pauses capture.
-  While it's paused, no audio is processed or sent and no pictures are taken.
-- **You can tell when it's on.** An LED stays lit whenever the device is capturing.
-- **Consent comes first.** The repo includes tools to anonymize the tap logs and a
-  consent form for guardians of people who can't consent for themselves.
+- **Off button.** A physical button on the wearable pauses capture. While it's
+  paused, no audio is processed or sent and no pictures are taken.
+- **Recording light.** An LED stays on whenever the device is capturing.
+- **Consent.** The repo includes tools to pseudonymize the tap logs and a consent
+  form for guardians of people who can't consent for themselves.
 
-Until written consent is in place, we're only testing it on our own team.
+Until written consent is in place, we only test on members of our team.
 
 ## Credits
 
