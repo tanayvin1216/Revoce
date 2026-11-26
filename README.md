@@ -18,6 +18,14 @@ No one has to program it in advance.
 [![ONNX](https://img.shields.io/badge/ONNX-005CED?style=for-the-badge&logo=onnx&logoColor=white)](https://onnx.ai/)
 [![Espressif](https://img.shields.io/badge/ESP32--S3-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://www.espressif.com/)
 
+<br />
+
+<a href="https://www.youtube.com/watch?v=2Iy_1oze-cM">
+  <img width="560" alt="Watch the Revoce video for the Intel Global AI Impact Festival" src="https://img.youtube.com/vi/2Iy_1oze-cM/maxresdefault.jpg" />
+</a>
+
+<sub>▶ Our Intel Global AI Impact Festival 2026 video. Click to watch on YouTube.</sub>
+
 </div>
 
 ---
